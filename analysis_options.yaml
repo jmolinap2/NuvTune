@@ -1,0 +1,17 @@
+include: package:flutter_lints/flutter.yaml
+
+analyzer:
+  exclude:
+    # Contrato de Pigeon: lo consume la herramienta pigeon activada de forma
+    # global, no el paquete. No se declara como dev_dependency porque su
+    # restriccion de `analyzer` choca con la de drift_dev.
+    - pigeons/**
+    # Codigo generado por pigeon y por drift.
+    - "**/*.g.dart"
+
+linter:
+  rules:
+    - always_declare_return_types
+    - avoid_relative_lib_imports
+    - prefer_final_locals
+    - use_super_parameters

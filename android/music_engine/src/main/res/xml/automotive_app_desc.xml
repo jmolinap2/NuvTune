@@ -1,0 +1,6 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!-- Declara NuvTune como aplicacion multimedia para Android Auto
+     (requerimiento seccion 9.2). No se declara "video" en ningun caso. -->
+<automotiveApp>
+    <uses name="media" />
+</automotiveApp>

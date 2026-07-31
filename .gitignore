@@ -1,0 +1,44 @@
+# Flutter/Dart
+.dart_tool/
+.flutter-plugins
+.flutter-plugins-dependencies
+.packages
+.pub-cache/
+.pub/
+build/
+
+# Android/Gradle
+android/.gradle/
+android/app/build/
+android/local.properties
+android/key.properties
+android/**/generated/
+
+# iOS/macOS generated output
+ios/Pods/
+ios/.symlinks/
+ios/Flutter/Flutter.framework
+ios/Flutter/Flutter.podspec
+macos/Pods/
+macos/.symlinks/
+
+# IDE/editor
+.idea/
+.vscode/
+*.iml
+
+# OS files
+.DS_Store
+Thumbs.db
+
+# Logs
+*.log
+
+# Local release artifacts
+*-v*.apk
+*.aab
+
+# Secrets and local environment
+.env
+.env.*
+!.env.example

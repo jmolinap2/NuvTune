@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <string name="nuvtune_widget_cover">Portada</string>
+    <string name="nuvtune_widget_previous">Anterior</string>
+    <string name="nuvtune_widget_play_pause">Reproducir o pausar</string>
+    <string name="nuvtune_widget_next">Siguiente</string>
+    <string name="nuvtune_widget_shuffle">Aleatorio</string>
+    <string name="nuvtune_widget_repeat">Repetir</string>
+    <string name="nuvtune_widget_empty_title">NuvTune</string>
+    <string name="nuvtune_widget_empty_artist">Sin reproducción</string>
+    <string name="nuvtune_widget_next_up">A continuación: %1$s</string>
+
+    <string name="nuvtune_notification_channel_name">Reproducción</string>
+    <string name="nuvtune_notification_channel_description">Controles de la canción en reproducción</string>
+
+    <string name="nuvtune_browse_songs">Canciones</string>
+    <string name="nuvtune_browse_albums">Álbumes</string>
+    <string name="nuvtune_browse_artists">Artistas</string>
+    <string name="nuvtune_browse_folders">Carpetas</string>
+    <string name="nuvtune_browse_recent">Reproducidas recientemente</string>
+    <string name="nuvtune_browse_root">NuvTune</string>
+</resources>

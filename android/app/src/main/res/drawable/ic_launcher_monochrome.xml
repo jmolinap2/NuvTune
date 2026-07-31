@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Version de una sola tinta para los iconos tematicos de Android 13 y
+  posteriores. El sistema la recolorea con el tema del usuario, de modo que
+  aqui solo importa la silueta.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108"
+    android:tint="#FFFFFFFF">
+
+    <path
+        android:pathData="M36,76 V32 H47 L67,58 V32 H78 V76 H67 L47,50 V76 Z"
+        android:fillColor="#FFFFFFFF" />
+
+    <path
+        android:pathData="M32,84 h6 v-6 h-6 z M42,84 h6 v-12 h-6 z M52,84 h6 v-9 h-6 z M62,84 h6 v-14 h-6 z M72,84 h6 v-7 h-6 z"
+        android:fillColor="#FFFFFFFF" />
+</vector>

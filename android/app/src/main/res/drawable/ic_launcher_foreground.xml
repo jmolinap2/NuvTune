@@ -1,0 +1,52 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Marca de NuvTune: la "N" del sistema visual, con el degradado de tres paradas
+  (violeta, magenta, cian) que define la identidad.
+
+  El trazo queda dentro de la zona segura de 72x72 centrada en el lienzo de
+  108x108, de modo que ningun recorte del lanzador se lo come.
+-->
+<vector xmlns:android="http://schemas.android.com/apk/res/android"
+    xmlns:aapt="http://schemas.android.com/aapt"
+    android:width="108dp"
+    android:height="108dp"
+    android:viewportWidth="108"
+    android:viewportHeight="108">
+
+    <path
+        android:pathData="M36,76 V32 H47 L67,58 V32 H78 V76 H67 L47,50 V76 Z"
+        android:strokeLineJoin="round">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="36"
+                android:startY="76"
+                android:endX="78"
+                android:endY="32">
+                <item android:offset="0" android:color="#FF6D00FF" />
+                <item android:offset="0.5" android:color="#FFB14BFF" />
+                <item android:offset="1" android:color="#FF00E5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+
+    <!--
+      Onda de sonido bajo la marca: es lo que distingue el icono de una "N"
+      cualquiera y lo identifica como reproductor de un vistazo.
+    -->
+    <path
+        android:pathData="M32,84 h6 v-6 h-6 z M42,84 h6 v-12 h-6 z M52,84 h6 v-9 h-6 z M62,84 h6 v-14 h-6 z M72,84 h6 v-7 h-6 z"
+        android:fillAlpha="0.9">
+        <aapt:attr name="android:fillColor">
+            <gradient
+                android:type="linear"
+                android:startX="32"
+                android:startY="0"
+                android:endX="78"
+                android:endY="0">
+                <item android:offset="0" android:color="#FF6D00FF" />
+                <item android:offset="1" android:color="#FF00E5FF" />
+            </gradient>
+        </aapt:attr>
+    </path>
+</vector>
