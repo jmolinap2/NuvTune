@@ -95,7 +95,21 @@ class PlaylistsList extends ConsumerWidget {
                 borderRadius: 12,
                 icon: Icons.queue_music_rounded,
               ),
-              title: Text(playlist.name),
+              title: playlist.giftMode
+                  ? Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        Flexible(
+                          child: Text(
+                            playlist.name,
+                            overflow: TextOverflow.ellipsis,
+                          ),
+                        ),
+                        const SizedBox(width: 8),
+                        const _GiftChip(),
+                      ],
+                    )
+                  : Text(playlist.name),
               subtitle: Text(
                 (counts[playlist.id] ?? 0) == 1
                     ? '1 canción'
@@ -169,6 +183,30 @@ class PlaylistsList extends ConsumerWidget {
 
     if (path == null) return;
     router.push('/folder?path=${Uri.encodeComponent(path)}');
+  }
+}
+
+/// Insignia "🎁 Regalo" para las listas convertidas en regalo.
+class _GiftChip extends StatelessWidget {
+  const _GiftChip();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(999),
+        color: scheme.primary.withValues(alpha: 0.16),
+      ),
+      child: Text(
+        '🎁 Regalo',
+        style: Theme.of(context)
+            .textTheme
+            .labelSmall
+            ?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600),
+      ),
+    );
   }
 }
 

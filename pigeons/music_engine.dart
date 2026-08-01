@@ -124,6 +124,18 @@ class PlaybackSnapshot {
   int? sleepTimerRemainingMs;
 }
 
+/// Resumen ligero de la senal PCM para animar la interfaz sin enviar audio
+/// crudo fuera del motor. Todos los valores estan normalizados entre 0 y 1.
+class AudioAnalysisFrame {
+  late double level;
+  late double bass;
+  late double mid;
+  late double treble;
+
+  /// Pulso corto detectado principalmente a partir de transitorios graves.
+  late double beat;
+}
+
 /// Etiquetas a escribir. Un campo null significa "no modificar"; una cadena
 /// vacia significa "borrar el valor" (requerimiento 7.1).
 class MetadataEdit {
@@ -424,6 +436,10 @@ abstract class MusicEngineHostApi {
   void setPlaybackSpeed(double speed);
   void setPitch(double pitch);
 
+  /// Activa el analisis PCM solo mientras una interfaz visible lo necesita.
+  /// En modo directo/offload no se intercepta la senal y no se emiten cuadros.
+  void setAudioAnalysisEnabled(bool enabled);
+
   /// Devuelve el estado actual sin esperar un evento.
   @async
   PlaybackSnapshot getPlaybackSnapshot();
@@ -614,6 +630,7 @@ abstract class MusicEngineFlutterApi {
   void positionChanged(int positionMs, int durationMs, int bufferedMs);
   void queueChanged(List<Song> queue, int currentIndex);
   void audioDeviceChanged(AudioOutput output, String deviceName);
+  void audioAnalysisChanged(AudioAnalysisFrame frame);
 
   /// El motor detecto cambios en MediaStore y la biblioteca fue reconstruida.
   void libraryChanged(int songCount);

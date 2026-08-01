@@ -182,14 +182,15 @@ class MusicPlayerService : MediaLibraryService() {
     /**
      * Traslada las opciones de calidad al reproductor.
      *
-     * Sobre gapless: ExoPlayer ya reproduce sin espacios los formatos que
-     * declaran su relleno de codificador, sin necesidad de interruptor. Lo que
-     * añade esta opcion es el salto del silencio que arrastran los demas
-     * formatos en el limite entre pistas, que es la parte configurable.
+     * Gapless: ExoPlayer ya reproduce sin espacios los formatos que declaran su
+     * relleno de codificador, sin necesidad de interruptor. NO se usa
+     * `skipSilenceEnabled`: esa opcion no es gapless, es un acelerador de
+     * silencios que reproducia a mayor velocidad los primeros compases de casi
+     * cualquier cancion (que suelen tener un instante de silencio antes del
+     * primer ataque).
      */
     private fun applyPlaybackOptions() {
         val options = components.effects.options
-        player.skipSilenceEnabled = options.gaplessEnabled
         player.trackSelectionParameters = player.trackSelectionParameters
             .buildUpon()
             .setAudioOffloadPreferences(components.effects.offloadPreferences())

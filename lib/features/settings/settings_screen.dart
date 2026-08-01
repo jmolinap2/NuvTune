@@ -183,6 +183,15 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => context.push('/remote-sources'),
             ),
+            ListTile(
+              leading: const Icon(Icons.download_outlined),
+              title: const Text('Descargas de internet'),
+              subtitle: const Text(
+                'Busca y descarga canciones para escucharlas sin conexión.',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/downloads'),
+            ),
 
             // -- Bluetooth y Android Auto -------------------------------------
             _Section(title: AppStrings.settingsBluetooth),

@@ -262,6 +262,63 @@ class $PlaylistsTable extends Playlists
     requiredDuringInsert: false,
     defaultValue: currentDateAndTime,
   );
+  static const VerificationMeta _giftModeMeta = const VerificationMeta(
+    'giftMode',
+  );
+  @override
+  late final GeneratedColumn<bool> giftMode = GeneratedColumn<bool>(
+    'gift_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("gift_mode" IN (0, 1))',
+    ),
+    defaultValue: const Constant(false),
+  );
+  static const VerificationMeta _dedicationMeta = const VerificationMeta(
+    'dedication',
+  );
+  @override
+  late final GeneratedColumn<String> dedication = GeneratedColumn<String>(
+    'dedication',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _giftFromMeta = const VerificationMeta(
+    'giftFrom',
+  );
+  @override
+  late final GeneratedColumn<String> giftFrom = GeneratedColumn<String>(
+    'gift_from',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _giftToMeta = const VerificationMeta('giftTo');
+  @override
+  late final GeneratedColumn<String> giftTo = GeneratedColumn<String>(
+    'gift_to',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _giftAccentIdMeta = const VerificationMeta(
+    'giftAccentId',
+  );
+  @override
+  late final GeneratedColumn<String> giftAccentId = GeneratedColumn<String>(
+    'gift_accent_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -269,6 +326,11 @@ class $PlaylistsTable extends Playlists
     coverPath,
     createdAt,
     updatedAt,
+    giftMode,
+    dedication,
+    giftFrom,
+    giftTo,
+    giftAccentId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -311,6 +373,39 @@ class $PlaylistsTable extends Playlists
         updatedAt.isAcceptableOrUnknown(data['updated_at']!, _updatedAtMeta),
       );
     }
+    if (data.containsKey('gift_mode')) {
+      context.handle(
+        _giftModeMeta,
+        giftMode.isAcceptableOrUnknown(data['gift_mode']!, _giftModeMeta),
+      );
+    }
+    if (data.containsKey('dedication')) {
+      context.handle(
+        _dedicationMeta,
+        dedication.isAcceptableOrUnknown(data['dedication']!, _dedicationMeta),
+      );
+    }
+    if (data.containsKey('gift_from')) {
+      context.handle(
+        _giftFromMeta,
+        giftFrom.isAcceptableOrUnknown(data['gift_from']!, _giftFromMeta),
+      );
+    }
+    if (data.containsKey('gift_to')) {
+      context.handle(
+        _giftToMeta,
+        giftTo.isAcceptableOrUnknown(data['gift_to']!, _giftToMeta),
+      );
+    }
+    if (data.containsKey('gift_accent_id')) {
+      context.handle(
+        _giftAccentIdMeta,
+        giftAccentId.isAcceptableOrUnknown(
+          data['gift_accent_id']!,
+          _giftAccentIdMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -340,6 +435,26 @@ class $PlaylistsTable extends Playlists
         DriftSqlType.dateTime,
         data['${effectivePrefix}updated_at'],
       )!,
+      giftMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}gift_mode'],
+      )!,
+      dedication: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}dedication'],
+      ),
+      giftFrom: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gift_from'],
+      ),
+      giftTo: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gift_to'],
+      ),
+      giftAccentId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gift_accent_id'],
+      ),
     );
   }
 
@@ -357,12 +472,30 @@ class Playlist extends DataClass implements Insertable<Playlist> {
   final String? coverPath;
   final DateTime createdAt;
   final DateTime updatedAt;
+
+  /// Modo regalo: presenta la lista con dedicatoria antes de reproducir.
+  final bool giftMode;
+
+  /// Dedicatoria mostrada en la portada del modo regalo.
+  final String? dedication;
+
+  /// "De" y "Para" del regalo (opcional; si estan vacios no se muestran).
+  final String? giftFrom;
+  final String? giftTo;
+
+  /// Identidad cromatica elegida para el regalo (uno de AccentIdentity.id).
+  final String? giftAccentId;
   const Playlist({
     required this.id,
     required this.name,
     this.coverPath,
     required this.createdAt,
     required this.updatedAt,
+    required this.giftMode,
+    this.dedication,
+    this.giftFrom,
+    this.giftTo,
+    this.giftAccentId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -374,6 +507,19 @@ class Playlist extends DataClass implements Insertable<Playlist> {
     }
     map['created_at'] = Variable<DateTime>(createdAt);
     map['updated_at'] = Variable<DateTime>(updatedAt);
+    map['gift_mode'] = Variable<bool>(giftMode);
+    if (!nullToAbsent || dedication != null) {
+      map['dedication'] = Variable<String>(dedication);
+    }
+    if (!nullToAbsent || giftFrom != null) {
+      map['gift_from'] = Variable<String>(giftFrom);
+    }
+    if (!nullToAbsent || giftTo != null) {
+      map['gift_to'] = Variable<String>(giftTo);
+    }
+    if (!nullToAbsent || giftAccentId != null) {
+      map['gift_accent_id'] = Variable<String>(giftAccentId);
+    }
     return map;
   }
 
@@ -386,6 +532,19 @@ class Playlist extends DataClass implements Insertable<Playlist> {
           : Value(coverPath),
       createdAt: Value(createdAt),
       updatedAt: Value(updatedAt),
+      giftMode: Value(giftMode),
+      dedication: dedication == null && nullToAbsent
+          ? const Value.absent()
+          : Value(dedication),
+      giftFrom: giftFrom == null && nullToAbsent
+          ? const Value.absent()
+          : Value(giftFrom),
+      giftTo: giftTo == null && nullToAbsent
+          ? const Value.absent()
+          : Value(giftTo),
+      giftAccentId: giftAccentId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(giftAccentId),
     );
   }
 
@@ -400,6 +559,11 @@ class Playlist extends DataClass implements Insertable<Playlist> {
       coverPath: serializer.fromJson<String?>(json['coverPath']),
       createdAt: serializer.fromJson<DateTime>(json['createdAt']),
       updatedAt: serializer.fromJson<DateTime>(json['updatedAt']),
+      giftMode: serializer.fromJson<bool>(json['giftMode']),
+      dedication: serializer.fromJson<String?>(json['dedication']),
+      giftFrom: serializer.fromJson<String?>(json['giftFrom']),
+      giftTo: serializer.fromJson<String?>(json['giftTo']),
+      giftAccentId: serializer.fromJson<String?>(json['giftAccentId']),
     );
   }
   @override
@@ -411,6 +575,11 @@ class Playlist extends DataClass implements Insertable<Playlist> {
       'coverPath': serializer.toJson<String?>(coverPath),
       'createdAt': serializer.toJson<DateTime>(createdAt),
       'updatedAt': serializer.toJson<DateTime>(updatedAt),
+      'giftMode': serializer.toJson<bool>(giftMode),
+      'dedication': serializer.toJson<String?>(dedication),
+      'giftFrom': serializer.toJson<String?>(giftFrom),
+      'giftTo': serializer.toJson<String?>(giftTo),
+      'giftAccentId': serializer.toJson<String?>(giftAccentId),
     };
   }
 
@@ -420,12 +589,22 @@ class Playlist extends DataClass implements Insertable<Playlist> {
     Value<String?> coverPath = const Value.absent(),
     DateTime? createdAt,
     DateTime? updatedAt,
+    bool? giftMode,
+    Value<String?> dedication = const Value.absent(),
+    Value<String?> giftFrom = const Value.absent(),
+    Value<String?> giftTo = const Value.absent(),
+    Value<String?> giftAccentId = const Value.absent(),
   }) => Playlist(
     id: id ?? this.id,
     name: name ?? this.name,
     coverPath: coverPath.present ? coverPath.value : this.coverPath,
     createdAt: createdAt ?? this.createdAt,
     updatedAt: updatedAt ?? this.updatedAt,
+    giftMode: giftMode ?? this.giftMode,
+    dedication: dedication.present ? dedication.value : this.dedication,
+    giftFrom: giftFrom.present ? giftFrom.value : this.giftFrom,
+    giftTo: giftTo.present ? giftTo.value : this.giftTo,
+    giftAccentId: giftAccentId.present ? giftAccentId.value : this.giftAccentId,
   );
   Playlist copyWithCompanion(PlaylistsCompanion data) {
     return Playlist(
@@ -434,6 +613,15 @@ class Playlist extends DataClass implements Insertable<Playlist> {
       coverPath: data.coverPath.present ? data.coverPath.value : this.coverPath,
       createdAt: data.createdAt.present ? data.createdAt.value : this.createdAt,
       updatedAt: data.updatedAt.present ? data.updatedAt.value : this.updatedAt,
+      giftMode: data.giftMode.present ? data.giftMode.value : this.giftMode,
+      dedication: data.dedication.present
+          ? data.dedication.value
+          : this.dedication,
+      giftFrom: data.giftFrom.present ? data.giftFrom.value : this.giftFrom,
+      giftTo: data.giftTo.present ? data.giftTo.value : this.giftTo,
+      giftAccentId: data.giftAccentId.present
+          ? data.giftAccentId.value
+          : this.giftAccentId,
     );
   }
 
@@ -444,13 +632,29 @@ class Playlist extends DataClass implements Insertable<Playlist> {
           ..write('name: $name, ')
           ..write('coverPath: $coverPath, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('giftMode: $giftMode, ')
+          ..write('dedication: $dedication, ')
+          ..write('giftFrom: $giftFrom, ')
+          ..write('giftTo: $giftTo, ')
+          ..write('giftAccentId: $giftAccentId')
           ..write(')'))
         .toString();
   }
 
   @override
-  int get hashCode => Object.hash(id, name, coverPath, createdAt, updatedAt);
+  int get hashCode => Object.hash(
+    id,
+    name,
+    coverPath,
+    createdAt,
+    updatedAt,
+    giftMode,
+    dedication,
+    giftFrom,
+    giftTo,
+    giftAccentId,
+  );
   @override
   bool operator ==(Object other) =>
       identical(this, other) ||
@@ -459,7 +663,12 @@ class Playlist extends DataClass implements Insertable<Playlist> {
           other.name == this.name &&
           other.coverPath == this.coverPath &&
           other.createdAt == this.createdAt &&
-          other.updatedAt == this.updatedAt);
+          other.updatedAt == this.updatedAt &&
+          other.giftMode == this.giftMode &&
+          other.dedication == this.dedication &&
+          other.giftFrom == this.giftFrom &&
+          other.giftTo == this.giftTo &&
+          other.giftAccentId == this.giftAccentId);
 }
 
 class PlaylistsCompanion extends UpdateCompanion<Playlist> {
@@ -468,12 +677,22 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
   final Value<String?> coverPath;
   final Value<DateTime> createdAt;
   final Value<DateTime> updatedAt;
+  final Value<bool> giftMode;
+  final Value<String?> dedication;
+  final Value<String?> giftFrom;
+  final Value<String?> giftTo;
+  final Value<String?> giftAccentId;
   const PlaylistsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
     this.coverPath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.giftMode = const Value.absent(),
+    this.dedication = const Value.absent(),
+    this.giftFrom = const Value.absent(),
+    this.giftTo = const Value.absent(),
+    this.giftAccentId = const Value.absent(),
   });
   PlaylistsCompanion.insert({
     this.id = const Value.absent(),
@@ -481,6 +700,11 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     this.coverPath = const Value.absent(),
     this.createdAt = const Value.absent(),
     this.updatedAt = const Value.absent(),
+    this.giftMode = const Value.absent(),
+    this.dedication = const Value.absent(),
+    this.giftFrom = const Value.absent(),
+    this.giftTo = const Value.absent(),
+    this.giftAccentId = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Playlist> custom({
     Expression<int>? id,
@@ -488,6 +712,11 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     Expression<String>? coverPath,
     Expression<DateTime>? createdAt,
     Expression<DateTime>? updatedAt,
+    Expression<bool>? giftMode,
+    Expression<String>? dedication,
+    Expression<String>? giftFrom,
+    Expression<String>? giftTo,
+    Expression<String>? giftAccentId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -495,6 +724,11 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
       if (coverPath != null) 'cover_path': coverPath,
       if (createdAt != null) 'created_at': createdAt,
       if (updatedAt != null) 'updated_at': updatedAt,
+      if (giftMode != null) 'gift_mode': giftMode,
+      if (dedication != null) 'dedication': dedication,
+      if (giftFrom != null) 'gift_from': giftFrom,
+      if (giftTo != null) 'gift_to': giftTo,
+      if (giftAccentId != null) 'gift_accent_id': giftAccentId,
     });
   }
 
@@ -504,6 +738,11 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     Value<String?>? coverPath,
     Value<DateTime>? createdAt,
     Value<DateTime>? updatedAt,
+    Value<bool>? giftMode,
+    Value<String?>? dedication,
+    Value<String?>? giftFrom,
+    Value<String?>? giftTo,
+    Value<String?>? giftAccentId,
   }) {
     return PlaylistsCompanion(
       id: id ?? this.id,
@@ -511,6 +750,11 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
       coverPath: coverPath ?? this.coverPath,
       createdAt: createdAt ?? this.createdAt,
       updatedAt: updatedAt ?? this.updatedAt,
+      giftMode: giftMode ?? this.giftMode,
+      dedication: dedication ?? this.dedication,
+      giftFrom: giftFrom ?? this.giftFrom,
+      giftTo: giftTo ?? this.giftTo,
+      giftAccentId: giftAccentId ?? this.giftAccentId,
     );
   }
 
@@ -532,6 +776,21 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     if (updatedAt.present) {
       map['updated_at'] = Variable<DateTime>(updatedAt.value);
     }
+    if (giftMode.present) {
+      map['gift_mode'] = Variable<bool>(giftMode.value);
+    }
+    if (dedication.present) {
+      map['dedication'] = Variable<String>(dedication.value);
+    }
+    if (giftFrom.present) {
+      map['gift_from'] = Variable<String>(giftFrom.value);
+    }
+    if (giftTo.present) {
+      map['gift_to'] = Variable<String>(giftTo.value);
+    }
+    if (giftAccentId.present) {
+      map['gift_accent_id'] = Variable<String>(giftAccentId.value);
+    }
     return map;
   }
 
@@ -542,7 +801,12 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
           ..write('name: $name, ')
           ..write('coverPath: $coverPath, ')
           ..write('createdAt: $createdAt, ')
-          ..write('updatedAt: $updatedAt')
+          ..write('updatedAt: $updatedAt, ')
+          ..write('giftMode: $giftMode, ')
+          ..write('dedication: $dedication, ')
+          ..write('giftFrom: $giftFrom, ')
+          ..write('giftTo: $giftTo, ')
+          ..write('giftAccentId: $giftAccentId')
           ..write(')'))
         .toString();
   }
@@ -5908,6 +6172,21 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant('{}'),
   );
+  static const VerificationMeta _videoBackgroundEnabledMeta =
+      const VerificationMeta('videoBackgroundEnabled');
+  @override
+  late final GeneratedColumn<bool> videoBackgroundEnabled =
+      GeneratedColumn<bool>(
+        'video_background_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("video_background_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -5948,6 +6227,7 @@ class $AppSettingsTable extends AppSettings
     sleepTimerFinishTrack,
     homeSectionsJson,
     librarySortJson,
+    videoBackgroundEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6288,6 +6568,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('video_background_enabled')) {
+      context.handle(
+        _videoBackgroundEnabledMeta,
+        videoBackgroundEnabled.isAcceptableOrUnknown(
+          data['video_background_enabled']!,
+          _videoBackgroundEnabledMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6449,6 +6738,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.string,
         data['${effectivePrefix}library_sort_json'],
       )!,
+      videoBackgroundEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}video_background_enabled'],
+      )!,
     );
   }
 
@@ -6508,6 +6801,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// Orden y filtro recordados por seccion de la biblioteca
   /// (requerimiento 4.1), codificados como JSON.
   final String librarySortJson;
+
+  /// Fondo de video musical en la pantalla del reproductor.
+  /// Requiere Wi-Fi (nunca datos moviles) para no gastar el plan del usuario.
+  final bool videoBackgroundEnabled;
   const AppSetting({
     required this.id,
     required this.scanOnStart,
@@ -6547,6 +6844,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.sleepTimerFinishTrack,
     required this.homeSectionsJson,
     required this.librarySortJson,
+    required this.videoBackgroundEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6591,6 +6889,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['sleep_timer_finish_track'] = Variable<bool>(sleepTimerFinishTrack);
     map['home_sections_json'] = Variable<String>(homeSectionsJson);
     map['library_sort_json'] = Variable<String>(librarySortJson);
+    map['video_background_enabled'] = Variable<bool>(videoBackgroundEnabled);
     return map;
   }
 
@@ -6636,6 +6935,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       sleepTimerFinishTrack: Value(sleepTimerFinishTrack),
       homeSectionsJson: Value(homeSectionsJson),
       librarySortJson: Value(librarySortJson),
+      videoBackgroundEnabled: Value(videoBackgroundEnabled),
     );
   }
 
@@ -6695,6 +6995,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       ),
       homeSectionsJson: serializer.fromJson<String>(json['homeSectionsJson']),
       librarySortJson: serializer.fromJson<String>(json['librarySortJson']),
+      videoBackgroundEnabled: serializer.fromJson<bool>(
+        json['videoBackgroundEnabled'],
+      ),
     );
   }
   @override
@@ -6741,6 +7044,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'sleepTimerFinishTrack': serializer.toJson<bool>(sleepTimerFinishTrack),
       'homeSectionsJson': serializer.toJson<String>(homeSectionsJson),
       'librarySortJson': serializer.toJson<String>(librarySortJson),
+      'videoBackgroundEnabled': serializer.toJson<bool>(videoBackgroundEnabled),
     };
   }
 
@@ -6783,6 +7087,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? sleepTimerFinishTrack,
     String? homeSectionsJson,
     String? librarySortJson,
+    bool? videoBackgroundEnabled,
   }) => AppSetting(
     id: id ?? this.id,
     scanOnStart: scanOnStart ?? this.scanOnStart,
@@ -6823,6 +7128,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     sleepTimerFinishTrack: sleepTimerFinishTrack ?? this.sleepTimerFinishTrack,
     homeSectionsJson: homeSectionsJson ?? this.homeSectionsJson,
     librarySortJson: librarySortJson ?? this.librarySortJson,
+    videoBackgroundEnabled:
+        videoBackgroundEnabled ?? this.videoBackgroundEnabled,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -6936,6 +7243,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       librarySortJson: data.librarySortJson.present
           ? data.librarySortJson.value
           : this.librarySortJson,
+      videoBackgroundEnabled: data.videoBackgroundEnabled.present
+          ? data.videoBackgroundEnabled.value
+          : this.videoBackgroundEnabled,
     );
   }
 
@@ -6979,7 +7289,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('sleepTimerMinutes: $sleepTimerMinutes, ')
           ..write('sleepTimerFinishTrack: $sleepTimerFinishTrack, ')
           ..write('homeSectionsJson: $homeSectionsJson, ')
-          ..write('librarySortJson: $librarySortJson')
+          ..write('librarySortJson: $librarySortJson, ')
+          ..write('videoBackgroundEnabled: $videoBackgroundEnabled')
           ..write(')'))
         .toString();
   }
@@ -7024,6 +7335,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     sleepTimerFinishTrack,
     homeSectionsJson,
     librarySortJson,
+    videoBackgroundEnabled,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7066,7 +7378,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.sleepTimerMinutes == this.sleepTimerMinutes &&
           other.sleepTimerFinishTrack == this.sleepTimerFinishTrack &&
           other.homeSectionsJson == this.homeSectionsJson &&
-          other.librarySortJson == this.librarySortJson);
+          other.librarySortJson == this.librarySortJson &&
+          other.videoBackgroundEnabled == this.videoBackgroundEnabled);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -7108,6 +7421,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> sleepTimerFinishTrack;
   final Value<String> homeSectionsJson;
   final Value<String> librarySortJson;
+  final Value<bool> videoBackgroundEnabled;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.scanOnStart = const Value.absent(),
@@ -7147,6 +7461,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.sleepTimerFinishTrack = const Value.absent(),
     this.homeSectionsJson = const Value.absent(),
     this.librarySortJson = const Value.absent(),
+    this.videoBackgroundEnabled = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7187,6 +7502,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.sleepTimerFinishTrack = const Value.absent(),
     this.homeSectionsJson = const Value.absent(),
     this.librarySortJson = const Value.absent(),
+    this.videoBackgroundEnabled = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -7227,6 +7543,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? sleepTimerFinishTrack,
     Expression<String>? homeSectionsJson,
     Expression<String>? librarySortJson,
+    Expression<bool>? videoBackgroundEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7276,6 +7593,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'sleep_timer_finish_track': sleepTimerFinishTrack,
       if (homeSectionsJson != null) 'home_sections_json': homeSectionsJson,
       if (librarySortJson != null) 'library_sort_json': librarySortJson,
+      if (videoBackgroundEnabled != null)
+        'video_background_enabled': videoBackgroundEnabled,
     });
   }
 
@@ -7318,6 +7637,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? sleepTimerFinishTrack,
     Value<String>? homeSectionsJson,
     Value<String>? librarySortJson,
+    Value<bool>? videoBackgroundEnabled,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -7362,6 +7682,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           sleepTimerFinishTrack ?? this.sleepTimerFinishTrack,
       homeSectionsJson: homeSectionsJson ?? this.homeSectionsJson,
       librarySortJson: librarySortJson ?? this.librarySortJson,
+      videoBackgroundEnabled:
+          videoBackgroundEnabled ?? this.videoBackgroundEnabled,
     );
   }
 
@@ -7490,6 +7812,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     if (librarySortJson.present) {
       map['library_sort_json'] = Variable<String>(librarySortJson.value);
     }
+    if (videoBackgroundEnabled.present) {
+      map['video_background_enabled'] = Variable<bool>(
+        videoBackgroundEnabled.value,
+      );
+    }
     return map;
   }
 
@@ -7533,7 +7860,969 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('sleepTimerMinutes: $sleepTimerMinutes, ')
           ..write('sleepTimerFinishTrack: $sleepTimerFinishTrack, ')
           ..write('homeSectionsJson: $homeSectionsJson, ')
-          ..write('librarySortJson: $librarySortJson')
+          ..write('librarySortJson: $librarySortJson, ')
+          ..write('videoBackgroundEnabled: $videoBackgroundEnabled')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $SongVideoIdsTable extends SongVideoIds
+    with TableInfo<$SongVideoIdsTable, SongVideoId> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $SongVideoIdsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _songKeyMeta = const VerificationMeta(
+    'songKey',
+  );
+  @override
+  late final GeneratedColumn<String> songKey = GeneratedColumn<String>(
+    'song_key',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _videoIdMeta = const VerificationMeta(
+    'videoId',
+  );
+  @override
+  late final GeneratedColumn<String> videoId = GeneratedColumn<String>(
+    'video_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _sourceMeta = const VerificationMeta('source');
+  @override
+  late final GeneratedColumn<String> source = GeneratedColumn<String>(
+    'source',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('piped'),
+  );
+  static const VerificationMeta _fetchedAtMeta = const VerificationMeta(
+    'fetchedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> fetchedAt = GeneratedColumn<DateTime>(
+    'fetched_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [songKey, videoId, source, fetchedAt];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'song_video_ids';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<SongVideoId> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('song_key')) {
+      context.handle(
+        _songKeyMeta,
+        songKey.isAcceptableOrUnknown(data['song_key']!, _songKeyMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_songKeyMeta);
+    }
+    if (data.containsKey('video_id')) {
+      context.handle(
+        _videoIdMeta,
+        videoId.isAcceptableOrUnknown(data['video_id']!, _videoIdMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_videoIdMeta);
+    }
+    if (data.containsKey('source')) {
+      context.handle(
+        _sourceMeta,
+        source.isAcceptableOrUnknown(data['source']!, _sourceMeta),
+      );
+    }
+    if (data.containsKey('fetched_at')) {
+      context.handle(
+        _fetchedAtMeta,
+        fetchedAt.isAcceptableOrUnknown(data['fetched_at']!, _fetchedAtMeta),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {songKey};
+  @override
+  SongVideoId map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return SongVideoId(
+      songKey: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}song_key'],
+      )!,
+      videoId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}video_id'],
+      )!,
+      source: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source'],
+      )!,
+      fetchedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}fetched_at'],
+      )!,
+    );
+  }
+
+  @override
+  $SongVideoIdsTable createAlias(String alias) {
+    return $SongVideoIdsTable(attachedDatabase, alias);
+  }
+}
+
+class SongVideoId extends DataClass implements Insertable<SongVideoId> {
+  final String songKey;
+  final String videoId;
+
+  /// Origen ("piped", "manual", "youtube_api"), por si algun dia hay mas de
+  /// una fuente y hay que priorizar.
+  final String source;
+  final DateTime fetchedAt;
+  const SongVideoId({
+    required this.songKey,
+    required this.videoId,
+    required this.source,
+    required this.fetchedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['song_key'] = Variable<String>(songKey);
+    map['video_id'] = Variable<String>(videoId);
+    map['source'] = Variable<String>(source);
+    map['fetched_at'] = Variable<DateTime>(fetchedAt);
+    return map;
+  }
+
+  SongVideoIdsCompanion toCompanion(bool nullToAbsent) {
+    return SongVideoIdsCompanion(
+      songKey: Value(songKey),
+      videoId: Value(videoId),
+      source: Value(source),
+      fetchedAt: Value(fetchedAt),
+    );
+  }
+
+  factory SongVideoId.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return SongVideoId(
+      songKey: serializer.fromJson<String>(json['songKey']),
+      videoId: serializer.fromJson<String>(json['videoId']),
+      source: serializer.fromJson<String>(json['source']),
+      fetchedAt: serializer.fromJson<DateTime>(json['fetchedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'songKey': serializer.toJson<String>(songKey),
+      'videoId': serializer.toJson<String>(videoId),
+      'source': serializer.toJson<String>(source),
+      'fetchedAt': serializer.toJson<DateTime>(fetchedAt),
+    };
+  }
+
+  SongVideoId copyWith({
+    String? songKey,
+    String? videoId,
+    String? source,
+    DateTime? fetchedAt,
+  }) => SongVideoId(
+    songKey: songKey ?? this.songKey,
+    videoId: videoId ?? this.videoId,
+    source: source ?? this.source,
+    fetchedAt: fetchedAt ?? this.fetchedAt,
+  );
+  SongVideoId copyWithCompanion(SongVideoIdsCompanion data) {
+    return SongVideoId(
+      songKey: data.songKey.present ? data.songKey.value : this.songKey,
+      videoId: data.videoId.present ? data.videoId.value : this.videoId,
+      source: data.source.present ? data.source.value : this.source,
+      fetchedAt: data.fetchedAt.present ? data.fetchedAt.value : this.fetchedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SongVideoId(')
+          ..write('songKey: $songKey, ')
+          ..write('videoId: $videoId, ')
+          ..write('source: $source, ')
+          ..write('fetchedAt: $fetchedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(songKey, videoId, source, fetchedAt);
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is SongVideoId &&
+          other.songKey == this.songKey &&
+          other.videoId == this.videoId &&
+          other.source == this.source &&
+          other.fetchedAt == this.fetchedAt);
+}
+
+class SongVideoIdsCompanion extends UpdateCompanion<SongVideoId> {
+  final Value<String> songKey;
+  final Value<String> videoId;
+  final Value<String> source;
+  final Value<DateTime> fetchedAt;
+  final Value<int> rowid;
+  const SongVideoIdsCompanion({
+    this.songKey = const Value.absent(),
+    this.videoId = const Value.absent(),
+    this.source = const Value.absent(),
+    this.fetchedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  });
+  SongVideoIdsCompanion.insert({
+    required String songKey,
+    required String videoId,
+    this.source = const Value.absent(),
+    this.fetchedAt = const Value.absent(),
+    this.rowid = const Value.absent(),
+  }) : songKey = Value(songKey),
+       videoId = Value(videoId);
+  static Insertable<SongVideoId> custom({
+    Expression<String>? songKey,
+    Expression<String>? videoId,
+    Expression<String>? source,
+    Expression<DateTime>? fetchedAt,
+    Expression<int>? rowid,
+  }) {
+    return RawValuesInsertable({
+      if (songKey != null) 'song_key': songKey,
+      if (videoId != null) 'video_id': videoId,
+      if (source != null) 'source': source,
+      if (fetchedAt != null) 'fetched_at': fetchedAt,
+      if (rowid != null) 'rowid': rowid,
+    });
+  }
+
+  SongVideoIdsCompanion copyWith({
+    Value<String>? songKey,
+    Value<String>? videoId,
+    Value<String>? source,
+    Value<DateTime>? fetchedAt,
+    Value<int>? rowid,
+  }) {
+    return SongVideoIdsCompanion(
+      songKey: songKey ?? this.songKey,
+      videoId: videoId ?? this.videoId,
+      source: source ?? this.source,
+      fetchedAt: fetchedAt ?? this.fetchedAt,
+      rowid: rowid ?? this.rowid,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (songKey.present) {
+      map['song_key'] = Variable<String>(songKey.value);
+    }
+    if (videoId.present) {
+      map['video_id'] = Variable<String>(videoId.value);
+    }
+    if (source.present) {
+      map['source'] = Variable<String>(source.value);
+    }
+    if (fetchedAt.present) {
+      map['fetched_at'] = Variable<DateTime>(fetchedAt.value);
+    }
+    if (rowid.present) {
+      map['rowid'] = Variable<int>(rowid.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('SongVideoIdsCompanion(')
+          ..write('songKey: $songKey, ')
+          ..write('videoId: $videoId, ')
+          ..write('source: $source, ')
+          ..write('fetchedAt: $fetchedAt, ')
+          ..write('rowid: $rowid')
+          ..write(')'))
+        .toString();
+  }
+}
+
+class $DownloadedSongsTable extends DownloadedSongs
+    with TableInfo<$DownloadedSongsTable, DownloadedSong> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $DownloadedSongsTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _titleMeta = const VerificationMeta('title');
+  @override
+  late final GeneratedColumn<String> title = GeneratedColumn<String>(
+    'title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _artistMeta = const VerificationMeta('artist');
+  @override
+  late final GeneratedColumn<String> artist = GeneratedColumn<String>(
+    'artist',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _albumMeta = const VerificationMeta('album');
+  @override
+  late final GeneratedColumn<String> album = GeneratedColumn<String>(
+    'album',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _durationMsMeta = const VerificationMeta(
+    'durationMs',
+  );
+  @override
+  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
+    'duration_ms',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _filePathMeta = const VerificationMeta(
+    'filePath',
+  );
+  @override
+  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
+    'file_path',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _mimeTypeMeta = const VerificationMeta(
+    'mimeType',
+  );
+  @override
+  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
+    'mime_type',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('audio/mp4'),
+  );
+  static const VerificationMeta _sizeBytesMeta = const VerificationMeta(
+    'sizeBytes',
+  );
+  @override
+  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
+    'size_bytes',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _sourceVideoIdMeta = const VerificationMeta(
+    'sourceVideoId',
+  );
+  @override
+  late final GeneratedColumn<String> sourceVideoId = GeneratedColumn<String>(
+    'source_video_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _coverPathMeta = const VerificationMeta(
+    'coverPath',
+  );
+  @override
+  late final GeneratedColumn<String> coverPath = GeneratedColumn<String>(
+    'cover_path',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _downloadedAtMeta = const VerificationMeta(
+    'downloadedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> downloadedAt = GeneratedColumn<DateTime>(
+    'downloaded_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    title,
+    artist,
+    album,
+    durationMs,
+    filePath,
+    mimeType,
+    sizeBytes,
+    sourceVideoId,
+    coverPath,
+    downloadedAt,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'downloaded_songs';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<DownloadedSong> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('title')) {
+      context.handle(
+        _titleMeta,
+        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_titleMeta);
+    }
+    if (data.containsKey('artist')) {
+      context.handle(
+        _artistMeta,
+        artist.isAcceptableOrUnknown(data['artist']!, _artistMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_artistMeta);
+    }
+    if (data.containsKey('album')) {
+      context.handle(
+        _albumMeta,
+        album.isAcceptableOrUnknown(data['album']!, _albumMeta),
+      );
+    }
+    if (data.containsKey('duration_ms')) {
+      context.handle(
+        _durationMsMeta,
+        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
+      );
+    }
+    if (data.containsKey('file_path')) {
+      context.handle(
+        _filePathMeta,
+        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_filePathMeta);
+    }
+    if (data.containsKey('mime_type')) {
+      context.handle(
+        _mimeTypeMeta,
+        mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta),
+      );
+    }
+    if (data.containsKey('size_bytes')) {
+      context.handle(
+        _sizeBytesMeta,
+        sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta),
+      );
+    }
+    if (data.containsKey('source_video_id')) {
+      context.handle(
+        _sourceVideoIdMeta,
+        sourceVideoId.isAcceptableOrUnknown(
+          data['source_video_id']!,
+          _sourceVideoIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('cover_path')) {
+      context.handle(
+        _coverPathMeta,
+        coverPath.isAcceptableOrUnknown(data['cover_path']!, _coverPathMeta),
+      );
+    }
+    if (data.containsKey('downloaded_at')) {
+      context.handle(
+        _downloadedAtMeta,
+        downloadedAt.isAcceptableOrUnknown(
+          data['downloaded_at']!,
+          _downloadedAtMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  DownloadedSong map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return DownloadedSong(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      title: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}title'],
+      )!,
+      artist: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}artist'],
+      )!,
+      album: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}album'],
+      ),
+      durationMs: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}duration_ms'],
+      )!,
+      filePath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}file_path'],
+      )!,
+      mimeType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}mime_type'],
+      )!,
+      sizeBytes: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}size_bytes'],
+      )!,
+      sourceVideoId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}source_video_id'],
+      ),
+      coverPath: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}cover_path'],
+      ),
+      downloadedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}downloaded_at'],
+      )!,
+    );
+  }
+
+  @override
+  $DownloadedSongsTable createAlias(String alias) {
+    return $DownloadedSongsTable(attachedDatabase, alias);
+  }
+}
+
+class DownloadedSong extends DataClass implements Insertable<DownloadedSong> {
+  final int id;
+  final String title;
+  final String artist;
+  final String? album;
+  final int durationMs;
+  final String filePath;
+  final String mimeType;
+  final int sizeBytes;
+  final String? sourceVideoId;
+  final String? coverPath;
+  final DateTime downloadedAt;
+  const DownloadedSong({
+    required this.id,
+    required this.title,
+    required this.artist,
+    this.album,
+    required this.durationMs,
+    required this.filePath,
+    required this.mimeType,
+    required this.sizeBytes,
+    this.sourceVideoId,
+    this.coverPath,
+    required this.downloadedAt,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['title'] = Variable<String>(title);
+    map['artist'] = Variable<String>(artist);
+    if (!nullToAbsent || album != null) {
+      map['album'] = Variable<String>(album);
+    }
+    map['duration_ms'] = Variable<int>(durationMs);
+    map['file_path'] = Variable<String>(filePath);
+    map['mime_type'] = Variable<String>(mimeType);
+    map['size_bytes'] = Variable<int>(sizeBytes);
+    if (!nullToAbsent || sourceVideoId != null) {
+      map['source_video_id'] = Variable<String>(sourceVideoId);
+    }
+    if (!nullToAbsent || coverPath != null) {
+      map['cover_path'] = Variable<String>(coverPath);
+    }
+    map['downloaded_at'] = Variable<DateTime>(downloadedAt);
+    return map;
+  }
+
+  DownloadedSongsCompanion toCompanion(bool nullToAbsent) {
+    return DownloadedSongsCompanion(
+      id: Value(id),
+      title: Value(title),
+      artist: Value(artist),
+      album: album == null && nullToAbsent
+          ? const Value.absent()
+          : Value(album),
+      durationMs: Value(durationMs),
+      filePath: Value(filePath),
+      mimeType: Value(mimeType),
+      sizeBytes: Value(sizeBytes),
+      sourceVideoId: sourceVideoId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(sourceVideoId),
+      coverPath: coverPath == null && nullToAbsent
+          ? const Value.absent()
+          : Value(coverPath),
+      downloadedAt: Value(downloadedAt),
+    );
+  }
+
+  factory DownloadedSong.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return DownloadedSong(
+      id: serializer.fromJson<int>(json['id']),
+      title: serializer.fromJson<String>(json['title']),
+      artist: serializer.fromJson<String>(json['artist']),
+      album: serializer.fromJson<String?>(json['album']),
+      durationMs: serializer.fromJson<int>(json['durationMs']),
+      filePath: serializer.fromJson<String>(json['filePath']),
+      mimeType: serializer.fromJson<String>(json['mimeType']),
+      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
+      sourceVideoId: serializer.fromJson<String?>(json['sourceVideoId']),
+      coverPath: serializer.fromJson<String?>(json['coverPath']),
+      downloadedAt: serializer.fromJson<DateTime>(json['downloadedAt']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'title': serializer.toJson<String>(title),
+      'artist': serializer.toJson<String>(artist),
+      'album': serializer.toJson<String?>(album),
+      'durationMs': serializer.toJson<int>(durationMs),
+      'filePath': serializer.toJson<String>(filePath),
+      'mimeType': serializer.toJson<String>(mimeType),
+      'sizeBytes': serializer.toJson<int>(sizeBytes),
+      'sourceVideoId': serializer.toJson<String?>(sourceVideoId),
+      'coverPath': serializer.toJson<String?>(coverPath),
+      'downloadedAt': serializer.toJson<DateTime>(downloadedAt),
+    };
+  }
+
+  DownloadedSong copyWith({
+    int? id,
+    String? title,
+    String? artist,
+    Value<String?> album = const Value.absent(),
+    int? durationMs,
+    String? filePath,
+    String? mimeType,
+    int? sizeBytes,
+    Value<String?> sourceVideoId = const Value.absent(),
+    Value<String?> coverPath = const Value.absent(),
+    DateTime? downloadedAt,
+  }) => DownloadedSong(
+    id: id ?? this.id,
+    title: title ?? this.title,
+    artist: artist ?? this.artist,
+    album: album.present ? album.value : this.album,
+    durationMs: durationMs ?? this.durationMs,
+    filePath: filePath ?? this.filePath,
+    mimeType: mimeType ?? this.mimeType,
+    sizeBytes: sizeBytes ?? this.sizeBytes,
+    sourceVideoId: sourceVideoId.present
+        ? sourceVideoId.value
+        : this.sourceVideoId,
+    coverPath: coverPath.present ? coverPath.value : this.coverPath,
+    downloadedAt: downloadedAt ?? this.downloadedAt,
+  );
+  DownloadedSong copyWithCompanion(DownloadedSongsCompanion data) {
+    return DownloadedSong(
+      id: data.id.present ? data.id.value : this.id,
+      title: data.title.present ? data.title.value : this.title,
+      artist: data.artist.present ? data.artist.value : this.artist,
+      album: data.album.present ? data.album.value : this.album,
+      durationMs: data.durationMs.present
+          ? data.durationMs.value
+          : this.durationMs,
+      filePath: data.filePath.present ? data.filePath.value : this.filePath,
+      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
+      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
+      sourceVideoId: data.sourceVideoId.present
+          ? data.sourceVideoId.value
+          : this.sourceVideoId,
+      coverPath: data.coverPath.present ? data.coverPath.value : this.coverPath,
+      downloadedAt: data.downloadedAt.present
+          ? data.downloadedAt.value
+          : this.downloadedAt,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedSong(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('artist: $artist, ')
+          ..write('album: $album, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('filePath: $filePath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('sourceVideoId: $sourceVideoId, ')
+          ..write('coverPath: $coverPath, ')
+          ..write('downloadedAt: $downloadedAt')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    title,
+    artist,
+    album,
+    durationMs,
+    filePath,
+    mimeType,
+    sizeBytes,
+    sourceVideoId,
+    coverPath,
+    downloadedAt,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is DownloadedSong &&
+          other.id == this.id &&
+          other.title == this.title &&
+          other.artist == this.artist &&
+          other.album == this.album &&
+          other.durationMs == this.durationMs &&
+          other.filePath == this.filePath &&
+          other.mimeType == this.mimeType &&
+          other.sizeBytes == this.sizeBytes &&
+          other.sourceVideoId == this.sourceVideoId &&
+          other.coverPath == this.coverPath &&
+          other.downloadedAt == this.downloadedAt);
+}
+
+class DownloadedSongsCompanion extends UpdateCompanion<DownloadedSong> {
+  final Value<int> id;
+  final Value<String> title;
+  final Value<String> artist;
+  final Value<String?> album;
+  final Value<int> durationMs;
+  final Value<String> filePath;
+  final Value<String> mimeType;
+  final Value<int> sizeBytes;
+  final Value<String?> sourceVideoId;
+  final Value<String?> coverPath;
+  final Value<DateTime> downloadedAt;
+  const DownloadedSongsCompanion({
+    this.id = const Value.absent(),
+    this.title = const Value.absent(),
+    this.artist = const Value.absent(),
+    this.album = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    this.filePath = const Value.absent(),
+    this.mimeType = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
+    this.sourceVideoId = const Value.absent(),
+    this.coverPath = const Value.absent(),
+    this.downloadedAt = const Value.absent(),
+  });
+  DownloadedSongsCompanion.insert({
+    this.id = const Value.absent(),
+    required String title,
+    required String artist,
+    this.album = const Value.absent(),
+    this.durationMs = const Value.absent(),
+    required String filePath,
+    this.mimeType = const Value.absent(),
+    this.sizeBytes = const Value.absent(),
+    this.sourceVideoId = const Value.absent(),
+    this.coverPath = const Value.absent(),
+    this.downloadedAt = const Value.absent(),
+  }) : title = Value(title),
+       artist = Value(artist),
+       filePath = Value(filePath);
+  static Insertable<DownloadedSong> custom({
+    Expression<int>? id,
+    Expression<String>? title,
+    Expression<String>? artist,
+    Expression<String>? album,
+    Expression<int>? durationMs,
+    Expression<String>? filePath,
+    Expression<String>? mimeType,
+    Expression<int>? sizeBytes,
+    Expression<String>? sourceVideoId,
+    Expression<String>? coverPath,
+    Expression<DateTime>? downloadedAt,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (title != null) 'title': title,
+      if (artist != null) 'artist': artist,
+      if (album != null) 'album': album,
+      if (durationMs != null) 'duration_ms': durationMs,
+      if (filePath != null) 'file_path': filePath,
+      if (mimeType != null) 'mime_type': mimeType,
+      if (sizeBytes != null) 'size_bytes': sizeBytes,
+      if (sourceVideoId != null) 'source_video_id': sourceVideoId,
+      if (coverPath != null) 'cover_path': coverPath,
+      if (downloadedAt != null) 'downloaded_at': downloadedAt,
+    });
+  }
+
+  DownloadedSongsCompanion copyWith({
+    Value<int>? id,
+    Value<String>? title,
+    Value<String>? artist,
+    Value<String?>? album,
+    Value<int>? durationMs,
+    Value<String>? filePath,
+    Value<String>? mimeType,
+    Value<int>? sizeBytes,
+    Value<String?>? sourceVideoId,
+    Value<String?>? coverPath,
+    Value<DateTime>? downloadedAt,
+  }) {
+    return DownloadedSongsCompanion(
+      id: id ?? this.id,
+      title: title ?? this.title,
+      artist: artist ?? this.artist,
+      album: album ?? this.album,
+      durationMs: durationMs ?? this.durationMs,
+      filePath: filePath ?? this.filePath,
+      mimeType: mimeType ?? this.mimeType,
+      sizeBytes: sizeBytes ?? this.sizeBytes,
+      sourceVideoId: sourceVideoId ?? this.sourceVideoId,
+      coverPath: coverPath ?? this.coverPath,
+      downloadedAt: downloadedAt ?? this.downloadedAt,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (title.present) {
+      map['title'] = Variable<String>(title.value);
+    }
+    if (artist.present) {
+      map['artist'] = Variable<String>(artist.value);
+    }
+    if (album.present) {
+      map['album'] = Variable<String>(album.value);
+    }
+    if (durationMs.present) {
+      map['duration_ms'] = Variable<int>(durationMs.value);
+    }
+    if (filePath.present) {
+      map['file_path'] = Variable<String>(filePath.value);
+    }
+    if (mimeType.present) {
+      map['mime_type'] = Variable<String>(mimeType.value);
+    }
+    if (sizeBytes.present) {
+      map['size_bytes'] = Variable<int>(sizeBytes.value);
+    }
+    if (sourceVideoId.present) {
+      map['source_video_id'] = Variable<String>(sourceVideoId.value);
+    }
+    if (coverPath.present) {
+      map['cover_path'] = Variable<String>(coverPath.value);
+    }
+    if (downloadedAt.present) {
+      map['downloaded_at'] = Variable<DateTime>(downloadedAt.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('DownloadedSongsCompanion(')
+          ..write('id: $id, ')
+          ..write('title: $title, ')
+          ..write('artist: $artist, ')
+          ..write('album: $album, ')
+          ..write('durationMs: $durationMs, ')
+          ..write('filePath: $filePath, ')
+          ..write('mimeType: $mimeType, ')
+          ..write('sizeBytes: $sizeBytes, ')
+          ..write('sourceVideoId: $sourceVideoId, ')
+          ..write('coverPath: $coverPath, ')
+          ..write('downloadedAt: $downloadedAt')
           ..write(')'))
         .toString();
   }
@@ -7571,6 +8860,10 @@ abstract class _$NuvTuneDatabase extends GeneratedDatabase {
     this,
   );
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
+  late final $SongVideoIdsTable songVideoIds = $SongVideoIdsTable(this);
+  late final $DownloadedSongsTable downloadedSongs = $DownloadedSongsTable(
+    this,
+  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -7594,6 +8887,8 @@ abstract class _$NuvTuneDatabase extends GeneratedDatabase {
     savedRadios,
     lyricsOverrides,
     appSettings,
+    songVideoIds,
+    downloadedSongs,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -7736,6 +9031,11 @@ typedef $$PlaylistsTableCreateCompanionBuilder =
       Value<String?> coverPath,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<bool> giftMode,
+      Value<String?> dedication,
+      Value<String?> giftFrom,
+      Value<String?> giftTo,
+      Value<String?> giftAccentId,
     });
 typedef $$PlaylistsTableUpdateCompanionBuilder =
     PlaylistsCompanion Function({
@@ -7744,6 +9044,11 @@ typedef $$PlaylistsTableUpdateCompanionBuilder =
       Value<String?> coverPath,
       Value<DateTime> createdAt,
       Value<DateTime> updatedAt,
+      Value<bool> giftMode,
+      Value<String?> dedication,
+      Value<String?> giftFrom,
+      Value<String?> giftTo,
+      Value<String?> giftAccentId,
     });
 
 final class $$PlaylistsTableReferences
@@ -7806,6 +9111,31 @@ class $$PlaylistsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<bool> get giftMode => $composableBuilder(
+    column: $table.giftMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get dedication => $composableBuilder(
+    column: $table.dedication,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get giftFrom => $composableBuilder(
+    column: $table.giftFrom,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get giftTo => $composableBuilder(
+    column: $table.giftTo,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get giftAccentId => $composableBuilder(
+    column: $table.giftAccentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> playlistEntriesRefs(
     Expression<bool> Function($$PlaylistEntriesTableFilterComposer f) f,
   ) {
@@ -7865,6 +9195,31 @@ class $$PlaylistsTableOrderingComposer
     column: $table.updatedAt,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get giftMode => $composableBuilder(
+    column: $table.giftMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get dedication => $composableBuilder(
+    column: $table.dedication,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get giftFrom => $composableBuilder(
+    column: $table.giftFrom,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get giftTo => $composableBuilder(
+    column: $table.giftTo,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get giftAccentId => $composableBuilder(
+    column: $table.giftAccentId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PlaylistsTableAnnotationComposer
@@ -7890,6 +9245,25 @@ class $$PlaylistsTableAnnotationComposer
 
   GeneratedColumn<DateTime> get updatedAt =>
       $composableBuilder(column: $table.updatedAt, builder: (column) => column);
+
+  GeneratedColumn<bool> get giftMode =>
+      $composableBuilder(column: $table.giftMode, builder: (column) => column);
+
+  GeneratedColumn<String> get dedication => $composableBuilder(
+    column: $table.dedication,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get giftFrom =>
+      $composableBuilder(column: $table.giftFrom, builder: (column) => column);
+
+  GeneratedColumn<String> get giftTo =>
+      $composableBuilder(column: $table.giftTo, builder: (column) => column);
+
+  GeneratedColumn<String> get giftAccentId => $composableBuilder(
+    column: $table.giftAccentId,
+    builder: (column) => column,
+  );
 
   Expression<T> playlistEntriesRefs<T extends Object>(
     Expression<T> Function($$PlaylistEntriesTableAnnotationComposer a) f,
@@ -7950,12 +9324,22 @@ class $$PlaylistsTableTableManager
                 Value<String?> coverPath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> giftMode = const Value.absent(),
+                Value<String?> dedication = const Value.absent(),
+                Value<String?> giftFrom = const Value.absent(),
+                Value<String?> giftTo = const Value.absent(),
+                Value<String?> giftAccentId = const Value.absent(),
               }) => PlaylistsCompanion(
                 id: id,
                 name: name,
                 coverPath: coverPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                giftMode: giftMode,
+                dedication: dedication,
+                giftFrom: giftFrom,
+                giftTo: giftTo,
+                giftAccentId: giftAccentId,
               ),
           createCompanionCallback:
               ({
@@ -7964,12 +9348,22 @@ class $$PlaylistsTableTableManager
                 Value<String?> coverPath = const Value.absent(),
                 Value<DateTime> createdAt = const Value.absent(),
                 Value<DateTime> updatedAt = const Value.absent(),
+                Value<bool> giftMode = const Value.absent(),
+                Value<String?> dedication = const Value.absent(),
+                Value<String?> giftFrom = const Value.absent(),
+                Value<String?> giftTo = const Value.absent(),
+                Value<String?> giftAccentId = const Value.absent(),
               }) => PlaylistsCompanion.insert(
                 id: id,
                 name: name,
                 coverPath: coverPath,
                 createdAt: createdAt,
                 updatedAt: updatedAt,
+                giftMode: giftMode,
+                dedication: dedication,
+                giftFrom: giftFrom,
+                giftTo: giftTo,
+                giftAccentId: giftAccentId,
               ),
           withReferenceMapper: (p0) => p0
               .map(
@@ -11042,6 +12436,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> sleepTimerFinishTrack,
       Value<String> homeSectionsJson,
       Value<String> librarySortJson,
+      Value<bool> videoBackgroundEnabled,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -11083,6 +12478,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> sleepTimerFinishTrack,
       Value<String> homeSectionsJson,
       Value<String> librarySortJson,
+      Value<bool> videoBackgroundEnabled,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -11281,6 +12677,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get librarySortJson => $composableBuilder(
     column: $table.librarySortJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get videoBackgroundEnabled => $composableBuilder(
+    column: $table.videoBackgroundEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -11483,6 +12884,11 @@ class $$AppSettingsTableOrderingComposer
     column: $table.librarySortJson,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get videoBackgroundEnabled => $composableBuilder(
+    column: $table.videoBackgroundEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -11679,6 +13085,11 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.librarySortJson,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get videoBackgroundEnabled => $composableBuilder(
+    column: $table.videoBackgroundEnabled,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -11750,6 +13161,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> sleepTimerFinishTrack = const Value.absent(),
                 Value<String> homeSectionsJson = const Value.absent(),
                 Value<String> librarySortJson = const Value.absent(),
+                Value<bool> videoBackgroundEnabled = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -11789,6 +13201,7 @@ class $$AppSettingsTableTableManager
                 sleepTimerFinishTrack: sleepTimerFinishTrack,
                 homeSectionsJson: homeSectionsJson,
                 librarySortJson: librarySortJson,
+                videoBackgroundEnabled: videoBackgroundEnabled,
               ),
           createCompanionCallback:
               ({
@@ -11830,6 +13243,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> sleepTimerFinishTrack = const Value.absent(),
                 Value<String> homeSectionsJson = const Value.absent(),
                 Value<String> librarySortJson = const Value.absent(),
+                Value<bool> videoBackgroundEnabled = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -11869,6 +13283,7 @@ class $$AppSettingsTableTableManager
                 sleepTimerFinishTrack: sleepTimerFinishTrack,
                 homeSectionsJson: homeSectionsJson,
                 librarySortJson: librarySortJson,
+                videoBackgroundEnabled: videoBackgroundEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -11893,6 +13308,513 @@ typedef $$AppSettingsTableProcessedTableManager =
         BaseReferences<_$NuvTuneDatabase, $AppSettingsTable, AppSetting>,
       ),
       AppSetting,
+      PrefetchHooks Function()
+    >;
+typedef $$SongVideoIdsTableCreateCompanionBuilder =
+    SongVideoIdsCompanion Function({
+      required String songKey,
+      required String videoId,
+      Value<String> source,
+      Value<DateTime> fetchedAt,
+      Value<int> rowid,
+    });
+typedef $$SongVideoIdsTableUpdateCompanionBuilder =
+    SongVideoIdsCompanion Function({
+      Value<String> songKey,
+      Value<String> videoId,
+      Value<String> source,
+      Value<DateTime> fetchedAt,
+      Value<int> rowid,
+    });
+
+class $$SongVideoIdsTableFilterComposer
+    extends Composer<_$NuvTuneDatabase, $SongVideoIdsTable> {
+  $$SongVideoIdsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<String> get songKey => $composableBuilder(
+    column: $table.songKey,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get videoId => $composableBuilder(
+    column: $table.videoId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$SongVideoIdsTableOrderingComposer
+    extends Composer<_$NuvTuneDatabase, $SongVideoIdsTable> {
+  $$SongVideoIdsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<String> get songKey => $composableBuilder(
+    column: $table.songKey,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get videoId => $composableBuilder(
+    column: $table.videoId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get source => $composableBuilder(
+    column: $table.source,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get fetchedAt => $composableBuilder(
+    column: $table.fetchedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$SongVideoIdsTableAnnotationComposer
+    extends Composer<_$NuvTuneDatabase, $SongVideoIdsTable> {
+  $$SongVideoIdsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<String> get songKey =>
+      $composableBuilder(column: $table.songKey, builder: (column) => column);
+
+  GeneratedColumn<String> get videoId =>
+      $composableBuilder(column: $table.videoId, builder: (column) => column);
+
+  GeneratedColumn<String> get source =>
+      $composableBuilder(column: $table.source, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get fetchedAt =>
+      $composableBuilder(column: $table.fetchedAt, builder: (column) => column);
+}
+
+class $$SongVideoIdsTableTableManager
+    extends
+        RootTableManager<
+          _$NuvTuneDatabase,
+          $SongVideoIdsTable,
+          SongVideoId,
+          $$SongVideoIdsTableFilterComposer,
+          $$SongVideoIdsTableOrderingComposer,
+          $$SongVideoIdsTableAnnotationComposer,
+          $$SongVideoIdsTableCreateCompanionBuilder,
+          $$SongVideoIdsTableUpdateCompanionBuilder,
+          (
+            SongVideoId,
+            BaseReferences<_$NuvTuneDatabase, $SongVideoIdsTable, SongVideoId>,
+          ),
+          SongVideoId,
+          PrefetchHooks Function()
+        > {
+  $$SongVideoIdsTableTableManager(
+    _$NuvTuneDatabase db,
+    $SongVideoIdsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$SongVideoIdsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$SongVideoIdsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$SongVideoIdsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<String> songKey = const Value.absent(),
+                Value<String> videoId = const Value.absent(),
+                Value<String> source = const Value.absent(),
+                Value<DateTime> fetchedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SongVideoIdsCompanion(
+                songKey: songKey,
+                videoId: videoId,
+                source: source,
+                fetchedAt: fetchedAt,
+                rowid: rowid,
+              ),
+          createCompanionCallback:
+              ({
+                required String songKey,
+                required String videoId,
+                Value<String> source = const Value.absent(),
+                Value<DateTime> fetchedAt = const Value.absent(),
+                Value<int> rowid = const Value.absent(),
+              }) => SongVideoIdsCompanion.insert(
+                songKey: songKey,
+                videoId: videoId,
+                source: source,
+                fetchedAt: fetchedAt,
+                rowid: rowid,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$SongVideoIdsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$NuvTuneDatabase,
+      $SongVideoIdsTable,
+      SongVideoId,
+      $$SongVideoIdsTableFilterComposer,
+      $$SongVideoIdsTableOrderingComposer,
+      $$SongVideoIdsTableAnnotationComposer,
+      $$SongVideoIdsTableCreateCompanionBuilder,
+      $$SongVideoIdsTableUpdateCompanionBuilder,
+      (
+        SongVideoId,
+        BaseReferences<_$NuvTuneDatabase, $SongVideoIdsTable, SongVideoId>,
+      ),
+      SongVideoId,
+      PrefetchHooks Function()
+    >;
+typedef $$DownloadedSongsTableCreateCompanionBuilder =
+    DownloadedSongsCompanion Function({
+      Value<int> id,
+      required String title,
+      required String artist,
+      Value<String?> album,
+      Value<int> durationMs,
+      required String filePath,
+      Value<String> mimeType,
+      Value<int> sizeBytes,
+      Value<String?> sourceVideoId,
+      Value<String?> coverPath,
+      Value<DateTime> downloadedAt,
+    });
+typedef $$DownloadedSongsTableUpdateCompanionBuilder =
+    DownloadedSongsCompanion Function({
+      Value<int> id,
+      Value<String> title,
+      Value<String> artist,
+      Value<String?> album,
+      Value<int> durationMs,
+      Value<String> filePath,
+      Value<String> mimeType,
+      Value<int> sizeBytes,
+      Value<String?> sourceVideoId,
+      Value<String?> coverPath,
+      Value<DateTime> downloadedAt,
+    });
+
+class $$DownloadedSongsTableFilterComposer
+    extends Composer<_$NuvTuneDatabase, $DownloadedSongsTable> {
+  $$DownloadedSongsTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get artist => $composableBuilder(
+    column: $table.artist,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get album => $composableBuilder(
+    column: $table.album,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get sourceVideoId => $composableBuilder(
+    column: $table.sourceVideoId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get coverPath => $composableBuilder(
+    column: $table.coverPath,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$DownloadedSongsTableOrderingComposer
+    extends Composer<_$NuvTuneDatabase, $DownloadedSongsTable> {
+  $$DownloadedSongsTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get title => $composableBuilder(
+    column: $table.title,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get artist => $composableBuilder(
+    column: $table.artist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get album => $composableBuilder(
+    column: $table.album,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get filePath => $composableBuilder(
+    column: $table.filePath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get mimeType => $composableBuilder(
+    column: $table.mimeType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get sizeBytes => $composableBuilder(
+    column: $table.sizeBytes,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get sourceVideoId => $composableBuilder(
+    column: $table.sourceVideoId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get coverPath => $composableBuilder(
+    column: $table.coverPath,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$DownloadedSongsTableAnnotationComposer
+    extends Composer<_$NuvTuneDatabase, $DownloadedSongsTable> {
+  $$DownloadedSongsTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<String> get title =>
+      $composableBuilder(column: $table.title, builder: (column) => column);
+
+  GeneratedColumn<String> get artist =>
+      $composableBuilder(column: $table.artist, builder: (column) => column);
+
+  GeneratedColumn<String> get album =>
+      $composableBuilder(column: $table.album, builder: (column) => column);
+
+  GeneratedColumn<int> get durationMs => $composableBuilder(
+    column: $table.durationMs,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get filePath =>
+      $composableBuilder(column: $table.filePath, builder: (column) => column);
+
+  GeneratedColumn<String> get mimeType =>
+      $composableBuilder(column: $table.mimeType, builder: (column) => column);
+
+  GeneratedColumn<int> get sizeBytes =>
+      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
+
+  GeneratedColumn<String> get sourceVideoId => $composableBuilder(
+    column: $table.sourceVideoId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get coverPath =>
+      $composableBuilder(column: $table.coverPath, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get downloadedAt => $composableBuilder(
+    column: $table.downloadedAt,
+    builder: (column) => column,
+  );
+}
+
+class $$DownloadedSongsTableTableManager
+    extends
+        RootTableManager<
+          _$NuvTuneDatabase,
+          $DownloadedSongsTable,
+          DownloadedSong,
+          $$DownloadedSongsTableFilterComposer,
+          $$DownloadedSongsTableOrderingComposer,
+          $$DownloadedSongsTableAnnotationComposer,
+          $$DownloadedSongsTableCreateCompanionBuilder,
+          $$DownloadedSongsTableUpdateCompanionBuilder,
+          (
+            DownloadedSong,
+            BaseReferences<
+              _$NuvTuneDatabase,
+              $DownloadedSongsTable,
+              DownloadedSong
+            >,
+          ),
+          DownloadedSong,
+          PrefetchHooks Function()
+        > {
+  $$DownloadedSongsTableTableManager(
+    _$NuvTuneDatabase db,
+    $DownloadedSongsTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$DownloadedSongsTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$DownloadedSongsTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$DownloadedSongsTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<String> title = const Value.absent(),
+                Value<String> artist = const Value.absent(),
+                Value<String?> album = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                Value<String> filePath = const Value.absent(),
+                Value<String> mimeType = const Value.absent(),
+                Value<int> sizeBytes = const Value.absent(),
+                Value<String?> sourceVideoId = const Value.absent(),
+                Value<String?> coverPath = const Value.absent(),
+                Value<DateTime> downloadedAt = const Value.absent(),
+              }) => DownloadedSongsCompanion(
+                id: id,
+                title: title,
+                artist: artist,
+                album: album,
+                durationMs: durationMs,
+                filePath: filePath,
+                mimeType: mimeType,
+                sizeBytes: sizeBytes,
+                sourceVideoId: sourceVideoId,
+                coverPath: coverPath,
+                downloadedAt: downloadedAt,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                required String title,
+                required String artist,
+                Value<String?> album = const Value.absent(),
+                Value<int> durationMs = const Value.absent(),
+                required String filePath,
+                Value<String> mimeType = const Value.absent(),
+                Value<int> sizeBytes = const Value.absent(),
+                Value<String?> sourceVideoId = const Value.absent(),
+                Value<String?> coverPath = const Value.absent(),
+                Value<DateTime> downloadedAt = const Value.absent(),
+              }) => DownloadedSongsCompanion.insert(
+                id: id,
+                title: title,
+                artist: artist,
+                album: album,
+                durationMs: durationMs,
+                filePath: filePath,
+                mimeType: mimeType,
+                sizeBytes: sizeBytes,
+                sourceVideoId: sourceVideoId,
+                coverPath: coverPath,
+                downloadedAt: downloadedAt,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$DownloadedSongsTableProcessedTableManager =
+    ProcessedTableManager<
+      _$NuvTuneDatabase,
+      $DownloadedSongsTable,
+      DownloadedSong,
+      $$DownloadedSongsTableFilterComposer,
+      $$DownloadedSongsTableOrderingComposer,
+      $$DownloadedSongsTableAnnotationComposer,
+      $$DownloadedSongsTableCreateCompanionBuilder,
+      $$DownloadedSongsTableUpdateCompanionBuilder,
+      (
+        DownloadedSong,
+        BaseReferences<
+          _$NuvTuneDatabase,
+          $DownloadedSongsTable,
+          DownloadedSong
+        >,
+      ),
+      DownloadedSong,
       PrefetchHooks Function()
     >;
 
@@ -11935,4 +13857,8 @@ class $NuvTuneDatabaseManager {
       $$LyricsOverridesTableTableManager(_db, _db.lyricsOverrides);
   $$AppSettingsTableTableManager get appSettings =>
       $$AppSettingsTableTableManager(_db, _db.appSettings);
+  $$SongVideoIdsTableTableManager get songVideoIds =>
+      $$SongVideoIdsTableTableManager(_db, _db.songVideoIds);
+  $$DownloadedSongsTableTableManager get downloadedSongs =>
+      $$DownloadedSongsTableTableManager(_db, _db.downloadedSongs);
 }

@@ -188,6 +188,29 @@ class PlaylistRepository {
     }
   }
 
+  /// Convierte una lista en regalo (o revierte el modo regalo) con su
+  /// dedicatoria y acento cromatico (feature "playlist regalo").
+  Future<void> setGift(
+    int playlistId, {
+    required bool giftMode,
+    String? dedication,
+    String? giftFrom,
+    String? giftTo,
+    String? giftAccentId,
+  }) =>
+      (_database.update(_database.playlists)
+            ..where((table) => table.id.equals(playlistId)))
+          .write(
+        PlaylistsCompanion(
+          giftMode: Value(giftMode),
+          dedication: Value(dedication),
+          giftFrom: Value(giftFrom),
+          giftTo: Value(giftTo),
+          giftAccentId: Value(giftAccentId),
+          updatedAt: Value(DateTime.now()),
+        ),
+      );
+
   Future<void> _touch(int playlistId) =>
       (_database.update(_database.playlists)
             ..where((table) => table.id.equals(playlistId)))

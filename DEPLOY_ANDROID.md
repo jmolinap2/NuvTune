@@ -141,13 +141,13 @@ adb install -r --user 0 NuvTune-v<versionName>-b<versionCode>.apk
 8. Copia la APK al telefono:
 
 ```text
-/sdcard/APKS - DESARROLLOS/NuvTune-v<versionName>-b<versionCode>.apk
+/sdcard/APK'S - DESARROLLOS/NuvTune-v<versionName>-b<versionCode>.apk
 ```
 
 9. Si ya existia una copia anterior, la mueve a:
 
 ```text
-/sdcard/APKS - DESARROLLOS/respaldo/
+/sdcard/APK'S - DESARROLLOS/respaldo/
 ```
 
 10. Muestra la version instalada con `dumpsys package`.
@@ -176,25 +176,25 @@ C:\Repos\NuvTune\NuvTune-v1.0.0-b1.apk
 En el celular, el script guarda otra copia aqui:
 
 ```text
-/sdcard/APKS - DESARROLLOS/NuvTune-v<versionName>-b<versionCode>.apk
+/sdcard/APK'S - DESARROLLOS/NuvTune-v<versionName>-b<versionCode>.apk
 ```
 
 Ejemplo:
 
 ```text
-/sdcard/APKS - DESARROLLOS/NuvTune-v1.0.0-b1.apk
+/sdcard/APK'S - DESARROLLOS/NuvTune-v1.0.0-b1.apk
 ```
 
 Si ya habia una APK con el mismo nombre en el celular, antes de copiar la nueva
 la mueve a:
 
 ```text
-/sdcard/APKS - DESARROLLOS/respaldo/
+/sdcard/APK'S - DESARROLLOS/respaldo/
 ```
 
 La app instalada no queda como archivo visible en una carpeta normal: Android la
 instala internamente dentro del sistema de paquetes. La copia visible del APK es
-la de `APKS - DESARROLLOS`.
+la de `APK'S - DESARROLLOS`.
 
 Nota: el nombre del APK usa `versionName` y `versionCode`. Por ejemplo,
 `version: 1.0.1+2` genera `NuvTune-v1.0.1-b2.apk`. Ambos deben actualizarse en
@@ -269,7 +269,7 @@ Copiar manualmente al telefono desde Git Bash:
 
 ```bash
 export MSYS_NO_PATHCONV=1
-/c/Android/Sdk/platform-tools/adb.exe push NuvTune-v1.0.0-b1.apk "/sdcard/APKS - DESARROLLOS/NuvTune-v1.0.0-b1.apk"
+/c/Android/Sdk/platform-tools/adb.exe push NuvTune-v1.0.0-b1.apk "/sdcard/APK'S - DESARROLLOS/NuvTune-v1.0.0-b1.apk"
 ```
 
 ## Problemas comunes
@@ -319,7 +319,7 @@ contra `/sdcard`.
 
 - El deploy siempre compila release, no debug.
 - La copia local del APK queda en la raiz del repo.
-- El telefono conserva una copia en `APKS - DESARROLLOS`.
+- El telefono conserva una copia en `APK'S - DESARROLLOS`.
 - La carpeta `respaldo` en el telefono guarda APKs anteriores.
 - El puerto de depuracion inalambrica cambia mucho; confirma el actual antes de
   pensar que el script esta mal.

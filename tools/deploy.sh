@@ -119,11 +119,23 @@ export MSYS_NO_PATHCONV=1
 #  - "adb shell" concatena los argumentos y los ejecuta con sh en el telefono,
 #    donde el apostrofo si abre una comilla. Por eso cada orden de shell se
 #    manda como una sola cadena, con la ruta entre comillas dobles.
-if "$ADB" -s "$DEVICE" shell "test -f \"$PHONE_DEST\""; then
-  BACKUP_NAME="$(basename "$PHONE_DEST" .apk)-$(date +%Y%m%d-%H%M%S).apk"
-  echo "==> Respaldando la APK anterior del telefono: $BACKUP_NAME"
+# "test -f \"$PHONE_DEST\"" solo cubre el nombre exacto de esta version: un
+# bump de version (o de build) deja la APK anterior suelta en $PHONE_DIR sin
+# respaldar. En su lugar, se listan TODAS las "$APP_NAME"-*.apk existentes y se
+# mueven todas a respaldo/ antes del push.
+EXISTING_APKS="$("$ADB" -s "$DEVICE" shell "ls -1 \"$PHONE_DIR\"/${APP_NAME}-*.apk 2>/dev/null")"
+if [[ -n "$EXISTING_APKS" ]]; then
   "$ADB" -s "$DEVICE" shell "mkdir -p \"$PHONE_BACKUP_DIR\""
-  "$ADB" -s "$DEVICE" shell "mv \"$PHONE_DEST\" \"$PHONE_BACKUP_DIR/$BACKUP_NAME\""
+  while IFS= read -r REMOTE_APK; do
+    REMOTE_APK="${REMOTE_APK%$'\r'}"
+    [[ -z "$REMOTE_APK" ]] && continue
+    # El glob no encontro nada: el shell del telefono devuelve el patron tal
+    # cual en lugar de una lista vacia.
+    [[ "$REMOTE_APK" == *'*.apk' ]] && continue
+    BACKUP_NAME="$(basename "$REMOTE_APK" .apk)-$(date +%Y%m%d-%H%M%S).apk"
+    echo "==> Respaldando la APK anterior del telefono: $(basename "$REMOTE_APK")"
+    "$ADB" -s "$DEVICE" shell "mv \"$REMOTE_APK\" \"$PHONE_BACKUP_DIR/$BACKUP_NAME\""
+  done <<< "$EXISTING_APKS"
 fi
 
 echo "==> Copiando la APK al telefono"

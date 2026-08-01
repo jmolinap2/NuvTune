@@ -6,6 +6,7 @@ import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
+import 'package:nuvtune/shared/widgets/accent_picker.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
 
 /// Apariencia de la aplicación.
@@ -53,6 +54,20 @@ class AppearanceScreen extends ConsumerWidget {
             onChanged: (value) => _save(
               ref,
               AppSettingsCompanion(useDynamicColor: Value(value)),
+            ),
+          ),
+
+          SwitchListTile(
+            secondary: const Icon(Icons.movie_filter_outlined),
+            title: const Text('Fondo de video musical en Wi-Fi'),
+            subtitle: const Text(
+              'Muestra el video oficial de la canción detrás de la portada '
+              'en el reproductor. Solo con Wi-Fi, nunca con datos móviles.',
+            ),
+            value: settings.videoBackgroundEnabled,
+            onChanged: (value) => _save(
+              ref,
+              AppSettingsCompanion(videoBackgroundEnabled: Value(value)),
             ),
           ),
 
@@ -255,75 +270,11 @@ class _AccentGrid extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-      child: Wrap(
-        spacing: Tokens.space3,
-        runSpacing: Tokens.space3,
-        children: [
-          for (final identity in AccentIdentity.all)
-            _AccentSwatch(
-              identity: identity,
-              selected: identity.id == selected,
-              onTap: () => ref.read(settingsRepositoryProvider).update(
-                    AppSettingsCompanion(accentId: Value(identity.id)),
-                  ),
+      child: AccentSwatchGrid(
+        selected: selected,
+        onSelected: (identity) => ref.read(settingsRepositoryProvider).update(
+              AppSettingsCompanion(accentId: Value(identity.id)),
             ),
-        ],
-      ),
-    );
-  }
-}
-
-class _AccentSwatch extends StatelessWidget {
-  const _AccentSwatch({
-    required this.identity,
-    required this.selected,
-    required this.onTap,
-  });
-
-  final AccentIdentity identity;
-  final bool selected;
-  final VoidCallback onTap;
-
-  @override
-  Widget build(BuildContext context) {
-    return GestureDetector(
-      onTap: onTap,
-      child: SizedBox(
-        width: 96,
-        child: Column(
-          children: [
-            AnimatedContainer(
-              duration: Tokens.durationFast,
-              height: 64,
-              decoration: BoxDecoration(
-                borderRadius: BorderRadius.circular(Tokens.radiusMedium),
-                gradient: identity.gradient,
-                border: Border.all(
-                  color: selected ? Colors.white : Colors.transparent,
-                  width: 2.5,
-                ),
-                boxShadow: selected
-                    ? [
-                        BoxShadow(
-                          color: identity.middle.withValues(alpha: 0.5),
-                          blurRadius: 18,
-                        ),
-                      ]
-                    : null,
-              ),
-              child: selected
-                  ? const Icon(Icons.check_rounded, color: Colors.white)
-                  : null,
-            ),
-            const SizedBox(height: Tokens.space2),
-            Text(
-              identity.name,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
-            ),
-          ],
-        ),
       ),
     );
   }

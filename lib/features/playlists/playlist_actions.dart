@@ -1,3 +1,5 @@
+import 'dart:convert';
+import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter/material.dart';
@@ -5,8 +7,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:image_picker/image_picker.dart';
 import 'package:nuvtune/app/localization/strings.dart';
 import 'package:nuvtune/core/providers.dart';
+import 'package:nuvtune/data/db/database.dart';
+import 'package:nuvtune/features/playlists/gift_editor_sheet.dart';
 import 'package:nuvtune/features/playlists/m3u.dart';
 import 'package:nuvtune/shared/widgets/add_to_playlist_sheet.dart';
+import 'package:path_provider/path_provider.dart';
+import 'package:share_plus/share_plus.dart';
 
 /// Acciones sobre una lista de reproduccion (requerimiento seccion 4.4):
 /// renombrar, cambiar portada, duplicar, exportar e importar M3U, compartir el
@@ -35,6 +41,10 @@ class _PlaylistActionsSheet extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final playlists = ref.watch(playlistsProvider).valueOrNull ?? const [];
+    final playlist = playlists.where((item) => item.id == playlistId).firstOrNull;
+    final isGift = playlist?.giftMode ?? false;
+
     return SafeArea(
       child: Column(
         mainAxisSize: MainAxisSize.min,
@@ -75,6 +85,23 @@ class _PlaylistActionsSheet extends ConsumerWidget {
               navigator.pop();
             },
           ),
+          const Divider(height: 8),
+          ListTile(
+            leading: const Icon(Icons.card_giftcard_rounded),
+            title: Text(isGift ? 'Editar regalo…' : 'Convertir en regalo…'),
+            onTap: playlist == null
+                ? null
+                : () {
+                    Navigator.of(context).pop();
+                    showGiftEditor(context, playlist: playlist);
+                  },
+          ),
+          if (isGift)
+            ListTile(
+              leading: const Icon(Icons.ios_share_rounded),
+              title: const Text('Compartir regalo'),
+              onTap: () => _shareGift(context, ref, playlist!),
+            ),
           const Divider(height: 8),
           ListTile(
             leading: const Icon(Icons.file_download_outlined),
@@ -194,6 +221,45 @@ class _PlaylistActionsSheet extends ConsumerWidget {
         .api
         .shareText(playlistName, M3u.plainListing(playlistName, songs));
     navigator.pop();
+  }
+
+  /// Exporta la lista como `.nuvtune-gift`: un JSON con metadatos y canciones
+  /// por (título, artista, álbum) en vez de ids de MediaStore, para que el
+  /// receptor pueda matchearlas contra su propia biblioteca al importar.
+  Future<void> _shareGift(
+    BuildContext context,
+    WidgetRef ref,
+    Playlist playlist,
+  ) async {
+    final navigator = Navigator.of(context);
+    final songIds = await ref.read(playlistRepositoryProvider).songIds(playlistId);
+    final songs = ref.read(libraryRepositoryProvider).songsByIds(songIds);
+
+    final payload = <String, dynamic>{
+      'name': playlist.name,
+      'dedication': playlist.dedication,
+      'from': playlist.giftFrom,
+      'to': playlist.giftTo,
+      'accentId': playlist.giftAccentId,
+      'songs': [
+        for (final song in songs)
+          {'title': song.title, 'artist': song.artist, 'album': song.album},
+      ],
+    };
+
+    final directory = await getTemporaryDirectory();
+    final safeName = playlist.name.replaceAll(RegExp(r'[^\w\s-]'), '').trim();
+    final file = File('${directory.path}/${safeName.isEmpty ? 'regalo' : safeName}.nuvtune-gift');
+    await file.writeAsString(jsonEncode(payload));
+
+    navigator.pop();
+    await SharePlus.instance.share(
+      ShareParams(
+        files: [XFile(file.path)],
+        subject: playlist.name,
+        text: 'Te regalo esta playlist: ${playlist.name}',
+      ),
+    );
   }
 
   void _confirmDelete(BuildContext context, WidgetRef ref) {

@@ -8,9 +8,11 @@ import android.content.Context
 import android.content.Intent
 import android.graphics.Color
 import android.os.Bundle
+import android.os.SystemClock
 import android.view.KeyEvent
 import android.view.View
 import android.widget.RemoteViews
+import androidx.media3.session.MediaButtonReceiver
 import com.nuvtune.app.R
 
 /**
@@ -352,11 +354,20 @@ class NuvTuneWidgetProvider : AppWidgetProvider() {
     }
 
     private fun mediaButtonIntent(context: Context, keyCode: Int): PendingIntent {
+        // Ruta por broadcast al MediaButtonReceiver de Media3 (el mismo que
+        // atiende los botones de auriculares y Bluetooth). El servicio recibe el
+        // KeyEvent aunque este dormido en segundo plano; llamar startService()
+        // directo al MediaLibraryService desde un widget no dispara la accion
+        // porque Media3 solo procesa MEDIA_BUTTON cuando llega por el receiver.
+        val now = SystemClock.uptimeMillis()
         val intent = Intent(Intent.ACTION_MEDIA_BUTTON).apply {
-            component = ComponentName(context, MusicPlayerService::class.java)
-            putExtra(Intent.EXTRA_KEY_EVENT, KeyEvent(KeyEvent.ACTION_DOWN, keyCode))
+            setClass(context, MediaButtonReceiver::class.java)
+            putExtra(
+                Intent.EXTRA_KEY_EVENT,
+                KeyEvent(now, now, KeyEvent.ACTION_DOWN, keyCode, 0),
+            )
         }
-        return PendingIntent.getService(
+        return PendingIntent.getBroadcast(
             context,
             keyCode,
             intent,

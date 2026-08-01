@@ -1,6 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/navigation/root_shell.dart';
+import 'package:nuvtune/core/providers.dart';
+import 'package:nuvtune/features/downloads/downloaded_songs_screen.dart';
+import 'package:nuvtune/features/downloads/song_search_screen.dart';
 import 'package:nuvtune/features/equalizer/equalizer_screen.dart';
 import 'package:nuvtune/features/home/home_screen.dart';
 import 'package:nuvtune/features/library/library_screen.dart';
@@ -8,6 +12,7 @@ import 'package:nuvtune/features/library/song_collection_screen.dart';
 import 'package:nuvtune/features/metadata_editor/batch_editor_screen.dart';
 import 'package:nuvtune/features/metadata_editor/song_editor_screen.dart';
 import 'package:nuvtune/features/player/player_screen.dart';
+import 'package:nuvtune/features/playlists/gift_intro_screen.dart';
 import 'package:nuvtune/features/playlists/playlist_detail_screen.dart';
 import 'package:nuvtune/features/playlists/playlists_screen.dart';
 import 'package:nuvtune/features/queue/queue_screen.dart';
@@ -161,7 +166,29 @@ GoRouter createRouter() {
       GoRoute(
         path: '/playlist/:id',
         parentNavigatorKey: rootNavigatorKey,
+        // Las listas regalo (requerimiento "playlist regalo") se presentan
+        // primero con su dedicatoria; `?from=gift-intro` evita el loop una
+        // vez que el usuario ya vio esa pantalla y pulsa "Reproducir".
+        redirect: (context, state) {
+          if (state.uri.queryParameters['from'] == 'gift-intro') return null;
+          final id = int.parse(state.pathParameters['id']!);
+          final container = ProviderScope.containerOf(context);
+          final playlists = container.read(playlistsProvider).valueOrNull;
+          final playlist =
+              playlists?.where((item) => item.id == id).firstOrNull;
+          if (playlist != null && playlist.giftMode) {
+            return '/playlist/$id/gift';
+          }
+          return null;
+        },
         builder: (context, state) => PlaylistDetailScreen(
+          playlistId: int.parse(state.pathParameters['id']!),
+        ),
+      ),
+      GoRoute(
+        path: '/playlist/:id/gift',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => GiftIntroScreen(
           playlistId: int.parse(state.pathParameters['id']!),
         ),
       ),
@@ -179,6 +206,18 @@ GoRouter createRouter() {
         builder: (context, state) => BatchEditorScreen(
           songIds: (state.extra as List<int>?) ?? const [],
         ),
+      ),
+
+      // Descargas desde internet (feature "Buscar y descargar canciones").
+      GoRoute(
+        path: '/downloads',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const DownloadedSongsScreen(),
+      ),
+      GoRoute(
+        path: '/downloads/search',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SongSearchScreen(),
       ),
 
       GoRoute(

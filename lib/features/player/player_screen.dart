@@ -1,3 +1,5 @@
+import 'dart:ui';
+
 // Flutter expone su propio RepeatMode para animaciones; aqui RepeatMode es
 // siempre el modo de repeticion del contrato con el motor.
 import 'package:flutter/material.dart' hide RepeatMode;
@@ -17,6 +19,8 @@ import 'package:nuvtune/features/lyrics/lyrics_view.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/sleep_timer_sheet.dart';
 import 'package:nuvtune/features/queue/queue_list.dart';
+import 'package:nuvtune/features/video_background/music_video_background.dart';
+import 'package:nuvtune/features/video_background/video_background_controller.dart';
 import 'package:nuvtune/shared/widgets/cover_art.dart';
 import 'package:nuvtune/shared/widgets/cover_cache.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
@@ -229,6 +233,10 @@ class _NowPlayingTab extends ConsumerWidget {
     final scheme = Theme.of(context).colorScheme;
     final favorites = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
     final isFavorite = favorites.contains(song.id);
+    // Fondo de video musical (requerimiento "video de fondo en Wi-Fi"): solo
+    // se resuelve cuando el ajuste esta activo, hay Wi-Fi y Piped encontro el
+    // clip, asi que la mayoria de las veces esto queda en null sin costo.
+    final videoBackgroundId = ref.watch(videoBackgroundIdProvider).valueOrNull;
 
     return LayoutBuilder(
       builder: (context, constraints) {
@@ -242,7 +250,31 @@ class _NowPlayingTab extends ConsumerWidget {
           child: Column(
             children: [
               Center(
-                child: CoverArt(song: song, size: coverSize, borderRadius: 24),
+                child: SizedBox(
+                  width: coverSize,
+                  height: coverSize,
+                  child: Stack(
+                    fit: StackFit.expand,
+                    children: [
+                      if (videoBackgroundId != null)
+                        ClipRRect(
+                          borderRadius: BorderRadius.circular(24),
+                          child: Opacity(
+                            opacity: 0.35,
+                            child: ImageFiltered(
+                              imageFilter:
+                                  ImageFilter.blur(sigmaX: 14, sigmaY: 14),
+                              child: MusicVideoBackground(
+                                key: ValueKey(videoBackgroundId),
+                                videoId: videoBackgroundId,
+                              ),
+                            ),
+                          ),
+                        ),
+                      CoverArt(song: song, size: coverSize, borderRadius: 24),
+                    ],
+                  ),
+                ),
               ),
               const SizedBox(height: 28),
 
@@ -252,14 +284,35 @@ class _NowPlayingTab extends ConsumerWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          song.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context)
-                              .textTheme
-                              .headlineSmall
-                              ?.copyWith(fontWeight: FontWeight.w700),
+                        // Se reserva la altura de dos lineas del titulo aunque
+                        // la cancion actual solo necesite una: si no, cada
+                        // titulo largo o corto empuja los controles arriba y
+                        // abajo al cambiar de pista.
+                        Builder(
+                          builder: (context) {
+                            final titleStyle = Theme.of(context)
+                                .textTheme
+                                .headlineSmall
+                                ?.copyWith(
+                                  fontWeight: FontWeight.w700,
+                                  height: 1.2,
+                                );
+                            final lineHeight =
+                                (titleStyle?.fontSize ?? 22) *
+                                    (titleStyle?.height ?? 1.2);
+                            final reserved = MediaQuery.textScalerOf(context)
+                                    .scale(lineHeight) *
+                                2;
+                            return SizedBox(
+                              height: reserved,
+                              child: Text(
+                                song.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: titleStyle,
+                              ),
+                            );
+                          },
                         ),
                         const SizedBox(height: 4),
                         InkWell(

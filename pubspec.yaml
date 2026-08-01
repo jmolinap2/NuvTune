@@ -32,6 +32,12 @@ dependencies:
   intl: ^0.20.3
   collection: ^1.19.1
 
+  # Red y contenido en linea
+  http: ^1.2.2
+  connectivity_plus: ^7.0.0
+  webview_flutter: ^4.10.0
+  share_plus: ^11.1.0
+
 dev_dependencies:
   flutter_test:
     sdk: flutter

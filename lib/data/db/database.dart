@@ -21,6 +21,19 @@ class Playlists extends Table {
   TextColumn get coverPath => text().nullable()();
   DateTimeColumn get createdAt => dateTime().withDefault(currentDateAndTime)();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
+
+  /// Modo regalo: presenta la lista con dedicatoria antes de reproducir.
+  BoolColumn get giftMode => boolean().withDefault(const Constant(false))();
+
+  /// Dedicatoria mostrada en la portada del modo regalo.
+  TextColumn get dedication => text().nullable()();
+
+  /// "De" y "Para" del regalo (opcional; si estan vacios no se muestran).
+  TextColumn get giftFrom => text().nullable()();
+  TextColumn get giftTo => text().nullable()();
+
+  /// Identidad cromatica elegida para el regalo (uno de AccentIdentity.id).
+  TextColumn get giftAccentId => text().nullable()();
 }
 
 /// Orden de las canciones dentro de cada lista (requerimiento 4.4).
@@ -228,6 +241,40 @@ class SavedRadios extends Table {
   DateTimeColumn get addedAt => dateTime().withDefault(currentDateAndTime)();
 }
 
+/// Videos musicales asociados a una cancion, para el fondo del reproductor.
+///
+/// La clave `songKey` es "artista||titulo" en minusculas para que un cambio
+/// de ID de MediaStore (por re-escaneo o reinstalacion) no invalide el cache.
+class SongVideoIds extends Table {
+  TextColumn get songKey => text()();
+  TextColumn get videoId => text()();
+
+  /// Origen ("piped", "manual", "youtube_api"), por si algun dia hay mas de
+  /// una fuente y hay que priorizar.
+  TextColumn get source => text().withDefault(const Constant('piped'))();
+  DateTimeColumn get fetchedAt => dateTime().withDefault(currentDateAndTime)();
+
+  @override
+  Set<Column<Object>> get primaryKey => {songKey};
+}
+
+/// Canciones descargadas desde internet. La ruta es local a la app
+/// (getApplicationDocumentsDirectory/downloads/); no aparecen en MediaStore.
+class DownloadedSongs extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  TextColumn get title => text()();
+  TextColumn get artist => text()();
+  TextColumn get album => text().nullable()();
+  IntColumn get durationMs => integer().withDefault(const Constant(0))();
+  TextColumn get filePath => text()();
+  TextColumn get mimeType => text().withDefault(const Constant('audio/mp4'))();
+  IntColumn get sizeBytes => integer().withDefault(const Constant(0))();
+  TextColumn get sourceVideoId => text().nullable()();
+  TextColumn get coverPath => text().nullable()();
+  DateTimeColumn get downloadedAt =>
+      dateTime().withDefault(currentDateAndTime)();
+}
+
 /// Preferencias de la aplicacion. Una sola fila con [id] fijo en 0; columnas
 /// tipadas en lugar de pares clave/valor para que el compilador valide cada
 /// ajuste.
@@ -316,6 +363,11 @@ class AppSettings extends Table {
   /// (requerimiento 4.1), codificados como JSON.
   TextColumn get librarySortJson => text().withDefault(const Constant('{}'))();
 
+  /// Fondo de video musical en la pantalla del reproductor.
+  /// Requiere Wi-Fi (nunca datos moviles) para no gastar el plan del usuario.
+  BoolColumn get videoBackgroundEnabled =>
+      boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -340,6 +392,8 @@ class AppSettings extends Table {
     SavedRadios,
     LyricsOverrides,
     AppSettings,
+    SongVideoIds,
+    DownloadedSongs,
   ],
 )
 class NuvTuneDatabase extends _$NuvTuneDatabase {
@@ -348,7 +402,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 4;
+  int get schemaVersion => 5;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -356,6 +410,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   /// - Version 2: tablas de Fase 3 (mejora, perfiles por salida, sonoridad).
   /// - Version 3: columnas de apariencia personalizable.
   /// - Version 4: configuracion del widget de inicio.
+  /// - Version 5: video de fondo, descargas online y modo regalo de listas.
   @override
   MigrationStrategy get migration => MigrationStrategy(
         onCreate: (migrator) => migrator.createAll(),
@@ -398,6 +453,19 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
             await migrator.addColumn(
               appSettings,
               appSettings.widgetResumeOnConnect,
+            );
+          }
+          if (from < 5) {
+            await migrator.createTable(songVideoIds);
+            await migrator.createTable(downloadedSongs);
+            await migrator.addColumn(playlists, playlists.giftMode);
+            await migrator.addColumn(playlists, playlists.dedication);
+            await migrator.addColumn(playlists, playlists.giftFrom);
+            await migrator.addColumn(playlists, playlists.giftTo);
+            await migrator.addColumn(playlists, playlists.giftAccentId);
+            await migrator.addColumn(
+              appSettings,
+              appSettings.videoBackgroundEnabled,
             );
           }
         },
