@@ -10,7 +10,7 @@ import 'package:nuvtune/core/platform/music_engine.g.dart';
 /// contrato generado.
 class EngineBridge implements MusicEngineFlutterApi {
   EngineBridge({MusicEngineHostApi? hostApi})
-      : api = hostApi ?? MusicEngineHostApi();
+    : api = hostApi ?? MusicEngineHostApi();
 
   final MusicEngineHostApi api;
 
@@ -19,6 +19,7 @@ class EngineBridge implements MusicEngineFlutterApi {
   final _position = StreamController<PositionUpdate>.broadcast();
   final _queue = StreamController<QueueUpdate>.broadcast();
   final _audioOutput = StreamController<AudioOutputChange>.broadcast();
+  final _audioAnalysis = StreamController<AudioAnalysisFrame>.broadcast();
   final _library = StreamController<int>.broadcast();
   final _metadata = StreamController<Song>.broadcast();
   final _sleepTimerFinished = StreamController<void>.broadcast();
@@ -30,6 +31,7 @@ class EngineBridge implements MusicEngineFlutterApi {
   Stream<PositionUpdate> get position => _position.stream;
   Stream<QueueUpdate> get queue => _queue.stream;
   Stream<AudioOutputChange> get audioOutput => _audioOutput.stream;
+  Stream<AudioAnalysisFrame> get audioAnalysis => _audioAnalysis.stream;
   Stream<int> get libraryChanges => _library.stream;
   Stream<Song> get metadataUpdates => _metadata.stream;
   Stream<void> get sleepTimerFinishedEvents => _sleepTimerFinished.stream;
@@ -53,6 +55,7 @@ class EngineBridge implements MusicEngineFlutterApi {
     await _position.close();
     await _queue.close();
     await _audioOutput.close();
+    await _audioAnalysis.close();
     await _library.close();
     await _metadata.close();
     await _sleepTimerFinished.close();
@@ -85,10 +88,12 @@ class EngineBridge implements MusicEngineFlutterApi {
       _queue.add(QueueUpdate(songs: queue, currentIndex: currentIndex));
 
   @override
-  void audioDeviceChanged(AudioOutput output, String deviceName) =>
-      _audioOutput.add(
-        AudioOutputChange(output: output, deviceName: deviceName),
-      );
+  void audioDeviceChanged(AudioOutput output, String deviceName) => _audioOutput
+      .add(AudioOutputChange(output: output, deviceName: deviceName));
+
+  @override
+  void audioAnalysisChanged(AudioAnalysisFrame frame) =>
+      _audioAnalysis.add(frame);
 
   @override
   void libraryChanged(int songCount) => _library.add(songCount);

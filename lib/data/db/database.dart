@@ -163,8 +163,7 @@ class LyricsOverrides extends Table {
   IntColumn get songId => integer()();
   TextColumn get content => text()();
   IntColumn get offsetMs => integer().withDefault(const Constant(0))();
-  BoolColumn get synchronized =>
-      boolean().withDefault(const Constant(false))();
+  BoolColumn get synchronized => boolean().withDefault(const Constant(false))();
   DateTimeColumn get updatedAt => dateTime().withDefault(currentDateAndTime)();
 
   @override
@@ -185,7 +184,8 @@ class EnhancementState extends Table {
   RealColumn get multibandStrength => real().withDefault(const Constant(0))();
 
   /// Indice de `NormalizationMode`.
-  IntColumn get normalizationIndex => integer().withDefault(const Constant(0))();
+  IntColumn get normalizationIndex =>
+      integer().withDefault(const Constant(0))();
   RealColumn get targetLevelDb => real().withDefault(const Constant(-14))();
   BoolColumn get stereoExpansionEnabled =>
       boolean().withDefault(const Constant(false))();
@@ -295,15 +295,18 @@ class AppSettings extends Table {
   TextColumn get accentId => text().withDefault(const Constant('nebula'))();
 
   /// Profundidad del fondo (`BackgroundDepth.id`).
-  TextColumn get backgroundDepth => text().withDefault(const Constant('night'))();
+  TextColumn get backgroundDepth =>
+      text().withDefault(const Constant('night'))();
 
   /// Intensidad del efecto de vidrio (`GlassIntensity.id`).
-  TextColumn get glassIntensity => text().withDefault(const Constant('medium'))();
+  TextColumn get glassIntensity =>
+      text().withDefault(const Constant('medium'))();
 
   // Reproduccion
   BoolColumn get restoreQueueOnStart =>
       boolean().withDefault(const Constant(true))();
-  BoolColumn get gaplessEnabled => boolean().withDefault(const Constant(true))();
+  BoolColumn get gaplessEnabled =>
+      boolean().withDefault(const Constant(true))();
   IntColumn get crossfadeSeconds => integer().withDefault(const Constant(0))();
   BoolColumn get fadeOnPause => boolean().withDefault(const Constant(true))();
   IntColumn get fadeOnPauseMs => integer().withDefault(const Constant(250))();
@@ -328,8 +331,10 @@ class AppSettings extends Table {
   IntColumn get widgetAccentColor =>
       integer().withDefault(const Constant(0xFFB14BFF))();
   RealColumn get widgetOpacity => real().withDefault(const Constant(0.92))();
-  BoolColumn get widgetShowCover => boolean().withDefault(const Constant(true))();
-  BoolColumn get widgetShowTitle => boolean().withDefault(const Constant(true))();
+  BoolColumn get widgetShowCover =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get widgetShowTitle =>
+      boolean().withDefault(const Constant(true))();
   BoolColumn get widgetShowArtist =>
       boolean().withDefault(const Constant(true))();
   BoolColumn get widgetShowControls =>
@@ -348,16 +353,17 @@ class AppSettings extends Table {
       boolean().withDefault(const Constant(false))();
 
   // Temporizador
-  IntColumn get sleepTimerMinutes => integer().withDefault(const Constant(30))();
+  IntColumn get sleepTimerMinutes =>
+      integer().withDefault(const Constant(30))();
   BoolColumn get sleepTimerFinishTrack =>
       boolean().withDefault(const Constant(true))();
 
   /// Secciones activas de la pantalla Inicio, en orden, codificadas como JSON.
   TextColumn get homeSectionsJson => text().withDefault(
-        const Constant(
-          '["continue","favorites","recentlyPlayed","recentAlbums","mostPlayed","featuredPlaylists"]',
-        ),
-      )();
+    const Constant(
+      '["continue","favorites","recentlyPlayed","recentAlbums","mostPlayed","featuredPlaylists"]',
+    ),
+  )();
 
   /// Orden y filtro recordados por seccion de la biblioteca
   /// (requerimiento 4.1), codificados como JSON.
@@ -367,6 +373,11 @@ class AppSettings extends Table {
   /// Requiere Wi-Fi (nunca datos moviles) para no gastar el plan del usuario.
   BoolColumn get videoBackgroundEnabled =>
       boolean().withDefault(const Constant(true))();
+
+  /// Estilo del visualizador reactivo cuando una cancion no tiene portada.
+  /// Cero es automatico; los demas valores siguen VisualizerStyle.values.
+  IntColumn get playerVisualizerStyle =>
+      integer().withDefault(const Constant(0))();
 
   @override
   Set<Column<Object>> get primaryKey => {id};
@@ -402,7 +413,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 5;
+  int get schemaVersion => 6;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -411,65 +422,72 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   /// - Version 3: columnas de apariencia personalizable.
   /// - Version 4: configuracion del widget de inicio.
   /// - Version 5: video de fondo, descargas online y modo regalo de listas.
+  /// - Version 6: estilo preferido del visualizador del reproductor.
   @override
   MigrationStrategy get migration => MigrationStrategy(
-        onCreate: (migrator) => migrator.createAll(),
-        onUpgrade: (migrator, from, to) async {
-          if (from < 2) {
-            await migrator.createTable(enhancementState);
-            await migrator.createTable(outputProfiles);
-            await migrator.createTable(loudnessAnalyses);
-            await migrator.createTable(savedRadios);
-          }
-          if (from < 3) {
-            await migrator.addColumn(appSettings, appSettings.accentId);
-            await migrator.addColumn(appSettings, appSettings.backgroundDepth);
-            await migrator.addColumn(appSettings, appSettings.glassIntensity);
-          }
-          if (from < 4) {
-            // Una llamada por columna: `addColumn` exige el tipo concreto y una
-            // lista mixta de booleanas, enteras y reales lo perderia.
-            await migrator.addColumn(appSettings, appSettings.widgetEnabled);
-            await migrator.addColumn(appSettings, appSettings.widgetStyle);
-            await migrator.addColumn(appSettings, appSettings.widgetTheme);
-            await migrator.addColumn(appSettings, appSettings.widgetSize);
-            await migrator.addColumn(appSettings, appSettings.widgetAccentColor);
-            await migrator.addColumn(appSettings, appSettings.widgetOpacity);
-            await migrator.addColumn(appSettings, appSettings.widgetShowCover);
-            await migrator.addColumn(appSettings, appSettings.widgetShowTitle);
-            await migrator.addColumn(appSettings, appSettings.widgetShowArtist);
-            await migrator.addColumn(appSettings, appSettings.widgetShowControls);
-            await migrator.addColumn(appSettings, appSettings.widgetShowProgress);
-            await migrator.addColumn(appSettings, appSettings.widgetShowDuration);
-            await migrator.addColumn(
-              appSettings,
-              appSettings.widgetShowNextInQueue,
-            );
-            await migrator.addColumn(appSettings, appSettings.widgetOpenOnTap);
-            await migrator.addColumn(
-              appSettings,
-              appSettings.widgetPauseOnDisconnect,
-            );
-            await migrator.addColumn(
-              appSettings,
-              appSettings.widgetResumeOnConnect,
-            );
-          }
-          if (from < 5) {
-            await migrator.createTable(songVideoIds);
-            await migrator.createTable(downloadedSongs);
-            await migrator.addColumn(playlists, playlists.giftMode);
-            await migrator.addColumn(playlists, playlists.dedication);
-            await migrator.addColumn(playlists, playlists.giftFrom);
-            await migrator.addColumn(playlists, playlists.giftTo);
-            await migrator.addColumn(playlists, playlists.giftAccentId);
-            await migrator.addColumn(
-              appSettings,
-              appSettings.videoBackgroundEnabled,
-            );
-          }
-        },
-      );
+    onCreate: (migrator) => migrator.createAll(),
+    onUpgrade: (migrator, from, to) async {
+      if (from < 2) {
+        await migrator.createTable(enhancementState);
+        await migrator.createTable(outputProfiles);
+        await migrator.createTable(loudnessAnalyses);
+        await migrator.createTable(savedRadios);
+      }
+      if (from < 3) {
+        await migrator.addColumn(appSettings, appSettings.accentId);
+        await migrator.addColumn(appSettings, appSettings.backgroundDepth);
+        await migrator.addColumn(appSettings, appSettings.glassIntensity);
+      }
+      if (from < 4) {
+        // Una llamada por columna: `addColumn` exige el tipo concreto y una
+        // lista mixta de booleanas, enteras y reales lo perderia.
+        await migrator.addColumn(appSettings, appSettings.widgetEnabled);
+        await migrator.addColumn(appSettings, appSettings.widgetStyle);
+        await migrator.addColumn(appSettings, appSettings.widgetTheme);
+        await migrator.addColumn(appSettings, appSettings.widgetSize);
+        await migrator.addColumn(appSettings, appSettings.widgetAccentColor);
+        await migrator.addColumn(appSettings, appSettings.widgetOpacity);
+        await migrator.addColumn(appSettings, appSettings.widgetShowCover);
+        await migrator.addColumn(appSettings, appSettings.widgetShowTitle);
+        await migrator.addColumn(appSettings, appSettings.widgetShowArtist);
+        await migrator.addColumn(appSettings, appSettings.widgetShowControls);
+        await migrator.addColumn(appSettings, appSettings.widgetShowProgress);
+        await migrator.addColumn(appSettings, appSettings.widgetShowDuration);
+        await migrator.addColumn(
+          appSettings,
+          appSettings.widgetShowNextInQueue,
+        );
+        await migrator.addColumn(appSettings, appSettings.widgetOpenOnTap);
+        await migrator.addColumn(
+          appSettings,
+          appSettings.widgetPauseOnDisconnect,
+        );
+        await migrator.addColumn(
+          appSettings,
+          appSettings.widgetResumeOnConnect,
+        );
+      }
+      if (from < 5) {
+        await migrator.createTable(songVideoIds);
+        await migrator.createTable(downloadedSongs);
+        await migrator.addColumn(playlists, playlists.giftMode);
+        await migrator.addColumn(playlists, playlists.dedication);
+        await migrator.addColumn(playlists, playlists.giftFrom);
+        await migrator.addColumn(playlists, playlists.giftTo);
+        await migrator.addColumn(playlists, playlists.giftAccentId);
+        await migrator.addColumn(
+          appSettings,
+          appSettings.videoBackgroundEnabled,
+        );
+      }
+      if (from < 6) {
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerVisualizerStyle,
+        );
+      }
+    },
+  );
 
   /// La musica nunca se copia a la base de datos: solo se guardan
   /// identificadores de MediaStore y datos derivados (requerimiento 14).

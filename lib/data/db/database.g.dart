@@ -6187,6 +6187,17 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(true),
       );
+  static const VerificationMeta _playerVisualizerStyleMeta =
+      const VerificationMeta('playerVisualizerStyle');
+  @override
+  late final GeneratedColumn<int> playerVisualizerStyle = GeneratedColumn<int>(
+    'player_visualizer_style',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6228,6 +6239,7 @@ class $AppSettingsTable extends AppSettings
     homeSectionsJson,
     librarySortJson,
     videoBackgroundEnabled,
+    playerVisualizerStyle,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6577,6 +6589,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('player_visualizer_style')) {
+      context.handle(
+        _playerVisualizerStyleMeta,
+        playerVisualizerStyle.isAcceptableOrUnknown(
+          data['player_visualizer_style']!,
+          _playerVisualizerStyleMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6742,6 +6763,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}video_background_enabled'],
       )!,
+      playerVisualizerStyle: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}player_visualizer_style'],
+      )!,
     );
   }
 
@@ -6805,6 +6830,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// Fondo de video musical en la pantalla del reproductor.
   /// Requiere Wi-Fi (nunca datos moviles) para no gastar el plan del usuario.
   final bool videoBackgroundEnabled;
+
+  /// Estilo del visualizador reactivo cuando una cancion no tiene portada.
+  /// Cero es automatico; los demas valores siguen VisualizerStyle.values.
+  final int playerVisualizerStyle;
   const AppSetting({
     required this.id,
     required this.scanOnStart,
@@ -6845,6 +6874,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.homeSectionsJson,
     required this.librarySortJson,
     required this.videoBackgroundEnabled,
+    required this.playerVisualizerStyle,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6890,6 +6920,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['home_sections_json'] = Variable<String>(homeSectionsJson);
     map['library_sort_json'] = Variable<String>(librarySortJson);
     map['video_background_enabled'] = Variable<bool>(videoBackgroundEnabled);
+    map['player_visualizer_style'] = Variable<int>(playerVisualizerStyle);
     return map;
   }
 
@@ -6936,6 +6967,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       homeSectionsJson: Value(homeSectionsJson),
       librarySortJson: Value(librarySortJson),
       videoBackgroundEnabled: Value(videoBackgroundEnabled),
+      playerVisualizerStyle: Value(playerVisualizerStyle),
     );
   }
 
@@ -6998,6 +7030,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       videoBackgroundEnabled: serializer.fromJson<bool>(
         json['videoBackgroundEnabled'],
       ),
+      playerVisualizerStyle: serializer.fromJson<int>(
+        json['playerVisualizerStyle'],
+      ),
     );
   }
   @override
@@ -7045,6 +7080,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'homeSectionsJson': serializer.toJson<String>(homeSectionsJson),
       'librarySortJson': serializer.toJson<String>(librarySortJson),
       'videoBackgroundEnabled': serializer.toJson<bool>(videoBackgroundEnabled),
+      'playerVisualizerStyle': serializer.toJson<int>(playerVisualizerStyle),
     };
   }
 
@@ -7088,6 +7124,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? homeSectionsJson,
     String? librarySortJson,
     bool? videoBackgroundEnabled,
+    int? playerVisualizerStyle,
   }) => AppSetting(
     id: id ?? this.id,
     scanOnStart: scanOnStart ?? this.scanOnStart,
@@ -7130,6 +7167,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     librarySortJson: librarySortJson ?? this.librarySortJson,
     videoBackgroundEnabled:
         videoBackgroundEnabled ?? this.videoBackgroundEnabled,
+    playerVisualizerStyle: playerVisualizerStyle ?? this.playerVisualizerStyle,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -7246,6 +7284,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       videoBackgroundEnabled: data.videoBackgroundEnabled.present
           ? data.videoBackgroundEnabled.value
           : this.videoBackgroundEnabled,
+      playerVisualizerStyle: data.playerVisualizerStyle.present
+          ? data.playerVisualizerStyle.value
+          : this.playerVisualizerStyle,
     );
   }
 
@@ -7290,7 +7331,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('sleepTimerFinishTrack: $sleepTimerFinishTrack, ')
           ..write('homeSectionsJson: $homeSectionsJson, ')
           ..write('librarySortJson: $librarySortJson, ')
-          ..write('videoBackgroundEnabled: $videoBackgroundEnabled')
+          ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
+          ..write('playerVisualizerStyle: $playerVisualizerStyle')
           ..write(')'))
         .toString();
   }
@@ -7336,6 +7378,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     homeSectionsJson,
     librarySortJson,
     videoBackgroundEnabled,
+    playerVisualizerStyle,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7379,7 +7422,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.sleepTimerFinishTrack == this.sleepTimerFinishTrack &&
           other.homeSectionsJson == this.homeSectionsJson &&
           other.librarySortJson == this.librarySortJson &&
-          other.videoBackgroundEnabled == this.videoBackgroundEnabled);
+          other.videoBackgroundEnabled == this.videoBackgroundEnabled &&
+          other.playerVisualizerStyle == this.playerVisualizerStyle);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -7422,6 +7466,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> homeSectionsJson;
   final Value<String> librarySortJson;
   final Value<bool> videoBackgroundEnabled;
+  final Value<int> playerVisualizerStyle;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.scanOnStart = const Value.absent(),
@@ -7462,6 +7507,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.homeSectionsJson = const Value.absent(),
     this.librarySortJson = const Value.absent(),
     this.videoBackgroundEnabled = const Value.absent(),
+    this.playerVisualizerStyle = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7503,6 +7549,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.homeSectionsJson = const Value.absent(),
     this.librarySortJson = const Value.absent(),
     this.videoBackgroundEnabled = const Value.absent(),
+    this.playerVisualizerStyle = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -7544,6 +7591,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? homeSectionsJson,
     Expression<String>? librarySortJson,
     Expression<bool>? videoBackgroundEnabled,
+    Expression<int>? playerVisualizerStyle,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7595,6 +7643,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (librarySortJson != null) 'library_sort_json': librarySortJson,
       if (videoBackgroundEnabled != null)
         'video_background_enabled': videoBackgroundEnabled,
+      if (playerVisualizerStyle != null)
+        'player_visualizer_style': playerVisualizerStyle,
     });
   }
 
@@ -7638,6 +7688,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? homeSectionsJson,
     Value<String>? librarySortJson,
     Value<bool>? videoBackgroundEnabled,
+    Value<int>? playerVisualizerStyle,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -7684,6 +7735,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       librarySortJson: librarySortJson ?? this.librarySortJson,
       videoBackgroundEnabled:
           videoBackgroundEnabled ?? this.videoBackgroundEnabled,
+      playerVisualizerStyle:
+          playerVisualizerStyle ?? this.playerVisualizerStyle,
     );
   }
 
@@ -7817,6 +7870,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         videoBackgroundEnabled.value,
       );
     }
+    if (playerVisualizerStyle.present) {
+      map['player_visualizer_style'] = Variable<int>(
+        playerVisualizerStyle.value,
+      );
+    }
     return map;
   }
 
@@ -7861,7 +7919,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('sleepTimerFinishTrack: $sleepTimerFinishTrack, ')
           ..write('homeSectionsJson: $homeSectionsJson, ')
           ..write('librarySortJson: $librarySortJson, ')
-          ..write('videoBackgroundEnabled: $videoBackgroundEnabled')
+          ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
+          ..write('playerVisualizerStyle: $playerVisualizerStyle')
           ..write(')'))
         .toString();
   }
@@ -12437,6 +12496,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> homeSectionsJson,
       Value<String> librarySortJson,
       Value<bool> videoBackgroundEnabled,
+      Value<int> playerVisualizerStyle,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -12479,6 +12539,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> homeSectionsJson,
       Value<String> librarySortJson,
       Value<bool> videoBackgroundEnabled,
+      Value<int> playerVisualizerStyle,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -12682,6 +12743,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get videoBackgroundEnabled => $composableBuilder(
     column: $table.videoBackgroundEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playerVisualizerStyle => $composableBuilder(
+    column: $table.playerVisualizerStyle,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12889,6 +12955,11 @@ class $$AppSettingsTableOrderingComposer
     column: $table.videoBackgroundEnabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get playerVisualizerStyle => $composableBuilder(
+    column: $table.playerVisualizerStyle,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -13090,6 +13161,11 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.videoBackgroundEnabled,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get playerVisualizerStyle => $composableBuilder(
+    column: $table.playerVisualizerStyle,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -13162,6 +13238,7 @@ class $$AppSettingsTableTableManager
                 Value<String> homeSectionsJson = const Value.absent(),
                 Value<String> librarySortJson = const Value.absent(),
                 Value<bool> videoBackgroundEnabled = const Value.absent(),
+                Value<int> playerVisualizerStyle = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -13202,6 +13279,7 @@ class $$AppSettingsTableTableManager
                 homeSectionsJson: homeSectionsJson,
                 librarySortJson: librarySortJson,
                 videoBackgroundEnabled: videoBackgroundEnabled,
+                playerVisualizerStyle: playerVisualizerStyle,
               ),
           createCompanionCallback:
               ({
@@ -13244,6 +13322,7 @@ class $$AppSettingsTableTableManager
                 Value<String> homeSectionsJson = const Value.absent(),
                 Value<String> librarySortJson = const Value.absent(),
                 Value<bool> videoBackgroundEnabled = const Value.absent(),
+                Value<int> playerVisualizerStyle = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -13284,6 +13363,7 @@ class $$AppSettingsTableTableManager
                 homeSectionsJson: homeSectionsJson,
                 librarySortJson: librarySortJson,
                 videoBackgroundEnabled: videoBackgroundEnabled,
+                playerVisualizerStyle: playerVisualizerStyle,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

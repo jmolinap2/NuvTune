@@ -53,7 +53,14 @@ class MiniPlayer extends ConsumerWidget {
                     children: [
                       Padding(
                         padding: const EdgeInsets.all(8),
-                        child: CoverArt(song: song, size: 48, borderRadius: 10),
+                        child: Hero(
+                          tag: 'now-playing-cover-${song.id}',
+                          child: CoverArt(
+                            song: song,
+                            size: 48,
+                            borderRadius: 10,
+                          ),
+                        ),
                       ),
                       Expanded(
                         child: Column(
@@ -122,7 +129,9 @@ class _MiniProgressBar extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final position = ref.watch(playbackPositionProvider).valueOrNull;
-    final duration = ref.watch(playbackProvider.select((state) => state.durationMs));
+    final duration = ref.watch(
+      playbackProvider.select((state) => state.durationMs),
+    );
 
     final progress = duration <= 0 || position == null
         ? 0.0
@@ -131,7 +140,9 @@ class _MiniProgressBar extends ConsumerWidget {
     return LinearProgressIndicator(
       value: progress,
       minHeight: 3,
-      backgroundColor: Theme.of(context).colorScheme.onSurface.withValues(alpha: 0.12),
+      backgroundColor: Theme.of(
+        context,
+      ).colorScheme.onSurface.withValues(alpha: 0.12),
     );
   }
 }

@@ -7,8 +7,11 @@ import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
 import kotlin.math.cos
+import kotlin.math.exp
+import kotlin.math.max
 import kotlin.math.pow
 import kotlin.math.sin
+import kotlin.math.sqrt
 
 /**
  * Ecualizador grafico, ganancia previa, balance y conversion a mono
@@ -57,11 +60,38 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
     @Volatile
     private var coefficients: Coefficients? = null
 
+    /**
+     * El analisis se activa solo mientras el reproductor completo esta visible.
+     * Se hace aqui, sobre el PCM que NuvTune ya procesa, para no solicitar
+     * permiso de microfono ni depender de android.media.audiofx.Visualizer.
+     */
+    @Volatile
+    private var analysisEnabled: Boolean = false
+
+    @Volatile
+    private var analysisListener: ((AudioAnalysisFrame) -> Unit)? = null
+
     private var configuredSampleRate: Int = 0
     private var configuredChannelCount: Int = 0
 
     /** Estado de cada biquad: [canal][banda * 2] con las dos muestras previas. */
     private var filterState: Array<FloatArray> = emptyArray()
+
+    private var wasAnalyzing = false
+    private var analysisFrames = 0
+    private var analysisEnergy = 0.0
+    private var bassEnergy = 0.0
+    private var midEnergy = 0.0
+    private var trebleEnergy = 0.0
+    private var analysisLowPass = 0f
+    private var analysisMidPass = 0f
+    private var analysisPeak = 0.08
+    private var bassEnvelope = 0.0
+    private var beatPulse = 0.0
+    private var smoothedLevel = 0.0
+    private var smoothedBass = 0.0
+    private var smoothedMid = 0.0
+    private var smoothedTreble = 0.0
 
     fun updateSettings(newSettings: EqualizerSettings) {
         settings = newSettings
@@ -74,6 +104,14 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
 
     fun currentSettings(): EqualizerSettings = settings
 
+    fun setAnalysisEnabled(enabled: Boolean) {
+        analysisEnabled = enabled
+    }
+
+    fun setAnalysisListener(listener: ((AudioAnalysisFrame) -> Unit)?) {
+        analysisListener = listener
+    }
+
     override fun onConfigure(
         inputAudioFormat: AudioProcessor.AudioFormat,
     ): AudioProcessor.AudioFormat {
@@ -85,6 +123,7 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         configuredSampleRate = inputAudioFormat.sampleRate
         configuredChannelCount = inputAudioFormat.channelCount
         filterState = Array(configuredChannelCount) { FloatArray(MAX_BANDS * 2) }
+        resetAnalysis()
         rebuildCoefficients()
         return inputAudioFormat
     }
@@ -95,6 +134,7 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         for (channel in filterState) {
             channel.fill(0f)
         }
+        resetAnalysis()
     }
 
     override fun onReset() {
@@ -102,6 +142,7 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         coefficients = null
         configuredSampleRate = 0
         configuredChannelCount = 0
+        resetAnalysis()
     }
 
     override fun queueInput(inputBuffer: ByteBuffer) {
@@ -111,6 +152,13 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
 
         val output = replaceOutputBuffer(remaining)
         val active = coefficients
+
+        if (analysisEnabled && analysisListener != null) {
+            wasAnalyzing = true
+            analyze(inputBuffer.duplicate().order(inputBuffer.order()))
+        } else if (wasAnalyzing) {
+            resetAnalysis()
+        }
 
         if (active == null || active.bypass) {
             output.put(inputBuffer)
@@ -123,6 +171,112 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         inputBuffer.position(limit)
         output.flip()
     }
+
+    /**
+     * Divide la senal en tres regiones tonales con dos filtros de paso bajo y
+     * calcula RMS por ventanas. No es una FFT de proposito general: es un
+     * medidor musical deliberadamente pequeno para no cargar el hilo de audio.
+     */
+    private fun analyze(input: ByteBuffer) {
+        val channels = configuredChannelCount
+        val sampleRate = configuredSampleRate
+        if (channels <= 0 || sampleRate <= 0) return
+
+        val bytesPerSample = if (inputAudioFormat.encoding == C.ENCODING_PCM_16BIT) 2 else 4
+        val frameBytes = channels * bytesPerSample
+        val targetFrames = max(1, sampleRate / ANALYSIS_UPDATES_PER_SECOND)
+        val lowAlpha = 1.0 - exp(-2.0 * Math.PI * LOW_CROSSOVER_HZ / sampleRate)
+        val midAlpha = 1.0 - exp(-2.0 * Math.PI * MID_CROSSOVER_HZ / sampleRate)
+
+        while (input.remaining() >= frameBytes) {
+            var mono = 0f
+            for (channel in 0 until channels) {
+                mono += if (bytesPerSample == 2) {
+                    input.short / PCM16_SCALE
+                } else {
+                    input.float
+                }
+            }
+            mono /= channels
+
+            analysisLowPass += (lowAlpha * (mono - analysisLowPass)).toFloat()
+            analysisMidPass += (midAlpha * (mono - analysisMidPass)).toFloat()
+            val bass = analysisLowPass
+            val mid = analysisMidPass - analysisLowPass
+            val treble = mono - analysisMidPass
+
+            analysisEnergy += mono * mono
+            bassEnergy += bass * bass
+            midEnergy += mid * mid
+            trebleEnergy += treble * treble
+            analysisFrames++
+
+            if (analysisFrames >= targetFrames) publishAnalysisFrame()
+        }
+    }
+
+    private fun publishAnalysisFrame() {
+        val count = analysisFrames.coerceAtLeast(1).toDouble()
+        val rawLevel = sqrt(analysisEnergy / count)
+        val rawBass = sqrt(bassEnergy / count)
+        val rawMid = sqrt(midEnergy / count)
+        val rawTreble = sqrt(trebleEnergy / count)
+
+        // Pico adaptativo: canciones masterizadas a distinto volumen conservan
+        // una animacion con recorrido, sin convertir silencios en golpes.
+        analysisPeak = max(rawLevel, analysisPeak * 0.985).coerceAtLeast(0.035)
+        val adaptiveGain = (0.72 / analysisPeak).coerceIn(1.0, 12.0)
+        val level = (rawLevel * adaptiveGain).coerceIn(0.0, 1.0)
+        val bass = (rawBass * adaptiveGain * 1.45).coerceIn(0.0, 1.0)
+        val mid = (rawMid * adaptiveGain * 1.45).coerceIn(0.0, 1.0)
+        val treble = (rawTreble * adaptiveGain * 1.8).coerceIn(0.0, 1.0)
+
+        smoothedLevel = smooth(smoothedLevel, level, 0.42)
+        smoothedBass = smooth(smoothedBass, bass, 0.48)
+        smoothedMid = smooth(smoothedMid, mid, 0.38)
+        smoothedTreble = smooth(smoothedTreble, treble, 0.32)
+
+        bassEnvelope = smooth(bassEnvelope, bass, 0.12)
+        val transient = ((bass - bassEnvelope * 1.16) * 5.5).coerceIn(0.0, 1.0)
+        beatPulse = max(transient, beatPulse * 0.55)
+
+        analysisListener?.invoke(
+            AudioAnalysisFrame(
+                level = smoothedLevel,
+                bass = smoothedBass,
+                mid = smoothedMid,
+                treble = smoothedTreble,
+                beat = beatPulse,
+            ),
+        )
+
+        analysisFrames = 0
+        analysisEnergy = 0.0
+        bassEnergy = 0.0
+        midEnergy = 0.0
+        trebleEnergy = 0.0
+    }
+
+    private fun resetAnalysis() {
+        wasAnalyzing = false
+        analysisFrames = 0
+        analysisEnergy = 0.0
+        bassEnergy = 0.0
+        midEnergy = 0.0
+        trebleEnergy = 0.0
+        analysisLowPass = 0f
+        analysisMidPass = 0f
+        analysisPeak = 0.08
+        bassEnvelope = 0.0
+        beatPulse = 0.0
+        smoothedLevel = 0.0
+        smoothedBass = 0.0
+        smoothedMid = 0.0
+        smoothedTreble = 0.0
+    }
+
+    private fun smooth(previous: Double, value: Double, amount: Double): Double =
+        previous + (value - previous) * amount
 
     private fun processPcm16(
         input: ByteBuffer,
@@ -280,6 +434,9 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         const val MAX_GAIN_DB = 12.0
 
         private const val PCM16_SCALE = 32768f
+        private const val ANALYSIS_UPDATES_PER_SECOND = 24
+        private const val LOW_CROSSOVER_HZ = 240.0
+        private const val MID_CROSSOVER_HZ = 2600.0
 
         /** Bandas de octava ISO. */
         private val frequencies10 = doubleArrayOf(

@@ -6,6 +6,7 @@ import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
+import 'package:nuvtune/features/player/visualizer_style.dart';
 import 'package:nuvtune/shared/widgets/accent_picker.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
 
@@ -25,9 +26,7 @@ class AppearanceScreen extends ConsumerWidget {
     final appearance = ThemeScope.of(context);
 
     if (settings == null) {
-      return const Scaffold(
-        body: Center(child: CircularProgressIndicator()),
-      );
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
     return Scaffold(
@@ -51,9 +50,24 @@ class AppearanceScreen extends ConsumerWidget {
               'elegido arriba.',
             ),
             value: settings.useDynamicColor,
-            onChanged: (value) => _save(
+            onChanged: (value) =>
+                _save(ref, AppSettingsCompanion(useDynamicColor: Value(value))),
+          ),
+
+          ListTile(
+            leading: Icon(
+              VisualizerStyle.fromIndex(settings.playerVisualizerStyle).icon,
+            ),
+            title: const Text('Visualizador sin portada'),
+            subtitle: Text(
+              '${VisualizerStyle.fromIndex(settings.playerVisualizerStyle).label} · '
+              'reacciona al ritmo y a las zonas tonales',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _selectVisualizer(
+              context,
               ref,
-              AppSettingsCompanion(useDynamicColor: Value(value)),
+              VisualizerStyle.fromIndex(settings.playerVisualizerStyle),
             ),
           ),
 
@@ -99,17 +113,12 @@ class AppearanceScreen extends ConsumerWidget {
             child: SegmentedButton<GlassIntensity>(
               segments: [
                 for (final intensity in GlassIntensity.values)
-                  ButtonSegment(
-                    value: intensity,
-                    label: Text(intensity.label),
-                  ),
+                  ButtonSegment(value: intensity, label: Text(intensity.label)),
               ],
               selected: {appearance.glass},
               onSelectionChanged: (selection) => _save(
                 ref,
-                AppSettingsCompanion(
-                  glassIntensity: Value(selection.first.id),
-                ),
+                AppSettingsCompanion(glassIntensity: Value(selection.first.id)),
               ),
             ),
           ),
@@ -121,16 +130,63 @@ class AppearanceScreen extends ConsumerWidget {
   Future<void> _save(WidgetRef ref, AppSettingsCompanion companion) =>
       ref.read(settingsRepositoryProvider).update(companion);
 
+  Future<void> _selectVisualizer(
+    BuildContext context,
+    WidgetRef ref,
+    VisualizerStyle selected,
+  ) async {
+    final choice = await showModalBottomSheet<VisualizerStyle>(
+      context: context,
+      showDragHandle: true,
+      builder: (context) => RadioGroup<VisualizerStyle>(
+        groupValue: selected,
+        onChanged: (value) => Navigator.of(context).pop(value),
+        child: SafeArea(
+          child: ListView(
+            shrinkWrap: true,
+            padding: const EdgeInsets.only(bottom: Tokens.space4),
+            children: [
+              Padding(
+                padding: const EdgeInsets.fromLTRB(
+                  Tokens.gutter,
+                  0,
+                  Tokens.gutter,
+                  Tokens.space3,
+                ),
+                child: Text(
+                  'Visualizador sin portada',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
+              ),
+              for (final style in VisualizerStyle.values)
+                RadioListTile<VisualizerStyle>(
+                  value: style,
+                  secondary: Icon(style.icon),
+                  title: Text(style.label),
+                  subtitle: Text(style.description),
+                ),
+            ],
+          ),
+        ),
+      ),
+    );
+    if (choice == null) return;
+    await _save(
+      ref,
+      AppSettingsCompanion(playerVisualizerStyle: Value(choice.index)),
+    );
+  }
+
   /// `pureBlackBackground` es el ajuste de Fase 1 y sigue mandando sobre la
   /// profundidad, de modo que hay que mantener los dos coherentes en lugar de
   /// dejar que se contradigan.
   Future<void> _selectDepth(WidgetRef ref, BackgroundDepth depth) => _save(
-        ref,
-        AppSettingsCompanion(
-          backgroundDepth: Value(depth.id),
-          pureBlackBackground: Value(depth == BackgroundDepth.pureBlack),
-        ),
-      );
+    ref,
+    AppSettingsCompanion(
+      backgroundDepth: Value(depth.id),
+      pureBlackBackground: Value(depth == BackgroundDepth.pureBlack),
+    ),
+  );
 }
 
 class _Note extends StatelessWidget {
@@ -140,14 +196,14 @@ class _Note extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-      );
+    padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 /// Vista previa con los componentes reales del sistema visual.
@@ -176,9 +232,9 @@ class _Preview extends StatelessWidget {
         children: [
           Text(
             AppStrings.appearancePreview.toUpperCase(),
-            style: Theme.of(context).textTheme.labelSmall?.copyWith(
-                  color: scheme.onSurfaceVariant,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
           const SizedBox(height: Tokens.space3),
           GlassCard(
@@ -210,17 +266,13 @@ class _Preview extends StatelessWidget {
                       Text(
                         'Aurora Vector',
                         style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                              color: scheme.onSurfaceVariant,
-                            ),
+                          color: scheme.onSurfaceVariant,
+                        ),
                       ),
                     ],
                   ),
                 ),
-                GradientPlayButton(
-                  isPlaying: true,
-                  onPressed: () {},
-                  size: 44,
-                ),
+                GradientPlayButton(isPlaying: true, onPressed: () {}, size: 44),
               ],
             ),
           ),
@@ -257,7 +309,18 @@ class _Preview extends StatelessWidget {
   }
 
   static const _previewBars = <double>[
-    0.35, 0.6, 0.85, 0.5, 0.7, 1, 0.65, 0.4, 0.75, 0.55, 0.9, 0.45,
+    0.35,
+    0.6,
+    0.85,
+    0.5,
+    0.7,
+    1,
+    0.65,
+    0.4,
+    0.75,
+    0.55,
+    0.9,
+    0.45,
   ];
 }
 
@@ -272,9 +335,9 @@ class _AccentGrid extends ConsumerWidget {
       padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
       child: AccentSwatchGrid(
         selected: selected,
-        onSelected: (identity) => ref.read(settingsRepositoryProvider).update(
-              AppSettingsCompanion(accentId: Value(identity.id)),
-            ),
+        onSelected: (identity) => ref
+            .read(settingsRepositoryProvider)
+            .update(AppSettingsCompanion(accentId: Value(identity.id))),
       ),
     );
   }
@@ -340,8 +403,8 @@ class _DepthOption extends StatelessWidget {
               depth.label,
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ],
         ),

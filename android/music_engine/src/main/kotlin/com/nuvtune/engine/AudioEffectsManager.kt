@@ -33,6 +33,9 @@ internal class AudioEffectsManager(private val context: Context) {
     var options: PlaybackOptions = defaultOptions()
         private set
 
+    @Volatile
+    private var analysisRequested = false
+
     fun applyEqualizer(settings: EqualizerSettings) {
         equalizerProcessor.updateSettings(settings)
     }
@@ -45,6 +48,15 @@ internal class AudioEffectsManager(private val context: Context) {
 
     fun currentEnhancement(): EnhancementSettings = enhancerProcessor.currentSettings()
 
+    fun setAnalysisEnabled(enabled: Boolean) {
+        analysisRequested = enabled
+        equalizerProcessor.setAnalysisEnabled(enabled && !options.directMode)
+    }
+
+    fun setAnalysisListener(listener: ((AudioAnalysisFrame) -> Unit)?) {
+        equalizerProcessor.setAnalysisListener(listener)
+    }
+
     /**
      * Aplica las opciones de calidad. Devuelve true si el cambio requiere que
      * el reproductor vuelva a preparar la pista, lo que ocurre solamente al
@@ -55,6 +67,7 @@ internal class AudioEffectsManager(private val context: Context) {
         val previous = options
         options = newOptions
         equalizerProcessor.updateDirectMode(newOptions.directMode)
+        equalizerProcessor.setAnalysisEnabled(analysisRequested && !newOptions.directMode)
         enhancerProcessor.updateDirectMode(newOptions.directMode)
         return previous.directMode != newOptions.directMode ||
             previous.allowOffload != newOptions.allowOffload

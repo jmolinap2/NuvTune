@@ -78,7 +78,29 @@ GoRouter createRouter() {
       GoRoute(
         path: '/player',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const PlayerScreen(),
+        pageBuilder: (context, state) => CustomTransitionPage<void>(
+          key: state.pageKey,
+          transitionDuration: const Duration(milliseconds: 420),
+          reverseTransitionDuration: const Duration(milliseconds: 320),
+          child: const PlayerScreen(),
+          transitionsBuilder: (context, animation, secondaryAnimation, child) {
+            final curved = CurvedAnimation(
+              parent: animation,
+              curve: Curves.easeOutCubic,
+              reverseCurve: Curves.easeInCubic,
+            );
+            return FadeTransition(
+              opacity: curved,
+              child: SlideTransition(
+                position: Tween<Offset>(
+                  begin: const Offset(0, 0.08),
+                  end: Offset.zero,
+                ).animate(curved),
+                child: child,
+              ),
+            );
+          },
+        ),
       ),
       GoRoute(
         path: '/queue',
@@ -174,8 +196,9 @@ GoRouter createRouter() {
           final id = int.parse(state.pathParameters['id']!);
           final container = ProviderScope.containerOf(context);
           final playlists = container.read(playlistsProvider).valueOrNull;
-          final playlist =
-              playlists?.where((item) => item.id == id).firstOrNull;
+          final playlist = playlists
+              ?.where((item) => item.id == id)
+              .firstOrNull;
           if (playlist != null && playlist.giftMode) {
             return '/playlist/$id/gift';
           }
@@ -188,24 +211,21 @@ GoRouter createRouter() {
       GoRoute(
         path: '/playlist/:id/gift',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => GiftIntroScreen(
-          playlistId: int.parse(state.pathParameters['id']!),
-        ),
+        builder: (context, state) =>
+            GiftIntroScreen(playlistId: int.parse(state.pathParameters['id']!)),
       ),
 
       GoRoute(
         path: '/song/:id/edit',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongEditorScreen(
-          songId: int.parse(state.pathParameters['id']!),
-        ),
+        builder: (context, state) =>
+            SongEditorScreen(songId: int.parse(state.pathParameters['id']!)),
       ),
       GoRoute(
         path: '/batch-edit',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => BatchEditorScreen(
-          songIds: (state.extra as List<int>?) ?? const [],
-        ),
+        builder: (context, state) =>
+            BatchEditorScreen(songIds: (state.extra as List<int>?) ?? const []),
       ),
 
       // Descargas desde internet (feature "Buscar y descargar canciones").

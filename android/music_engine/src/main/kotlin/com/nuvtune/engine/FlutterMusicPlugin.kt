@@ -6,6 +6,8 @@ import android.content.Context
 import android.content.Intent
 import android.content.IntentSender
 import android.net.Uri
+import android.os.Handler
+import android.os.Looper
 import androidx.annotation.OptIn
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -47,6 +49,7 @@ internal class FlutterMusicPlugin(
     private val scope = CoroutineScope(SupervisorJob() + Dispatchers.Main.immediate)
     private val components = EngineComponents.get(context)
     private val outputProbe = AudioOutputMonitor(context)
+    private val mainHandler = Handler(Looper.getMainLooper())
 
     private var controller: MediaController? = null
     private val pendingActivityResults =
@@ -55,11 +58,16 @@ internal class FlutterMusicPlugin(
     fun attach() {
         MusicEngineHostApi.setUp(messenger, this)
         PlaybackStateHolder.addListener(this)
+        components.effects.setAnalysisListener { frame ->
+            mainHandler.post { flutterApi.audioAnalysisChanged(frame) {} }
+        }
     }
 
     fun detach() {
         MusicEngineHostApi.setUp(messenger, null)
         PlaybackStateHolder.removeListener(this)
+        components.effects.setAnalysisEnabled(false)
+        components.effects.setAnalysisListener(null)
         controller?.release()
         controller = null
         scope.cancel()
@@ -251,6 +259,10 @@ internal class FlutterMusicPlugin(
         val target = controller ?: return
         target.playbackParameters =
             PlaybackParameters(target.playbackParameters.speed, pitch.toFloat())
+    }
+
+    override fun setAudioAnalysisEnabled(enabled: Boolean) {
+        components.effects.setAnalysisEnabled(enabled)
     }
 
     override fun getPlaybackSnapshot(callback: (Result<PlaybackSnapshot>) -> Unit) {

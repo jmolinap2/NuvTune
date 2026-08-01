@@ -21,12 +21,14 @@ class CoverArt extends ConsumerWidget {
     required this.song,
     this.size = 56,
     this.borderRadius = 12,
+    this.fallback,
     super.key,
   });
 
   final Song? song;
   final double size;
   final double borderRadius;
+  final Widget? fallback;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -34,11 +36,18 @@ class CoverArt extends ConsumerWidget {
     final radius = BorderRadius.circular(borderRadius);
 
     if (current == null) {
-      return _Placeholder(size: size, borderRadius: radius, letter: null);
+      return _Placeholder(
+        size: size,
+        borderRadius: radius,
+        letter: null,
+        fallback: fallback,
+      );
     }
 
-    final customCovers = ref.watch(customCoversProvider).valueOrNull ?? const {};
-    final customPath = customCovers[CoverRepository.songTarget(current.id)] ??
+    final customCovers =
+        ref.watch(customCoversProvider).valueOrNull ?? const {};
+    final customPath =
+        customCovers[CoverRepository.songTarget(current.id)] ??
         customCovers[CoverRepository.albumTarget(current.albumId)];
 
     if (customPath != null && File(customPath).existsSync()) {
@@ -59,6 +68,7 @@ class CoverArt extends ConsumerWidget {
         size: size,
         borderRadius: radius,
         letter: _initialOf(current),
+        fallback: fallback,
       );
     }
 
@@ -67,6 +77,7 @@ class CoverArt extends ConsumerWidget {
       size: size,
       borderRadius: radius,
       requestSize: _requestSize(),
+      fallback: fallback,
     );
   }
 
@@ -80,8 +91,9 @@ class CoverArt extends ConsumerWidget {
   int _cacheDimension(BuildContext context) =>
       (size * MediaQuery.devicePixelRatioOf(context)).round();
 
-  static String _initialOf(Song song) =>
-      song.title.isEmpty ? '?' : song.title.trim().characters.first.toUpperCase();
+  static String _initialOf(Song song) => song.title.isEmpty
+      ? '?'
+      : song.title.trim().characters.first.toUpperCase();
 }
 
 class _EmbeddedCover extends ConsumerWidget {
@@ -90,12 +102,14 @@ class _EmbeddedCover extends ConsumerWidget {
     required this.size,
     required this.borderRadius,
     required this.requestSize,
+    this.fallback,
   });
 
   final Song song;
   final double size;
   final BorderRadius borderRadius;
   final int requestSize;
+  final Widget? fallback;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -105,22 +119,27 @@ class _EmbeddedCover extends ConsumerWidget {
       future: cache.thumbnail(song.id, requestSize),
       builder: (context, snapshot) {
         final bytes = snapshot.data;
-        if (bytes == null) {
-          return _Placeholder(
-            size: size,
-            borderRadius: borderRadius,
-            letter: CoverArt._initialOf(song),
-          );
-        }
-        return ClipRRect(
-          borderRadius: borderRadius,
-          child: Image.memory(
-            bytes,
-            width: size,
-            height: size,
-            fit: BoxFit.cover,
-            gaplessPlayback: true,
-          ),
+        return AnimatedSwitcher(
+          duration: const Duration(milliseconds: 180),
+          child: bytes == null
+              ? _Placeholder(
+                  key: const ValueKey('cover-placeholder'),
+                  size: size,
+                  borderRadius: borderRadius,
+                  letter: CoverArt._initialOf(song),
+                  fallback: fallback,
+                )
+              : ClipRRect(
+                  key: ValueKey('cover-${song.id}-$requestSize'),
+                  borderRadius: borderRadius,
+                  child: Image.memory(
+                    bytes,
+                    width: size,
+                    height: size,
+                    fit: BoxFit.cover,
+                    gaplessPlayback: true,
+                  ),
+                ),
         );
       },
     );
@@ -132,14 +151,23 @@ class _Placeholder extends StatelessWidget {
     required this.size,
     required this.borderRadius,
     required this.letter,
+    this.fallback,
+    super.key,
   });
 
   final double size;
   final BorderRadius borderRadius;
   final String? letter;
+  final Widget? fallback;
 
   @override
   Widget build(BuildContext context) {
+    if (fallback != null) {
+      return ClipRRect(
+        borderRadius: borderRadius,
+        child: SizedBox.square(dimension: size, child: fallback),
+      );
+    }
     final scheme = Theme.of(context).colorScheme;
     return Container(
       width: size,
@@ -149,10 +177,7 @@ class _Placeholder extends StatelessWidget {
         gradient: LinearGradient(
           begin: Alignment.topLeft,
           end: Alignment.bottomRight,
-          colors: [
-            scheme.surfaceContainerHighest,
-            scheme.surfaceContainerHigh,
-          ],
+          colors: [scheme.surfaceContainerHighest, scheme.surfaceContainerHigh],
         ),
       ),
       alignment: Alignment.center,

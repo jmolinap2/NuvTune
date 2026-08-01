@@ -571,6 +571,74 @@ class PlaybackSnapshot {
   }
 }
 
+/// Resumen ligero de la senal PCM para animar la interfaz sin enviar audio
+/// crudo fuera del motor. Todos los valores estan normalizados entre 0 y 1.
+class AudioAnalysisFrame {
+  AudioAnalysisFrame({
+    required this.level,
+    required this.bass,
+    required this.mid,
+    required this.treble,
+    required this.beat,
+  });
+
+  double level;
+
+  double bass;
+
+  double mid;
+
+  double treble;
+
+  /// Pulso corto detectado principalmente a partir de transitorios graves.
+  double beat;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      level,
+      bass,
+      mid,
+      treble,
+      beat,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static AudioAnalysisFrame decode(Object result) {
+    result as List<Object?>;
+    return AudioAnalysisFrame(
+      level: result[0]! as double,
+      bass: result[1]! as double,
+      mid: result[2]! as double,
+      treble: result[3]! as double,
+      beat: result[4]! as double,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! AudioAnalysisFrame || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(level, other.level) && _deepEquals(bass, other.bass) && _deepEquals(mid, other.mid) && _deepEquals(treble, other.treble) && _deepEquals(beat, other.beat);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'AudioAnalysisFrame(level: $level, bass: $bass, mid: $mid, treble: $treble, beat: $beat)';
+  }
+}
+
 /// Etiquetas a escribir. Un campo null significa "no modificar"; una cadena
 /// vacia significa "borrar el valor" (requerimiento 7.1).
 class MetadataEdit {
@@ -1643,47 +1711,50 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is PlaybackSnapshot) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    }    else if (value is MetadataEdit) {
+    }    else if (value is AudioAnalysisFrame) {
       buffer.putUint8(143);
       writeValue(buffer, value.encode());
-    }    else if (value is WriteResult) {
+    }    else if (value is MetadataEdit) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    }    else if (value is EqualizerSettings) {
+    }    else if (value is WriteResult) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    }    else if (value is PlaybackOptions) {
+    }    else if (value is EqualizerSettings) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    }    else if (value is EnhancementSettings) {
+    }    else if (value is PlaybackOptions) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    }    else if (value is LoudnessAnalysis) {
+    }    else if (value is EnhancementSettings) {
       buffer.putUint8(148);
       writeValue(buffer, value.encode());
-    }    else if (value is WidgetConfig) {
+    }    else if (value is LoudnessAnalysis) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteSource) {
+    }    else if (value is WidgetConfig) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteEntry) {
+    }    else if (value is RemoteSource) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    }    else if (value is EqualizerBands) {
+    }    else if (value is RemoteEntry) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    }    else if (value is PickedDocument) {
+    }    else if (value is EqualizerBands) {
       buffer.putUint8(153);
       writeValue(buffer, value.encode());
-    }    else if (value is GrantedFolder) {
+    }    else if (value is PickedDocument) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
-    }    else if (value is CoverImage) {
+    }    else if (value is GrantedFolder) {
       buffer.putUint8(155);
       writeValue(buffer, value.encode());
-    }    else if (value is LyricsPayload) {
+    }    else if (value is CoverImage) {
       buffer.putUint8(156);
+      writeValue(buffer, value.encode());
+    }    else if (value is LyricsPayload) {
+      buffer.putUint8(157);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -1733,32 +1804,34 @@ class _PigeonCodec extends StandardMessageCodec {
       case 142:
         return PlaybackSnapshot.decode(readValue(buffer)!);
       case 143:
-        return MetadataEdit.decode(readValue(buffer)!);
+        return AudioAnalysisFrame.decode(readValue(buffer)!);
       case 144:
-        return WriteResult.decode(readValue(buffer)!);
+        return MetadataEdit.decode(readValue(buffer)!);
       case 145:
-        return EqualizerSettings.decode(readValue(buffer)!);
+        return WriteResult.decode(readValue(buffer)!);
       case 146:
-        return PlaybackOptions.decode(readValue(buffer)!);
+        return EqualizerSettings.decode(readValue(buffer)!);
       case 147:
-        return EnhancementSettings.decode(readValue(buffer)!);
+        return PlaybackOptions.decode(readValue(buffer)!);
       case 148:
-        return LoudnessAnalysis.decode(readValue(buffer)!);
+        return EnhancementSettings.decode(readValue(buffer)!);
       case 149:
-        return WidgetConfig.decode(readValue(buffer)!);
+        return LoudnessAnalysis.decode(readValue(buffer)!);
       case 150:
-        return RemoteSource.decode(readValue(buffer)!);
+        return WidgetConfig.decode(readValue(buffer)!);
       case 151:
-        return RemoteEntry.decode(readValue(buffer)!);
+        return RemoteSource.decode(readValue(buffer)!);
       case 152:
-        return EqualizerBands.decode(readValue(buffer)!);
+        return RemoteEntry.decode(readValue(buffer)!);
       case 153:
-        return PickedDocument.decode(readValue(buffer)!);
+        return EqualizerBands.decode(readValue(buffer)!);
       case 154:
-        return GrantedFolder.decode(readValue(buffer)!);
+        return PickedDocument.decode(readValue(buffer)!);
       case 155:
-        return CoverImage.decode(readValue(buffer)!);
+        return GrantedFolder.decode(readValue(buffer)!);
       case 156:
+        return CoverImage.decode(readValue(buffer)!);
+      case 157:
         return LyricsPayload.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -2213,6 +2286,26 @@ class MusicEngineHostApi {
       binaryMessenger: pigeonVar_binaryMessenger,
     );
     final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[pitch]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Activa el analisis PCM solo mientras una interfaz visible lo necesita.
+  /// En modo directo/offload no se intercepta la senal y no se emiten cuadros.
+  Future<void> setAudioAnalysisEnabled(bool enabled) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setAudioAnalysisEnabled$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[enabled]);
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
@@ -2999,6 +3092,8 @@ abstract class MusicEngineFlutterApi {
 
   void audioDeviceChanged(AudioOutput output, String deviceName);
 
+  void audioAnalysisChanged(AudioAnalysisFrame frame);
+
   /// El motor detecto cambios en MediaStore y la biblioteca fue reconstruida.
   void libraryChanged(int songCount);
 
@@ -3118,6 +3213,27 @@ abstract class MusicEngineFlutterApi {
           final String arg_deviceName = args[1]! as String;
           try {
             api.audioDeviceChanged(arg_output, arg_deviceName);
+            return wrapResponse(empty: true);
+          } on PlatformException catch (e) {
+            return wrapResponse(error: e);
+          }          catch (e) {
+            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          }
+        });
+      }
+    }
+    {
+      final pigeonVar_channel = BasicMessageChannel<Object?>(
+          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.audioAnalysisChanged$messageChannelSuffix', pigeonChannelCodec,
+          binaryMessenger: binaryMessenger);
+      if (api == null) {
+        pigeonVar_channel.setMessageHandler(null);
+      } else {
+        pigeonVar_channel.setMessageHandler((Object? message) async {
+          final List<Object?> args = message! as List<Object?>;
+          final AudioAnalysisFrame arg_frame = args[0]! as AudioAnalysisFrame;
+          try {
+            api.audioAnalysisChanged(arg_frame);
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);

@@ -674,6 +674,65 @@ data class PlaybackSnapshot (
 }
 
 /**
+ * Resumen ligero de la senal PCM para animar la interfaz sin enviar audio
+ * crudo fuera del motor. Todos los valores estan normalizados entre 0 y 1.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class AudioAnalysisFrame (
+  val level: Double,
+  val bass: Double,
+  val mid: Double,
+  val treble: Double,
+  /** Pulso corto detectado principalmente a partir de transitorios graves. */
+  val beat: Double
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): AudioAnalysisFrame {
+      val level = pigeonVar_list[0] as Double
+      val bass = pigeonVar_list[1] as Double
+      val mid = pigeonVar_list[2] as Double
+      val treble = pigeonVar_list[3] as Double
+      val beat = pigeonVar_list[4] as Double
+      return AudioAnalysisFrame(level, bass, mid, treble, beat)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      level,
+      bass,
+      mid,
+      treble,
+      beat,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as AudioAnalysisFrame
+    return MusicEngineApiPigeonUtils.deepEquals(this.level, other.level) && MusicEngineApiPigeonUtils.deepEquals(this.bass, other.bass) && MusicEngineApiPigeonUtils.deepEquals(this.mid, other.mid) && MusicEngineApiPigeonUtils.deepEquals(this.treble, other.treble) && MusicEngineApiPigeonUtils.deepEquals(this.beat, other.beat)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.level)
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.bass)
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.mid)
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.treble)
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.beat)
+    return result
+  }
+  override fun toString(): String {
+    return "AudioAnalysisFrame(level=$level, bass=$bass, mid=$mid, treble=$treble, beat=$beat)"
+  }
+}
+
+/**
  * Etiquetas a escribir. Un campo null significa "no modificar"; una cadena
  * vacia significa "borrar el valor" (requerimiento 7.1).
  *
@@ -1634,70 +1693,75 @@ private open class MusicEngineApiPigeonCodec : StandardMessageCodec() {
       }
       143.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          MetadataEdit.fromList(it)
+          AudioAnalysisFrame.fromList(it)
         }
       }
       144.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          WriteResult.fromList(it)
+          MetadataEdit.fromList(it)
         }
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          EqualizerSettings.fromList(it)
+          WriteResult.fromList(it)
         }
       }
       146.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PlaybackOptions.fromList(it)
+          EqualizerSettings.fromList(it)
         }
       }
       147.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          EnhancementSettings.fromList(it)
+          PlaybackOptions.fromList(it)
         }
       }
       148.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          LoudnessAnalysis.fromList(it)
+          EnhancementSettings.fromList(it)
         }
       }
       149.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          WidgetConfig.fromList(it)
+          LoudnessAnalysis.fromList(it)
         }
       }
       150.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RemoteSource.fromList(it)
+          WidgetConfig.fromList(it)
         }
       }
       151.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RemoteEntry.fromList(it)
+          RemoteSource.fromList(it)
         }
       }
       152.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          EqualizerBands.fromList(it)
+          RemoteEntry.fromList(it)
         }
       }
       153.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PickedDocument.fromList(it)
+          EqualizerBands.fromList(it)
         }
       }
       154.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          GrantedFolder.fromList(it)
+          PickedDocument.fromList(it)
         }
       }
       155.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CoverImage.fromList(it)
+          GrantedFolder.fromList(it)
         }
       }
       156.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CoverImage.fromList(it)
+        }
+      }
+      157.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           LyricsPayload.fromList(it)
         }
@@ -1763,60 +1827,64 @@ private open class MusicEngineApiPigeonCodec : StandardMessageCodec() {
         stream.write(142)
         writeValue(stream, value.toList())
       }
-      is MetadataEdit -> {
+      is AudioAnalysisFrame -> {
         stream.write(143)
         writeValue(stream, value.toList())
       }
-      is WriteResult -> {
+      is MetadataEdit -> {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is EqualizerSettings -> {
+      is WriteResult -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is PlaybackOptions -> {
+      is EqualizerSettings -> {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is EnhancementSettings -> {
+      is PlaybackOptions -> {
         stream.write(147)
         writeValue(stream, value.toList())
       }
-      is LoudnessAnalysis -> {
+      is EnhancementSettings -> {
         stream.write(148)
         writeValue(stream, value.toList())
       }
-      is WidgetConfig -> {
+      is LoudnessAnalysis -> {
         stream.write(149)
         writeValue(stream, value.toList())
       }
-      is RemoteSource -> {
+      is WidgetConfig -> {
         stream.write(150)
         writeValue(stream, value.toList())
       }
-      is RemoteEntry -> {
+      is RemoteSource -> {
         stream.write(151)
         writeValue(stream, value.toList())
       }
-      is EqualizerBands -> {
+      is RemoteEntry -> {
         stream.write(152)
         writeValue(stream, value.toList())
       }
-      is PickedDocument -> {
+      is EqualizerBands -> {
         stream.write(153)
         writeValue(stream, value.toList())
       }
-      is GrantedFolder -> {
+      is PickedDocument -> {
         stream.write(154)
         writeValue(stream, value.toList())
       }
-      is CoverImage -> {
+      is GrantedFolder -> {
         stream.write(155)
         writeValue(stream, value.toList())
       }
-      is LyricsPayload -> {
+      is CoverImage -> {
         stream.write(156)
+        writeValue(stream, value.toList())
+      }
+      is LyricsPayload -> {
+        stream.write(157)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -1863,6 +1931,11 @@ interface MusicEngineHostApi {
   fun setRepeatMode(mode: RepeatMode)
   fun setPlaybackSpeed(speed: Double)
   fun setPitch(pitch: Double)
+  /**
+   * Activa el analisis PCM solo mientras una interfaz visible lo necesita.
+   * En modo directo/offload no se intercepta la senal y no se emiten cuadros.
+   */
+  fun setAudioAnalysisEnabled(enabled: Boolean)
   /** Devuelve el estado actual sin esperar un evento. */
   fun getPlaybackSnapshot(callback: (Result<PlaybackSnapshot>) -> Unit)
   /**
@@ -2387,6 +2460,24 @@ interface MusicEngineHostApi {
             val pitchArg = args[0] as Double
             val wrapped: List<Any?> = try {
               api.setPitch(pitchArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              MusicEngineApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setAudioAnalysisEnabled$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val enabledArg = args[0] as Boolean
+            val wrapped: List<Any?> = try {
+              api.setAudioAnalysisEnabled(enabledArg)
               listOf(null)
             } catch (exception: Throwable) {
               MusicEngineApiPigeonUtils.wrapError(exception)
@@ -3186,7 +3277,7 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
         }
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun currentTrackChanged(indexArg: Long, songIdArg: Long?, callback: (Result<Unit>) -> Unit)
@@ -3255,6 +3346,23 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
       } 
+    }
+  }
+  fun audioAnalysisChanged(frameArg: AudioAnalysisFrame, callback: (Result<Unit>) -> Unit)
+{
+    val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
+    val channelName = "dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.audioAnalysisChanged$separatedMessageChannelSuffix"
+    val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
+    channel.send(listOf(frameArg)) {
+      if (it is List<*>) {
+        if (it.size > 1) {
+          callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))
+        } else {
+          callback(Result.success(Unit))
+        }
+      } else {
+        callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
+      }
     }
   }
   /** El motor detecto cambios en MediaStore y la biblioteca fue reconstruida. */

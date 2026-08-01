@@ -49,31 +49,30 @@ class PlaybackState {
     List<Song>? queue,
     AudioOutput? output,
     String? outputName,
-  }) =>
-      PlaybackState(
-        snapshot: snapshot ?? this.snapshot,
-        queue: queue ?? this.queue,
-        output: output ?? this.output,
-        outputName: outputName ?? this.outputName,
-      );
+  }) => PlaybackState(
+    snapshot: snapshot ?? this.snapshot,
+    queue: queue ?? this.queue,
+    output: output ?? this.output,
+    outputName: outputName ?? this.outputName,
+  );
 
   static PlaybackState initial() => PlaybackState(
-        snapshot: PlaybackSnapshot(
-          isPlaying: false,
-          processingState: ProcessingState.idle,
-          positionMs: 0,
-          durationMs: 0,
-          bufferedMs: 0,
-          currentIndex: -1,
-          shuffleEnabled: false,
-          repeatMode: RepeatMode.off,
-          speed: 1,
-          pitch: 1,
-        ),
-        queue: const [],
-        output: AudioOutput.speaker,
-        outputName: 'Altavoz del teléfono',
-      );
+    snapshot: PlaybackSnapshot(
+      isPlaying: false,
+      processingState: ProcessingState.idle,
+      positionMs: 0,
+      durationMs: 0,
+      bufferedMs: 0,
+      currentIndex: -1,
+      shuffleEnabled: false,
+      repeatMode: RepeatMode.off,
+      speed: 1,
+      pitch: 1,
+    ),
+    queue: const [],
+    output: AudioOutput.speaker,
+    outputName: 'Altavoz del teléfono',
+  );
 }
 
 /// Posicion actual, emitida por separado para no reconstruir toda la pantalla.
@@ -81,8 +80,15 @@ final playbackPositionProvider = StreamProvider<PositionUpdate>(
   (ref) => ref.watch(engineProvider).position,
 );
 
-final playbackProvider =
-    NotifierProvider<PlaybackController, PlaybackState>(PlaybackController.new);
+/// Energia y distribucion tonal de la senal actual. Solo recibe cuadros cuando
+/// el reproductor completo solicita el analisis al motor.
+final audioAnalysisProvider = StreamProvider<AudioAnalysisFrame>(
+  (ref) => ref.watch(engineProvider).audioAnalysis,
+);
+
+final playbackProvider = NotifierProvider<PlaybackController, PlaybackState>(
+  PlaybackController.new,
+);
 
 /// Orquesta la reproduccion: traduce las acciones de la interfaz en ordenes al
 /// motor y guarda en la base de datos lo que debe sobrevivir al cierre.
@@ -125,7 +131,9 @@ class PlaybackController extends Notifier<PlaybackState> {
           snapshot: _withIndex(state.snapshot, update.currentIndex),
         );
         unawaited(
-          ref.read(queueRepositoryProvider).saveQueue(
+          ref
+              .read(queueRepositoryProvider)
+              .saveQueue(
                 update.songs.map((song) => song.id).toList(),
                 update.currentIndex,
               ),
@@ -178,8 +186,9 @@ class PlaybackController extends Notifier<PlaybackState> {
     // Auto llegan por aqui: el motor no conoce los favoritos.
     _subscriptions.add(
       engine.favoriteToggleRequests.listen((songId) async {
-        final isFavorite =
-            await ref.read(favoritesRepositoryProvider).toggle(songId);
+        final isFavorite = await ref
+            .read(favoritesRepositoryProvider)
+            .toggle(songId);
         engine.api.setFavoriteState(songId, isFavorite);
       }),
     );
@@ -222,7 +231,9 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   void _onSnapshot(PlaybackSnapshot snapshot) {
     unawaited(
-      ref.read(queueRepositoryProvider).saveModes(
+      ref
+          .read(queueRepositoryProvider)
+          .saveModes(
             repeatModeIndex: snapshot.repeatMode.index,
             shuffleEnabled: snapshot.shuffleEnabled,
           ),
@@ -253,8 +264,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   void _pushFavoriteStateToEngine(int? songId) {
     if (songId == null) return;
     unawaited(() async {
-      final isFavorite =
-          await ref.read(favoritesRepositoryProvider).isFavorite(songId);
+      final isFavorite = await ref
+          .read(favoritesRepositoryProvider)
+          .isFavorite(songId);
       ref.read(engineProvider).api.setFavoriteState(songId, isFavorite);
     }());
   }
@@ -296,7 +308,8 @@ class PlaybackController extends Notifier<PlaybackState> {
     final index = saved.currentIndex.clamp(0, songs.length - 1);
     _api.setShuffle(saved.shuffleEnabled);
     _api.setRepeatMode(
-      RepeatMode.values.elementAtOrNull(saved.repeatModeIndex) ?? RepeatMode.off,
+      RepeatMode.values.elementAtOrNull(saved.repeatModeIndex) ??
+          RepeatMode.off,
     );
     _api.setQueue(songs, index, saved.positionMs, false);
   }
@@ -337,6 +350,9 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   void setPitch(double pitch) => _api.setPitch(pitch);
 
+  void setAudioAnalysisEnabled(bool enabled) =>
+      _api.setAudioAnalysisEnabled(enabled);
+
   // -- Cola ---------------------------------------------------------------
 
   void playNext(List<Song> songs) =>
@@ -367,7 +383,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   // -- Favoritos ----------------------------------------------------------
 
   Future<void> toggleFavorite(int songId) async {
-    final isFavorite = await ref.read(favoritesRepositoryProvider).toggle(songId);
+    final isFavorite = await ref
+        .read(favoritesRepositoryProvider)
+        .toggle(songId);
     _api.setFavoriteState(songId, isFavorite);
   }
 
@@ -376,7 +394,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   /// Vuelca al motor el ecualizador y las opciones de calidad guardadas. Se
   /// llama al arrancar y cada vez que el usuario cambia algo.
   Future<void> pushAudioSettings() async {
-    final equalizer = await ref.read(equalizerRepositoryProvider).engineSettings();
+    final equalizer = await ref
+        .read(equalizerRepositoryProvider)
+        .engineSettings();
     _api.setEqualizer(equalizer);
 
     final settings = await ref.read(settingsRepositoryProvider).settings();
@@ -401,8 +421,9 @@ class PlaybackController extends Notifier<PlaybackState> {
   Future<void> pushEnhancement() async {
     final repository = ref.read(enhancementRepositoryProvider);
     final songId = state.snapshot.currentSongId;
-    final analysis =
-        songId == null ? null : await repository.analysisFor(songId);
+    final analysis = songId == null
+        ? null
+        : await repository.analysisFor(songId);
     _api.setEnhancement(
       await repository.engineSettings(trackGainDb: analysis?.gainDb ?? 0),
     );
@@ -418,7 +439,9 @@ class PlaybackController extends Notifier<PlaybackState> {
     final profile = await repository.profileFor(output);
     if (profile == null) return;
 
-    await ref.read(equalizerRepositoryProvider).save(
+    await ref
+        .read(equalizerRepositoryProvider)
+        .save(
           bandCount: profile.bandCount,
           gains: EqualizerRepository.decodeGains(
             profile.gainsJson,
