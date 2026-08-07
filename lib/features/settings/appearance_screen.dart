@@ -6,6 +6,9 @@ import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
+import 'package:nuvtune/features/player/audio_visualizer.dart';
+import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
+import 'package:nuvtune/features/player/player_visual_scene.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
 import 'package:nuvtune/shared/widgets/accent_picker.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
@@ -56,27 +59,61 @@ class AppearanceScreen extends ConsumerWidget {
 
           ListTile(
             leading: Icon(
+              PlayerVisualScene.fromIndex(settings.playerVisualScene).icon,
+            ),
+            title: const Text('Escenario del reproductor'),
+            subtitle: Text(
+              '${PlayerVisualScene.fromIndex(settings.playerVisualScene).label} · '
+              '${PlayerVisualScene.fromIndex(settings.playerVisualScene).description}',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _selectPlayerVisualScene(
+              context,
+              ref,
+              PlayerVisualScene.fromIndex(settings.playerVisualScene),
+            ),
+          ),
+
+          ListTile(
+            leading: Icon(
+              PlayerSceneAspectRatio.fromIndex(
+                settings.playerSceneAspectRatio,
+              ).icon,
+            ),
+            title: const Text('Relación de aspecto de la escena'),
+            subtitle: Text(
+              '${PlayerSceneAspectRatio.fromIndex(settings.playerSceneAspectRatio).label} · '
+              '${PlayerSceneAspectRatio.fromIndex(settings.playerSceneAspectRatio).description}',
+            ),
+            trailing: const Icon(Icons.chevron_right_rounded),
+            onTap: () => _selectAspectRatio(
+              context,
+              ref,
+              PlayerSceneAspectRatio.fromIndex(
+                settings.playerSceneAspectRatio,
+              ),
+            ),
+          ),
+
+          ListTile(
+            leading: Icon(
               VisualizerStyle.fromIndex(settings.playerVisualizerStyle).icon,
             ),
-            title: const Text('Visualizador sin portada'),
+            title: const Text('Estilo del visualizador'),
             subtitle: Text(
               '${VisualizerStyle.fromIndex(settings.playerVisualizerStyle).label} · '
               'reacciona al ritmo y a las zonas tonales',
             ),
             trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _selectVisualizer(
-              context,
-              ref,
-              VisualizerStyle.fromIndex(settings.playerVisualizerStyle),
-            ),
+            onTap: () => showVisualizerStylePicker(context, ref),
           ),
 
           SwitchListTile(
             secondary: const Icon(Icons.movie_filter_outlined),
             title: const Text('Fondo de video musical en Wi-Fi'),
             subtitle: const Text(
-              'Muestra el video oficial de la canción detrás de la portada '
-              'en el reproductor. Solo con Wi-Fi, nunca con datos móviles.',
+              'Activa el video oficial en Video y Video + letras. Solo con '
+              'Wi-Fi, nunca con datos móviles.',
             ),
             value: settings.videoBackgroundEnabled,
             onChanged: (value) => _save(
@@ -130,50 +167,35 @@ class AppearanceScreen extends ConsumerWidget {
   Future<void> _save(WidgetRef ref, AppSettingsCompanion companion) =>
       ref.read(settingsRepositoryProvider).update(companion);
 
-  Future<void> _selectVisualizer(
+  Future<void> _selectPlayerVisualScene(
     BuildContext context,
     WidgetRef ref,
-    VisualizerStyle selected,
+    PlayerVisualScene selected,
   ) async {
-    final choice = await showModalBottomSheet<VisualizerStyle>(
-      context: context,
-      showDragHandle: true,
-      builder: (context) => RadioGroup<VisualizerStyle>(
-        groupValue: selected,
-        onChanged: (value) => Navigator.of(context).pop(value),
-        child: SafeArea(
-          child: ListView(
-            shrinkWrap: true,
-            padding: const EdgeInsets.only(bottom: Tokens.space4),
-            children: [
-              Padding(
-                padding: const EdgeInsets.fromLTRB(
-                  Tokens.gutter,
-                  0,
-                  Tokens.gutter,
-                  Tokens.space3,
-                ),
-                child: Text(
-                  'Visualizador sin portada',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-              ),
-              for (final style in VisualizerStyle.values)
-                RadioListTile<VisualizerStyle>(
-                  value: style,
-                  secondary: Icon(style.icon),
-                  title: Text(style.label),
-                  subtitle: Text(style.description),
-                ),
-            ],
-          ),
-        ),
-      ),
+    final choice = await showPlayerVisualScenePicker(
+      context,
+      selected: selected,
     );
     if (choice == null) return;
     await _save(
       ref,
-      AppSettingsCompanion(playerVisualizerStyle: Value(choice.index)),
+      AppSettingsCompanion(playerVisualScene: Value(choice.index)),
+    );
+  }
+
+  Future<void> _selectAspectRatio(
+    BuildContext context,
+    WidgetRef ref,
+    PlayerSceneAspectRatio selected,
+  ) async {
+    final choice = await showPlayerSceneAspectRatioPicker(
+      context,
+      selected: selected,
+    );
+    if (choice == null) return;
+    await _save(
+      ref,
+      AppSettingsCompanion(playerSceneAspectRatio: Value(choice.index)),
     );
   }
 

@@ -20,7 +20,6 @@ import 'package:pigeon/pigeon.dart';
 // ---------------------------------------------------------------------------
 // Enumeraciones
 // ---------------------------------------------------------------------------
-
 enum RepeatMode { off, one, all }
 
 enum ProcessingState { idle, buffering, ready, ended }
@@ -134,6 +133,10 @@ class AudioAnalysisFrame {
 
   /// Pulso corto detectado principalmente a partir de transitorios graves.
   late double beat;
+
+  /// Energia de 24 bandas logaritmicas obtenida mediante FFT sobre el PCM.
+  /// Las bandas avanzan de graves a agudos y estan normalizadas entre 0 y 1.
+  late List<double> spectrum;
 }
 
 /// Etiquetas a escribir. Un campo null significa "no modificar"; una cadena

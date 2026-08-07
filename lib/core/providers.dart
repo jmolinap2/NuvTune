@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/network/connectivity_service.dart';
 import 'package:nuvtune/core/network/piped_client.dart';
 import 'package:nuvtune/core/permissions/permission_service.dart';
+import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/platform/engine_bridge.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/data/db/database.dart';
@@ -15,7 +16,6 @@ import 'package:nuvtune/data/repositories/lyrics_repository.dart';
 import 'package:nuvtune/data/repositories/playlist_repository.dart';
 import 'package:nuvtune/data/repositories/queue_repository.dart';
 import 'package:nuvtune/data/repositories/settings_repository.dart';
-import 'package:nuvtune/features/downloads/download_repository.dart';
 import 'package:nuvtune/features/video_background/video_repository.dart';
 
 /// Base de datos local. Vive mientras vive la aplicacion.
@@ -28,6 +28,14 @@ final databaseProvider = Provider<NuvTuneDatabase>((ref) {
 /// Puente con el motor Android.
 final engineProvider = Provider<EngineBridge>((ref) {
   final engine = EngineBridge();
+  ref.onDispose(engine.dispose);
+  return engine;
+});
+
+/// Puente con el motor de descarga (busqueda + descarga de audio), heredado
+/// de C:\Repos\NuvClip.
+final downloadEngineProvider = Provider<DownloadEngineBridge>((ref) {
+  final engine = DownloadEngineBridge();
   ref.onDispose(engine.dispose);
   return engine;
 });
@@ -95,10 +103,6 @@ final connectivityIsOnWifiProvider = StreamProvider<bool>(
 
 final videoRepositoryProvider = Provider<VideoRepository>(
   (ref) => VideoRepository(ref.watch(databaseProvider), ref.watch(pipedClientProvider)),
-);
-
-final downloadRepositoryProvider = Provider<DownloadRepository>(
-  (ref) => DownloadRepository(ref.watch(databaseProvider), ref.watch(pipedClientProvider)),
 );
 
 // -- Flujos derivados de la base de datos ------------------------------------

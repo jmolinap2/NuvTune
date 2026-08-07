@@ -45,7 +45,9 @@ class SongTile extends ConsumerWidget {
         '${song.displayArtist} · ${Formatters.duration(song.durationMs)}';
 
     return ListTile(
-      onTap: song.isSupported ? onTap : null,
+      onTap: song.isSupported
+          ? onTap
+          : () => _showUnsupportedMessage(context, song),
       dense: dense,
       leading: CoverArt(song: song, size: dense ? 44 : 52),
       title: Row(
@@ -103,6 +105,20 @@ class SongTile extends ConsumerWidget {
                 ),
             ],
           ),
+    );
+  }
+
+  /// Antes el tile simplemente no respondia al toque
+  /// (`onTap: null`) cuando el formato no era compatible: sin el tooltip
+  /// (que en tactil exige mantener presionado, poco descubrible) no habia
+  /// forma de saber por que. Esto lo deja explicito.
+  void _showUnsupportedMessage(BuildContext context, Song song) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(
+          '${AppStrings.unsupportedFormat}: ${song.mimeType}',
+        ),
+      ),
     );
   }
 }

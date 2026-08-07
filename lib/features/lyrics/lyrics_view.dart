@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/app/localization/strings.dart';
-import 'package:nuvtune/core/platform/engine_bridge.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/lyrics/lrc_parser.dart';
@@ -21,16 +20,34 @@ class ResolvedLyrics {
   final int userOffsetMs;
 }
 
+/// Posicion de reproduccion correspondiente a una marca de tiempo de la letra.
+///
+/// Es la operacion inversa de [LrcParser.activeLineIndex]: tanto el desfase del
+/// propio LRC como el configurado por el usuario retrasan la marca respecto al
+/// audio. El motor de reproduccion no admite posiciones negativas.
+int lyricLinePlaybackPositionMs({
+  required int lineTimeMs,
+  required int lrcOffsetMs,
+  required int userOffsetMs,
+}) {
+  final positionMs = lineTimeMs + lrcOffsetMs + userOffsetMs;
+  return positionMs < 0 ? 0 : positionMs;
+}
+
 /// Resuelve la letra de una cancion en el orden de prioridad del requerimiento
 /// seccion 8: primero la correccion del usuario, luego el archivo `.lrc` y por
 /// ultimo la letra incrustada en las etiquetas.
-final lyricsProvider =
-    FutureProvider.family<ResolvedLyrics, int>((ref, songId) async {
-  final override = await ref.watch(lyricsRepositoryProvider).overrideFor(songId);
+final lyricsProvider = FutureProvider.family<ResolvedLyrics, int>((
+  ref,
+  songId,
+) async {
+  final override = await ref
+      .watch(lyricsRepositoryProvider)
+      .overrideFor(songId);
   if (override != null) {
     return ResolvedLyrics(
       parsed: LrcParser.parse(override.content),
-      source: 'Editada en NuvTune',
+      source: 'Guardada en NuvTune',
       userOffsetMs: override.offsetMs,
     );
   }
@@ -77,6 +94,18 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
   bool _autoScroll = true;
   int _lastScrolledIndex = -1;
   bool _searching = false;
+  int _onlineSearchSerial = 0;
+
+  @override
+  void didUpdateWidget(covariant LyricsView oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.song.id != widget.song.id) {
+      // Invalida cualquier respuesta pendiente de la cancion anterior. El
+      // nuevo widget ya provoca un build, por lo que no hace falta setState.
+      _onlineSearchSerial++;
+      _searching = false;
+    }
+  }
 
   @override
   void dispose() {
@@ -88,32 +117,93 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
   /// resultado se guarda como letra propia de la cancion, de modo que la
   /// consulta ocurre una sola vez.
   Future<void> _fetchOnline() async {
+    if (_searching) return;
+
+    // Song es mutable en el contrato Pigeon. Se capturan tambien sus campos
+    // para que un cambio de cola durante la consulta no altere los argumentos
+    // ni el destino donde se guarda la respuesta.
+    final songId = widget.song.id;
+    final title = widget.song.title;
+    final artist = _onlineArtist(widget.song.artist);
+    final album = _onlineAlbum(widget.song.album);
+    final durationMs = widget.song.durationMs;
+    final searchSerial = ++_onlineSearchSerial;
+
     setState(() => _searching = true);
-    final messenger = ScaffoldMessenger.of(context);
 
-    final content = await ref.read(engineProvider).api.fetchLyricsOnline(
-          widget.song.title,
-          widget.song.displayArtist,
-          widget.song.album,
-          widget.song.durationMs,
-        );
+    String? content;
+    try {
+      final api = ref.read(engineProvider).api;
+      content = await api.fetchLyricsOnline(title, artist, album, durationMs);
 
-    if (!mounted) return;
-    setState(() => _searching = false);
+      if (!mounted || !_isCurrentSearch(searchSerial, songId)) return;
 
-    if (content == null || content.isEmpty) {
-      messenger.showSnackBar(
+      // Algunos proveedores penalizan un album impreciso. Si la busqueda mas
+      // especifica falla, se hace un unico segundo intento sin ese dato.
+      if (!_hasLyrics(content) && album.isNotEmpty) {
+        content = await api.fetchLyricsOnline(title, artist, '', durationMs);
+      }
+    } catch (_) {
+      if (!mounted || !_isCurrentSearch(searchSerial, songId)) return;
+      setState(() => _searching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(
+          content: Text('No se pudo buscar la letra en este momento'),
+        ),
+      );
+      return;
+    }
+
+    if (!mounted || !_isCurrentSearch(searchSerial, songId)) return;
+
+    if (!_hasLyrics(content)) {
+      setState(() => _searching = false);
+      ScaffoldMessenger.of(context).showSnackBar(
         const SnackBar(content: Text('No se encontró letra para esta canción')),
       );
       return;
     }
 
-    await ref.read(lyricsRepositoryProvider).save(
-          songId: widget.song.id,
-          content: content,
+    // Esta comprobacion ocurre inmediatamente antes de iniciar la escritura:
+    // una respuesta tardia nunca se asocia a la cancion que ahora esta activa.
+    if (!_isCurrentSearch(searchSerial, songId)) return;
+    await ref
+        .read(lyricsRepositoryProvider)
+        .save(
+          songId: songId,
+          content: content!,
           synchronized: content.contains(RegExp(r'\[\d{2}:\d{2}')),
         );
-    ref.invalidate(lyricsProvider(widget.song.id));
+    ref.invalidate(lyricsProvider(songId));
+
+    if (!mounted || !_isCurrentSearch(searchSerial, songId)) return;
+    setState(() => _searching = false);
+  }
+
+  bool _isCurrentSearch(int searchSerial, int songId) =>
+      searchSerial == _onlineSearchSerial && widget.song.id == songId;
+
+  static bool _hasLyrics(String? content) =>
+      content != null && content.trim().isNotEmpty;
+
+  static String _onlineArtist(String value) {
+    final artist = value.trim();
+    if (artist.isEmpty ||
+        artist == '<unknown>' ||
+        artist.toLowerCase() == 'artista desconocido') {
+      return '';
+    }
+    return artist;
+  }
+
+  static String _onlineAlbum(String value) {
+    final album = value.trim();
+    if (album.isEmpty ||
+        album == '<unknown>' ||
+        album.toLowerCase() == 'álbum desconocido') {
+      return '';
+    }
+    return album;
   }
 
   @override
@@ -204,9 +294,7 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
 
   Future<void> _editLyrics(ResolvedLyrics resolved) async {
     final controller = TextEditingController(
-      text: resolved.parsed.isEmpty
-          ? ''
-          : LrcParser.write(resolved.parsed),
+      text: resolved.parsed.isEmpty ? '' : LrcParser.write(resolved.parsed),
     );
 
     final saved = await showModalBottomSheet<String>(
@@ -272,7 +360,9 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
     if (saved == null) return;
 
     final parsed = LrcParser.parse(saved);
-    await ref.read(lyricsRepositoryProvider).save(
+    await ref
+        .read(lyricsRepositoryProvider)
+        .save(
           songId: widget.song.id,
           content: saved,
           synchronized: parsed.synchronized,
@@ -483,7 +573,13 @@ class _SyncedLyrics extends ConsumerWidget {
         return InkWell(
           onTap: line.timeMs == null
               ? null
-              : () => onSeek(line.timeMs! - resolved.userOffsetMs),
+              : () => onSeek(
+                  lyricLinePlaybackPositionMs(
+                    lineTimeMs: line.timeMs!,
+                    lrcOffsetMs: resolved.parsed.offsetMs,
+                    userOffsetMs: resolved.userOffsetMs,
+                  ),
+                ),
           child: Padding(
             padding: const EdgeInsets.symmetric(vertical: 8),
             child: Column(

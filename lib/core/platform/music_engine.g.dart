@@ -580,6 +580,7 @@ class AudioAnalysisFrame {
     required this.mid,
     required this.treble,
     required this.beat,
+    required this.spectrum,
   });
 
   double level;
@@ -593,6 +594,10 @@ class AudioAnalysisFrame {
   /// Pulso corto detectado principalmente a partir de transitorios graves.
   double beat;
 
+  /// Energia de 24 bandas logaritmicas obtenida mediante FFT sobre el PCM.
+  /// Las bandas avanzan de graves a agudos y estan normalizadas entre 0 y 1.
+  List<double> spectrum;
+
   List<Object?> _toList() {
     return <Object?>[
       level,
@@ -600,6 +605,7 @@ class AudioAnalysisFrame {
       mid,
       treble,
       beat,
+      spectrum,
     ];
   }
 
@@ -614,6 +620,7 @@ class AudioAnalysisFrame {
       mid: result[2]! as double,
       treble: result[3]! as double,
       beat: result[4]! as double,
+      spectrum: (result[5]! as List<Object?>).cast<double>(),
     );
   }
 
@@ -626,7 +633,7 @@ class AudioAnalysisFrame {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(level, other.level) && _deepEquals(bass, other.bass) && _deepEquals(mid, other.mid) && _deepEquals(treble, other.treble) && _deepEquals(beat, other.beat);
+    return _deepEquals(level, other.level) && _deepEquals(bass, other.bass) && _deepEquals(mid, other.mid) && _deepEquals(treble, other.treble) && _deepEquals(beat, other.beat) && _deepEquals(spectrum, other.spectrum);
   }
 
   @override
@@ -635,7 +642,7 @@ class AudioAnalysisFrame {
 
   @override
   String toString() {
-    return 'AudioAnalysisFrame(level: $level, bass: $bass, mid: $mid, treble: $treble, beat: $beat)';
+    return 'AudioAnalysisFrame(level: $level, bass: $bass, mid: $mid, treble: $treble, beat: $beat, spectrum: $spectrum)';
   }
 }
 

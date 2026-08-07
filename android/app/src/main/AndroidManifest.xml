@@ -15,6 +15,10 @@
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE" />
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_MEDIA_PLAYBACK" />
     <uses-permission android:name="android.permission.WAKE_LOCK" />
+    <uses-permission android:name="android.permission.MODIFY_AUDIO_SETTINGS" />
+
+    <!-- Descarga de canciones en primer plano (motor heredado de NuvClip). -->
+    <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
     <!-- Notificacion multimedia (requerimiento seccion 9.2). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
@@ -68,6 +72,14 @@
                 <action android:name="android.media.browse.MediaBrowserService" />
             </intent-filter>
         </service>
+
+        <!-- Sostiene la descarga de canciones activa con su notificacion,
+             fuera del ciclo de vida de la Activity. Motor heredado de
+             C:\Repos\NuvClip. -->
+        <service
+            android:name="com.nuvtune.engine.downloader.DownloadForegroundService"
+            android:exported="false"
+            android:foregroundServiceType="dataSync" />
 
         <!-- Botones de auriculares y Bluetooth cuando la interfaz no esta viva
              (requerimiento seccion 9.2). -->

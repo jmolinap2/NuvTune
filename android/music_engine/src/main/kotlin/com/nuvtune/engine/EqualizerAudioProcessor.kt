@@ -6,9 +6,11 @@ import androidx.media3.common.audio.AudioProcessor
 import androidx.media3.common.audio.BaseAudioProcessor
 import androidx.media3.common.util.UnstableApi
 import java.nio.ByteBuffer
+import kotlin.math.ceil
 import kotlin.math.cos
 import kotlin.math.exp
 import kotlin.math.max
+import kotlin.math.min
 import kotlin.math.pow
 import kotlin.math.sin
 import kotlin.math.sqrt
@@ -93,6 +95,30 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
     private var smoothedMid = 0.0
     private var smoothedTreble = 0.0
 
+    /**
+     * Ventana espectral reutilizable. El PCM se reduce como maximo a 32 kHz,
+     * suficiente para representar hasta 16 kHz y mantener una ventana Hann de
+     * 2048 muestras economica incluso con archivos de alta resolucion.
+     */
+    private val spectrumWindow = DoubleArray(SPECTRUM_FFT_SIZE) { index ->
+        0.5 - 0.5 * cos(2.0 * Math.PI * index / (SPECTRUM_FFT_SIZE - 1))
+    }
+    private val spectrumRing = DoubleArray(SPECTRUM_FFT_SIZE)
+    private val spectrumReal = DoubleArray(SPECTRUM_FFT_SIZE)
+    private val spectrumImaginary = DoubleArray(SPECTRUM_FFT_SIZE)
+    private val spectrumRaw = DoubleArray(SPECTRUM_BAND_COUNT)
+    private val smoothedSpectrum = DoubleArray(SPECTRUM_BAND_COUNT)
+    private val spectrumBandStartBins = IntArray(SPECTRUM_BAND_COUNT)
+    private val spectrumBandEndBins = IntArray(SPECTRUM_BAND_COUNT)
+
+    private var spectrumSampleRate = 0
+    private var spectrumWriteIndex = 0
+    private var spectrumSampleCount = 0
+    private var spectrumResamplePhase = 0
+    private var spectrumResampleSum = 0.0
+    private var spectrumResampleCount = 0
+    private var spectrumPeak = SPECTRUM_INITIAL_PEAK
+
     fun updateSettings(newSettings: EqualizerSettings) {
         settings = newSettings
         rebuildCoefficients()
@@ -173,9 +199,9 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
     }
 
     /**
-     * Divide la senal en tres regiones tonales con dos filtros de paso bajo y
-     * calcula RMS por ventanas. No es una FFT de proposito general: es un
-     * medidor musical deliberadamente pequeno para no cargar el hilo de audio.
+     * Calcula el resumen RMS de tres regiones tonales y conserva una ventana
+     * remuestreada para el espectro FFT de 24 bandas. Todo se ejecuta sobre el
+     * duplicado del PCM, sin alterar la posicion ni la ruta de reproduccion.
      */
     private fun analyze(input: ByteBuffer) {
         val channels = configuredChannelCount
@@ -198,6 +224,8 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
                 }
             }
             mono /= channels
+
+            collectSpectrumSample(mono.toDouble(), sampleRate)
 
             analysisLowPass += (lowAlpha * (mono - analysisLowPass)).toFloat()
             analysisMidPass += (midAlpha * (mono - analysisMidPass)).toFloat()
@@ -247,6 +275,7 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
                 mid = smoothedMid,
                 treble = smoothedTreble,
                 beat = beatPulse,
+                spectrum = calculateSpectrum(),
             ),
         )
 
@@ -273,10 +302,195 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         smoothedBass = 0.0
         smoothedMid = 0.0
         smoothedTreble = 0.0
+        resetSpectrum()
     }
 
     private fun smooth(previous: Double, value: Double, amount: Double): Double =
         previous + (value - previous) * amount
+
+    /**
+     * Remuestreo por promedio de area. Evita alimentar la FFT con 96/192 kHz
+     * cuando el ultimo rango visible termina en 16 kHz y, a diferencia de
+     * descartar muestras, atenua el aliasing antes de reducir la frecuencia.
+     */
+    private fun collectSpectrumSample(sample: Double, sourceSampleRate: Int) {
+        val targetSampleRate = spectrumSampleRate
+        if (targetSampleRate <= 0 || sourceSampleRate <= 0) return
+
+        spectrumResampleSum += sample
+        spectrumResampleCount++
+        spectrumResamplePhase += targetSampleRate
+        if (spectrumResamplePhase < sourceSampleRate) return
+
+        spectrumResamplePhase -= sourceSampleRate
+        spectrumRing[spectrumWriteIndex] = spectrumResampleSum / spectrumResampleCount
+        spectrumWriteIndex = (spectrumWriteIndex + 1) % SPECTRUM_FFT_SIZE
+        spectrumSampleCount = min(spectrumSampleCount + 1, SPECTRUM_FFT_SIZE)
+        spectrumResampleSum = 0.0
+        spectrumResampleCount = 0
+    }
+
+    /**
+     * Devuelve una instantanea independiente porque Pigeon la serializa en el
+     * hilo principal despues de que el hilo de audio entrega el cuadro.
+     */
+    private fun calculateSpectrum(): List<Double> {
+        if (spectrumSampleCount < SPECTRUM_FFT_SIZE || spectrumSampleRate <= 0) {
+            return smoothedSpectrum.toList()
+        }
+
+        // writeIndex apunta a la muestra mas antigua una vez lleno el anillo.
+        for (index in 0 until SPECTRUM_FFT_SIZE) {
+            val sampleIndex = (spectrumWriteIndex + index) % SPECTRUM_FFT_SIZE
+            spectrumReal[index] = spectrumRing[sampleIndex] * spectrumWindow[index]
+            spectrumImaginary[index] = 0.0
+        }
+        fftRadix2(spectrumReal, spectrumImaginary)
+
+        var strongestBand = 0.0
+        val amplitudeScale = 4.0 / SPECTRUM_FFT_SIZE
+        for (band in 0 until SPECTRUM_BAND_COUNT) {
+            val start = spectrumBandStartBins[band]
+            val end = spectrumBandEndBins[band]
+            var maximumPower = 0.0
+            var powerSum = 0.0
+            for (bin in start until end) {
+                val real = spectrumReal[bin]
+                val imaginary = spectrumImaginary[bin]
+                val power = real * real + imaginary * imaginary
+                maximumPower = max(maximumPower, power)
+                powerSum += power
+            }
+            val binCount = max(1, end - start)
+            val meanPower = powerSum / binCount
+            // El pico conserva lineas tonales; la media estabiliza ruido y
+            // mezclas densas sin favorecer artificialmente bandas mas anchas.
+            val magnitude = sqrt(maximumPower * 0.72 + meanPower * 0.28) * amplitudeScale
+            spectrumRaw[band] = magnitude
+            strongestBand = max(strongestBand, magnitude)
+        }
+
+        spectrumPeak = max(strongestBand, spectrumPeak * SPECTRUM_PEAK_DECAY)
+            .coerceAtLeast(SPECTRUM_MINIMUM_PEAK)
+        val adaptiveGain = (SPECTRUM_TARGET_PEAK / spectrumPeak)
+            .coerceIn(1.0, SPECTRUM_MAX_GAIN)
+
+        for (band in 0 until SPECTRUM_BAND_COUNT) {
+            val raw = spectrumRaw[band]
+            val target = if (raw < SPECTRUM_NOISE_FLOOR) {
+                0.0
+            } else {
+                (raw * adaptiveGain).coerceIn(0.0, 1.0).pow(SPECTRUM_COMPRESSION)
+            }
+            val amount = if (target >= smoothedSpectrum[band]) {
+                SPECTRUM_ATTACK
+            } else {
+                SPECTRUM_RELEASE
+            }
+            smoothedSpectrum[band] = smooth(smoothedSpectrum[band], target, amount)
+                .coerceIn(0.0, 1.0)
+        }
+        return smoothedSpectrum.toList()
+    }
+
+    /** FFT iterativa radix-2 in-place, sin asignaciones por cuadro. */
+    private fun fftRadix2(real: DoubleArray, imaginary: DoubleArray) {
+        val size = real.size
+        var reversed = 0
+        for (index in 1 until size) {
+            var bit = size shr 1
+            while (reversed and bit != 0) {
+                reversed = reversed xor bit
+                bit = bit shr 1
+            }
+            reversed = reversed xor bit
+            if (index < reversed) {
+                val realValue = real[index]
+                real[index] = real[reversed]
+                real[reversed] = realValue
+                val imaginaryValue = imaginary[index]
+                imaginary[index] = imaginary[reversed]
+                imaginary[reversed] = imaginaryValue
+            }
+        }
+
+        var blockSize = 2
+        while (blockSize <= size) {
+            val angle = -2.0 * Math.PI / blockSize
+            val stepReal = cos(angle)
+            val stepImaginary = sin(angle)
+            val half = blockSize / 2
+            var blockStart = 0
+            while (blockStart < size) {
+                var twiddleReal = 1.0
+                var twiddleImaginary = 0.0
+                for (offset in 0 until half) {
+                    val evenIndex = blockStart + offset
+                    val oddIndex = evenIndex + half
+                    val oddReal = real[oddIndex] * twiddleReal -
+                        imaginary[oddIndex] * twiddleImaginary
+                    val oddImaginary = real[oddIndex] * twiddleImaginary +
+                        imaginary[oddIndex] * twiddleReal
+                    val evenReal = real[evenIndex]
+                    val evenImaginary = imaginary[evenIndex]
+
+                    real[evenIndex] = evenReal + oddReal
+                    imaginary[evenIndex] = evenImaginary + oddImaginary
+                    real[oddIndex] = evenReal - oddReal
+                    imaginary[oddIndex] = evenImaginary - oddImaginary
+
+                    val nextTwiddleReal = twiddleReal * stepReal -
+                        twiddleImaginary * stepImaginary
+                    twiddleImaginary = twiddleReal * stepImaginary +
+                        twiddleImaginary * stepReal
+                    twiddleReal = nextTwiddleReal
+                }
+                blockStart += blockSize
+            }
+            blockSize = blockSize shl 1
+        }
+    }
+
+    private fun resetSpectrum() {
+        spectrumRing.fill(0.0)
+        spectrumReal.fill(0.0)
+        spectrumImaginary.fill(0.0)
+        spectrumRaw.fill(0.0)
+        smoothedSpectrum.fill(0.0)
+        spectrumWriteIndex = 0
+        spectrumSampleCount = 0
+        spectrumResamplePhase = 0
+        spectrumResampleSum = 0.0
+        spectrumResampleCount = 0
+        spectrumPeak = SPECTRUM_INITIAL_PEAK
+
+        spectrumSampleRate = min(configuredSampleRate, SPECTRUM_TARGET_SAMPLE_RATE)
+            .coerceAtLeast(0)
+        if (spectrumSampleRate <= 0) {
+            spectrumBandStartBins.fill(0)
+            spectrumBandEndBins.fill(0)
+            return
+        }
+
+        val binWidth = spectrumSampleRate.toDouble() / SPECTRUM_FFT_SIZE
+        val highestFrequency = min(
+            SPECTRUM_MAX_FREQUENCY_HZ,
+            spectrumSampleRate * SPECTRUM_NYQUIST_MARGIN,
+        )
+        val frequencyRatio = highestFrequency / SPECTRUM_MIN_FREQUENCY_HZ
+        for (band in 0 until SPECTRUM_BAND_COUNT) {
+            val lowFrequency = SPECTRUM_MIN_FREQUENCY_HZ *
+                frequencyRatio.pow(band.toDouble() / SPECTRUM_BAND_COUNT)
+            val highFrequency = SPECTRUM_MIN_FREQUENCY_HZ *
+                frequencyRatio.pow((band + 1.0) / SPECTRUM_BAND_COUNT)
+            val start = ceil(lowFrequency / binWidth).toInt()
+                .coerceIn(1, SPECTRUM_FFT_SIZE / 2 - 1)
+            val end = ceil(highFrequency / binWidth).toInt()
+                .coerceIn(start + 1, SPECTRUM_FFT_SIZE / 2)
+            spectrumBandStartBins[band] = start
+            spectrumBandEndBins[band] = end
+        }
+    }
 
     private fun processPcm16(
         input: ByteBuffer,
@@ -437,6 +651,22 @@ internal class EqualizerAudioProcessor : BaseAudioProcessor() {
         private const val ANALYSIS_UPDATES_PER_SECOND = 24
         private const val LOW_CROSSOVER_HZ = 240.0
         private const val MID_CROSSOVER_HZ = 2600.0
+
+        private const val SPECTRUM_BAND_COUNT = 24
+        private const val SPECTRUM_FFT_SIZE = 2048
+        private const val SPECTRUM_TARGET_SAMPLE_RATE = 32000
+        private const val SPECTRUM_MIN_FREQUENCY_HZ = 40.0
+        private const val SPECTRUM_MAX_FREQUENCY_HZ = 16000.0
+        private const val SPECTRUM_NYQUIST_MARGIN = 0.48
+        private const val SPECTRUM_INITIAL_PEAK = 0.04
+        private const val SPECTRUM_MINIMUM_PEAK = 0.004
+        private const val SPECTRUM_TARGET_PEAK = 0.82
+        private const val SPECTRUM_MAX_GAIN = 36.0
+        private const val SPECTRUM_PEAK_DECAY = 0.975
+        private const val SPECTRUM_NOISE_FLOOR = 0.0006
+        private const val SPECTRUM_COMPRESSION = 0.72
+        private const val SPECTRUM_ATTACK = 0.58
+        private const val SPECTRUM_RELEASE = 0.2
 
         /** Bandas de octava ISO. */
         private val frequencies10 = doubleArrayOf(

@@ -41,7 +41,8 @@ class PipedStreams {
   /// El de mayor bitrate, que es el que conviene descargar.
   PipedAudioStream? get bestAudio {
     if (audioStreams.isEmpty) return null;
-    final sorted = [...audioStreams]..sort((a, b) => b.bitrate.compareTo(a.bitrate));
+    final sorted = [...audioStreams]
+      ..sort((a, b) => b.bitrate.compareTo(a.bitrate));
     return sorted.first;
   }
 }
@@ -53,8 +54,8 @@ class PipedStreams {
 /// de rendirse.
 class PipedClient {
   PipedClient({http.Client? httpClient, List<String>? instances})
-      : _http = httpClient ?? http.Client(),
-        _instances = instances ?? _defaultInstances;
+    : _http = httpClient ?? http.Client(),
+      _instances = instances ?? _defaultInstances;
 
   final http.Client _http;
   final List<String> _instances;
@@ -66,6 +67,42 @@ class PipedClient {
   ];
 
   static const _timeout = Duration(seconds: 8);
+  static const _youtubeTimeout = Duration(seconds: 10);
+  static const _youtubeResultsUrl = 'https://www.youtube.com/results';
+
+  static final _youtubeVideoIdPattern = RegExp(
+    r'"videoId"\s*:\s*"([A-Za-z0-9_-]{11})"',
+  );
+
+  /// Resuelve el video que se usa como fondo del reproductor.
+  ///
+  /// Esta busqueda es deliberadamente independiente de Piped: sus instancias
+  /// publicas suelen estar saturadas o fuera de linea y esperar sus tres
+  /// timeouts haria que el fondo aparezca demasiado tarde. La pagina publica
+  /// de resultados de YouTube no requiere una API key; si tampoco responde,
+  /// Piped queda como ultimo respaldo. [searchMany] y [streamsOf] siguen
+  /// usando exclusivamente Piped para el buscador y las descargas.
+  Future<String?> searchMusicVideo(String query) async {
+    final candidates = await searchMusicVideos(query, limit: 1);
+    return candidates.isEmpty ? null : candidates.first;
+  }
+
+  /// Devuelve varios candidatos ordenados para poder recuperarse cuando el
+  /// primer resultado no permite reproducción embebida o ya no está disponible.
+  Future<List<String>> searchMusicVideos(String query, {int limit = 5}) async {
+    if (limit <= 0) return const [];
+    final directResults = await _searchYouTube('$query official music video');
+    if (directResults.isNotEmpty) {
+      return directResults.take(limit).toList(growable: false);
+    }
+
+    final fallback = await searchMany(query);
+    return fallback
+        .map((result) => result.videoId)
+        .toSet()
+        .take(limit)
+        .toList(growable: false);
+  }
 
   /// Primer resultado de musica para `artista titulo`, o `null` si ninguna
   /// instancia respondio o no hubo resultados.
@@ -77,10 +114,9 @@ class PipedClient {
   /// Todos los resultados de musica para `query` (buscador de descargas).
   Future<List<PipedSearchResult>> searchMany(String query) async {
     for (final instance in _instances) {
-      final uri = Uri.parse('$instance/search').replace(queryParameters: {
-        'q': query,
-        'filter': 'music_songs',
-      });
+      final uri = Uri.parse(
+        '$instance/search',
+      ).replace(queryParameters: {'q': query, 'filter': 'music_songs'});
       try {
         final response = await _http.get(uri).timeout(_timeout);
         if (response.statusCode != 200) continue;
@@ -99,6 +135,42 @@ class PipedClient {
     return const [];
   }
 
+  Future<List<String>> _searchYouTube(String query) async {
+    final uri = Uri.parse(_youtubeResultsUrl).replace(
+      queryParameters: {'search_query': query, 'hl': 'en', 'persist_hl': '1'},
+    );
+
+    try {
+      final response = await _http
+          .get(
+            uri,
+            headers: const {
+              'Accept-Language': 'en-US,en;q=0.9',
+              'Cookie': 'CONSENT=YES+cb.20210328-17-p0.en+FX+410',
+              'Referer': 'https://www.youtube.com/',
+              'User-Agent':
+                  'Mozilla/5.0 (Linux; Android 14) AppleWebKit/537.36 '
+                  '(KHTML, like Gecko) Chrome/126.0 Mobile Safari/537.36',
+            },
+          )
+          .timeout(_youtubeTimeout);
+      if (response.statusCode != 200) return const [];
+
+      // El mismo video aparece en varios nodos del JSON incrustado. Un
+      // LinkedHashSet implicito (lista + set) conserva el orden real de los
+      // resultados y evita devolver IDs repetidos.
+      final seen = <String>{};
+      final videoIds = <String>[];
+      for (final match in _youtubeVideoIdPattern.allMatches(response.body)) {
+        final videoId = match.group(1);
+        if (videoId != null && seen.add(videoId)) videoIds.add(videoId);
+      }
+      return videoIds;
+    } catch (_) {
+      return const [];
+    }
+  }
+
   /// Flujos de audio disponibles para un video, usado por la descarga
   /// (feature "buscar y descargar canciones").
   Future<PipedStreams?> streamsOf(String videoId) async {
@@ -111,12 +183,14 @@ class PipedClient {
         if (decoded is! Map) continue;
         final audioStreams = (decoded['audioStreams'] as List? ?? const [])
             .whereType<Map>()
-            .map((stream) => PipedAudioStream(
-                  url: stream['url'] as String? ?? '',
-                  mimeType: stream['mimeType'] as String? ?? 'audio/mp4',
-                  bitrate: (stream['bitrate'] as num?)?.toInt() ?? 0,
-                  codec: stream['codec'] as String?,
-                ))
+            .map(
+              (stream) => PipedAudioStream(
+                url: stream['url'] as String? ?? '',
+                mimeType: stream['mimeType'] as String? ?? 'audio/mp4',
+                bitrate: (stream['bitrate'] as num?)?.toInt() ?? 0,
+                codec: stream['codec'] as String?,
+              ),
+            )
             .where((stream) => stream.url.isNotEmpty)
             .toList();
         return PipedStreams(

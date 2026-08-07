@@ -685,7 +685,12 @@ data class AudioAnalysisFrame (
   val mid: Double,
   val treble: Double,
   /** Pulso corto detectado principalmente a partir de transitorios graves. */
-  val beat: Double
+  val beat: Double,
+  /**
+   * Energia de 24 bandas logaritmicas obtenida mediante FFT sobre el PCM.
+   * Las bandas avanzan de graves a agudos y estan normalizadas entre 0 y 1.
+   */
+  val spectrum: List<Double>
 )
  {
   companion object {
@@ -695,7 +700,8 @@ data class AudioAnalysisFrame (
       val mid = pigeonVar_list[2] as Double
       val treble = pigeonVar_list[3] as Double
       val beat = pigeonVar_list[4] as Double
-      return AudioAnalysisFrame(level, bass, mid, treble, beat)
+      val spectrum = pigeonVar_list[5] as List<Double>
+      return AudioAnalysisFrame(level, bass, mid, treble, beat, spectrum)
     }
   }
   fun toList(): List<Any?> {
@@ -705,6 +711,7 @@ data class AudioAnalysisFrame (
       mid,
       treble,
       beat,
+      spectrum,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -715,7 +722,7 @@ data class AudioAnalysisFrame (
       return true
     }
     val other = other as AudioAnalysisFrame
-    return MusicEngineApiPigeonUtils.deepEquals(this.level, other.level) && MusicEngineApiPigeonUtils.deepEquals(this.bass, other.bass) && MusicEngineApiPigeonUtils.deepEquals(this.mid, other.mid) && MusicEngineApiPigeonUtils.deepEquals(this.treble, other.treble) && MusicEngineApiPigeonUtils.deepEquals(this.beat, other.beat)
+    return MusicEngineApiPigeonUtils.deepEquals(this.level, other.level) && MusicEngineApiPigeonUtils.deepEquals(this.bass, other.bass) && MusicEngineApiPigeonUtils.deepEquals(this.mid, other.mid) && MusicEngineApiPigeonUtils.deepEquals(this.treble, other.treble) && MusicEngineApiPigeonUtils.deepEquals(this.beat, other.beat) && MusicEngineApiPigeonUtils.deepEquals(this.spectrum, other.spectrum)
   }
 
   override fun hashCode(): Int {
@@ -725,10 +732,11 @@ data class AudioAnalysisFrame (
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.mid)
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.treble)
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.beat)
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.spectrum)
     return result
   }
   override fun toString(): String {
-    return "AudioAnalysisFrame(level=$level, bass=$bass, mid=$mid, treble=$treble, beat=$beat)"
+    return "AudioAnalysisFrame(level=$level, bass=$bass, mid=$mid, treble=$treble, beat=$beat, spectrum=$spectrum)"
   }
 }
 
@@ -3294,7 +3302,7 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
         }
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun positionChanged(positionMsArg: Long, durationMsArg: Long, bufferedMsArg: Long, callback: (Result<Unit>) -> Unit)
@@ -3311,7 +3319,7 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
         }
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
-      } 
+      }
     }
   }
   fun queueChanged(queueArg: List<Song>, currentIndexArg: Long, callback: (Result<Unit>) -> Unit)

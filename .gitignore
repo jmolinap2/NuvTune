@@ -42,3 +42,11 @@ Thumbs.db
 .env
 .env.*
 !.env.example
+
+# Capturas y volcados de UI de revision manual (solo en la raiz)
+/*.png
+/*.xml
+
+# Capturas de revision movidas fuera de la raiz: siguen siendo locales, no se
+# versionan desde ninguna ubicacion.
+/dev/

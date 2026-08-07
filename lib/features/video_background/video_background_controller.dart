@@ -1,3 +1,4 @@
+import 'package:flutter/foundation.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
@@ -6,10 +7,12 @@ import 'package:nuvtune/features/player/player_controller.dart';
 /// a pedir el video cuando cambia otra parte del estado de reproduccion (por
 /// ejemplo la cola), ya que los records de Dart comparan por valor.
 final _currentSongKeyProvider = Provider<(String, String)?>((ref) {
-  return ref.watch(playbackProvider.select((state) {
-    final song = state.currentSong;
-    return song == null ? null : (song.artist, song.title);
-  }));
+  return ref.watch(
+    playbackProvider.select((state) {
+      final song = state.currentSong;
+      return song == null ? null : (song.artist, song.title);
+    }),
+  );
 });
 
 /// Video de fondo para la cancion actual (feature "video de fondo en
@@ -17,16 +20,31 @@ final _currentSongKeyProvider = Provider<(String, String)?>((ref) {
 /// moviles) y hay una cancion sonando.
 final videoBackgroundIdProvider = FutureProvider<String?>((ref) async {
   final settings = await ref.watch(settingsProvider.future);
-  if (!settings.videoBackgroundEnabled) return null;
+  if (!settings.videoBackgroundEnabled) {
+    debugPrint('NuvTuneVideo: desactivado en ajustes');
+    return null;
+  }
 
   final isOnWifi = await ref.watch(connectivityIsOnWifiProvider.future);
-  if (!isOnWifi) return null;
+  if (!isOnWifi) {
+    debugPrint('NuvTuneVideo: sin Wi-Fi');
+    return null;
+  }
 
   final key = ref.watch(_currentSongKeyProvider);
-  if (key == null) return null;
+  if (key == null) {
+    debugPrint('NuvTuneVideo: sin canción activa');
+    return null;
+  }
 
   final song = ref.read(playbackProvider).currentSong;
   if (song == null) return null;
 
-  return ref.watch(videoRepositoryProvider).videoIdFor(song);
+  final videoId = await ref.watch(videoRepositoryProvider).videoIdFor(song);
+  debugPrint(
+    videoId == null
+        ? 'NuvTuneVideo: no se encontró candidato'
+        : 'NuvTuneVideo: candidato resuelto',
+  );
+  return videoId;
 });

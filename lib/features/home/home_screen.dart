@@ -80,7 +80,9 @@ class HomeScreen extends ConsumerWidget {
 
     switch (section) {
       case HomeSection.continueListening:
-        final current = ref.watch(playbackProvider).currentSong;
+        final current = ref.watch(
+          playbackProvider.select((state) => state.currentSong),
+        );
         if (current == null) return const SizedBox.shrink();
         return _ContinueCard(song: current);
 
@@ -229,8 +231,9 @@ class _HomeBody extends ConsumerWidget {
     // Una seccion se considera con contenido si su fuente tiene elementos.
     final populated = sections.where((section) {
       return switch (section) {
-        HomeSection.continueListening =>
-          ref.watch(playbackProvider).currentSong != null,
+        HomeSection.continueListening => ref.watch(
+          playbackProvider.select((state) => state.currentSong != null),
+        ),
         HomeSection.favorites => favorites.isNotEmpty,
         HomeSection.recentlyPlayed => playCounts.isNotEmpty,
         HomeSection.recentAlbums => repository.recentAlbums().isNotEmpty,
@@ -422,7 +425,7 @@ class _ContinueCard extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final state = ref.watch(playbackProvider);
+    final isPlaying = ref.watch(playbackProvider.select((s) => s.isPlaying));
     final scheme = Theme.of(context).colorScheme;
 
     return Padding(
@@ -473,7 +476,7 @@ class _ContinueCard extends ConsumerWidget {
                 IconButton.filled(
                   onPressed: ref.read(playbackProvider.notifier).togglePlayPause,
                   icon: Icon(
-                    state.isPlaying
+                    isPlaying
                         ? Icons.pause_rounded
                         : Icons.play_arrow_rounded,
                   ),

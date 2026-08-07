@@ -3,6 +3,7 @@ import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/date_symbol_data_local.dart';
 import 'package:nuvtune/app/app.dart';
+import 'package:nuvtune/app/system_ui.dart';
 
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
@@ -17,14 +18,7 @@ Future<void> main() async {
   ]);
 
   // Interfaz oscura de borde a borde (requerimiento seccion 12).
-  SystemChrome.setSystemUIOverlayStyle(
-    const SystemUiOverlayStyle(
-      statusBarColor: Colors.transparent,
-      statusBarIconBrightness: Brightness.light,
-      systemNavigationBarColor: Colors.transparent,
-      systemNavigationBarIconBrightness: Brightness.light,
-    ),
-  );
+  await useDefaultSystemUi();
 
   runApp(const ProviderScope(child: NuvTuneApp()));
 }

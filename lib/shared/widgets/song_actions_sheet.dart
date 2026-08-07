@@ -258,6 +258,7 @@ class _SongActionsSheet extends ConsumerWidget {
   /// El requerimiento seccion 16 exige diferenciar quitar de la biblioteca de
   /// eliminar del dispositivo; esta accion borra el archivo y lo advierte.
   void _confirmDelete(BuildContext context, WidgetRef ref) {
+    final messenger = ScaffoldMessenger.of(context);
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -279,8 +280,22 @@ class _SongActionsSheet extends ConsumerWidget {
               Navigator.of(dialogContext).pop();
               final result =
                   await ref.read(engineProvider).api.deleteSongFile(song.id);
-              if (result.outcome == WriteOutcome.success) {
-                await ref.read(libraryProvider.notifier).scan();
+              switch (result.outcome) {
+                case WriteOutcome.success:
+                  await ref.read(libraryProvider.notifier).scan();
+                case WriteOutcome.deniedByUser:
+                  // El usuario cancelo el dialogo del sistema: no es un error.
+                  break;
+                case WriteOutcome.needsUserConsent:
+                case WriteOutcome.unsupportedFormat:
+                case WriteOutcome.integrityCheckFailed:
+                  messenger.showSnackBar(
+                    SnackBar(
+                      content: Text(
+                        result.message ?? 'No se pudo eliminar el archivo',
+                      ),
+                    ),
+                  );
               }
             },
             child: const Text(AppStrings.delete),

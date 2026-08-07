@@ -207,12 +207,12 @@ class _SongsTabState extends ConsumerState<_SongsTab>
   Widget build(BuildContext context) {
     super.build(context);
 
-    final library = ref.watch(libraryProvider);
+    final librarySongs = ref.watch(libraryProvider.select((s) => s.songs));
     final favorites = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
     final playCounts = ref.watch(playCountsProvider).valueOrNull ?? const {};
 
     final songs = ref.read(libraryRepositoryProvider).query(
-          source: library.songs,
+          source: librarySongs,
           search: _search,
           sort: _sort,
           direction: _direction,
@@ -301,7 +301,7 @@ class _AlbumsTabState extends ConsumerState<_AlbumsTab>
   Widget build(BuildContext context) {
     super.build(context);
 
-    ref.watch(libraryProvider);
+    ref.watch(libraryProvider.select((s) => s.songs));
     final albums = ref.read(libraryRepositoryProvider).albums(search: _search);
 
     return Column(
@@ -406,7 +406,7 @@ class _GroupsTabState extends ConsumerState<_GroupsTab>
   Widget build(BuildContext context) {
     super.build(context);
 
-    ref.watch(libraryProvider);
+    ref.watch(libraryProvider.select((s) => s.songs));
     final groups = resolveGroups(
       ref.read(libraryRepositoryProvider),
       widget.kind,

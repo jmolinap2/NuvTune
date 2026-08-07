@@ -1,9 +1,13 @@
 package com.nuvtune.app
 
 import android.content.Intent
+import android.media.AudioManager
 import com.nuvtune.engine.FlutterMusicPlugin
+import com.nuvtune.engine.downloader.DownloadEnginePlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
+import io.flutter.plugin.common.MethodChannel
+import kotlin.math.roundToInt
 
 /**
  * Aloja la interfaz de Flutter y el puente con el motor.
@@ -14,7 +18,12 @@ import io.flutter.embedding.engine.FlutterEngine
  */
 class MainActivity : FlutterActivity() {
 
+    companion object {
+        private const val SYSTEM_VOLUME_CHANNEL = "com.nuvtune.app/system_volume"
+    }
+
     private var plugin: FlutterMusicPlugin? = null
+    private var systemVolumeChannel: MethodChannel? = null
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
@@ -25,9 +34,46 @@ class MainActivity : FlutterActivity() {
         created.activity = this
         created.attach()
         plugin = created
+
+        // Motor de descarga (busqueda + descarga de audio): a diferencia del
+        // motor de reproduccion, no necesita resultados de actividad, asi que
+        // se registra por el mecanismo estandar de plugins de Flutter.
+        flutterEngine.plugins.add(DownloadEnginePlugin())
+
+        systemVolumeChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            SYSTEM_VOLUME_CHANNEL,
+        ).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                val audioManager = getSystemService(AUDIO_SERVICE) as AudioManager
+                val maximum = audioManager.getStreamMaxVolume(AudioManager.STREAM_MUSIC)
+                    .coerceAtLeast(1)
+                when (call.method) {
+                    "getMusicVolume" -> {
+                        val current = audioManager.getStreamVolume(AudioManager.STREAM_MUSIC)
+                        result.success(current.toDouble() / maximum)
+                    }
+                    "setMusicVolume" -> {
+                        val requested = call.argument<Number>("volume")?.toDouble()
+                        if (requested == null || !requested.isFinite()) {
+                            result.error("invalid_volume", "El volumen debe estar entre 0 y 1", null)
+                            return@setMethodCallHandler
+                        }
+                        val target = (requested.coerceIn(0.0, 1.0) * maximum)
+                            .roundToInt()
+                            .coerceIn(0, maximum)
+                        audioManager.setStreamVolume(AudioManager.STREAM_MUSIC, target, 0)
+                        result.success(target.toDouble() / maximum)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        systemVolumeChannel?.setMethodCallHandler(null)
+        systemVolumeChannel = null
         plugin?.let {
             it.activity = null
             it.detach()

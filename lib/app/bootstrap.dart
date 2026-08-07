@@ -1,6 +1,9 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/permissions/permission_service.dart';
 import 'package:nuvtune/core/providers.dart';
+import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/library/library_controller.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/settings/widgets_screen.dart';
@@ -10,15 +13,13 @@ enum BootstrapStage {
   requestingPermission,
   permissionDenied,
   permissionPermanentlyDenied,
-  scanning,
   ready,
 }
 
 class BootstrapState {
-  const BootstrapState({required this.stage, this.songCount = 0});
+  const BootstrapState({required this.stage});
 
   final BootstrapStage stage;
-  final int songCount;
 
   bool get isReady => stage == BootstrapStage.ready;
 
@@ -31,8 +32,15 @@ final bootstrapProvider =
     NotifierProvider<BootstrapController, BootstrapState>(BootstrapController.new);
 
 /// Arranque de la aplicacion, en el orden en que las cosas dependen unas de
-/// otras: permiso, motor, ajustes de audio, biblioteca y por ultimo la cola
-/// guardada, que necesita la biblioteca ya cargada para resolver las canciones.
+/// otras: permiso, motor, ajustes de audio y por ultimo biblioteca y cola
+/// guardada.
+///
+/// El escaneo de biblioteca (y la restauracion de cola, que depende de el) ya
+/// no bloquean la primera pantalla: con bibliotecas grandes, esperarlos hacia
+/// sentir el arranque lento aunque el motor y los permisos ya estuvieran
+/// listos. En vez de eso, la app pasa a `ready` en cuanto el motor esta
+/// inicializado y el resto sigue en segundo plano; Inicio y Biblioteca ya
+/// muestran `libraryProvider.isScanning` de forma reactiva mientras tanto.
 class BootstrapController extends Notifier<BootstrapState> {
   @override
   BootstrapState build() =>
@@ -64,8 +72,6 @@ class BootstrapController extends Notifier<BootstrapState> {
     await ref.read(engineProvider).initialize();
     await ref.read(playbackProvider.notifier).pushAudioSettings();
 
-    state = const BootstrapState(stage: BootstrapStage.scanning);
-
     final settings = await ref.read(settingsRepositoryProvider).settings();
 
     // El motor guarda su propia copia de la configuracion del widget para poder
@@ -73,6 +79,14 @@ class BootstrapController extends Notifier<BootstrapState> {
     // si la base de datos se restauro desde una copia de seguridad.
     ref.read(engineProvider).api.setWidgetConfig(widgetConfigOf(settings));
 
+    state = const BootstrapState(stage: BootstrapStage.ready);
+    unawaited(_finishLoadingLibrary(settings));
+    // Extrae los binarios de yt-dlp/ffmpeg la primera vez (costoso); no debe
+    // demorar el arranque, y solo hace falta antes de buscar/descargar algo.
+    unawaited(ref.read(downloadEngineProvider).initialize());
+  }
+
+  Future<void> _finishLoadingLibrary(AppSetting settings) async {
     final library = ref.read(libraryProvider.notifier);
     if (settings.scanOnStart || settings.lastScanAt == null) {
       await library.scan();
@@ -83,11 +97,6 @@ class BootstrapController extends Notifier<BootstrapState> {
     if (settings.restoreQueueOnStart) {
       await ref.read(playbackProvider.notifier).restoreSavedQueue();
     }
-
-    state = BootstrapState(
-      stage: BootstrapStage.ready,
-      songCount: ref.read(libraryProvider).songs.length,
-    );
   }
 
   /// Reintento tras conceder el permiso desde los ajustes del sistema.

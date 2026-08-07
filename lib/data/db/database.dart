@@ -258,23 +258,6 @@ class SongVideoIds extends Table {
   Set<Column<Object>> get primaryKey => {songKey};
 }
 
-/// Canciones descargadas desde internet. La ruta es local a la app
-/// (getApplicationDocumentsDirectory/downloads/); no aparecen en MediaStore.
-class DownloadedSongs extends Table {
-  IntColumn get id => integer().autoIncrement()();
-  TextColumn get title => text()();
-  TextColumn get artist => text()();
-  TextColumn get album => text().nullable()();
-  IntColumn get durationMs => integer().withDefault(const Constant(0))();
-  TextColumn get filePath => text()();
-  TextColumn get mimeType => text().withDefault(const Constant('audio/mp4'))();
-  IntColumn get sizeBytes => integer().withDefault(const Constant(0))();
-  TextColumn get sourceVideoId => text().nullable()();
-  TextColumn get coverPath => text().nullable()();
-  DateTimeColumn get downloadedAt =>
-      dateTime().withDefault(currentDateAndTime)();
-}
-
 /// Preferencias de la aplicacion. Una sola fila con [id] fijo en 0; columnas
 /// tipadas en lugar de pares clave/valor para que el compilador valide cada
 /// ajuste.
@@ -374,9 +357,20 @@ class AppSettings extends Table {
   BoolColumn get videoBackgroundEnabled =>
       boolean().withDefault(const Constant(true))();
 
-  /// Estilo del visualizador reactivo cuando una cancion no tiene portada.
+  /// Estilo del visualizador reactivo del reproductor.
   /// Cero es automatico; los demas valores siguen VisualizerStyle.values.
   IntColumn get playerVisualizerStyle =>
+      integer().withDefault(const Constant(0))();
+
+  /// Escenario principal del reproductor. Los índices corresponden a
+  /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
+  /// disponible mediante Wi-Fi.
+  IntColumn get playerVisualScene => integer().withDefault(const Constant(0))();
+
+  /// Relación de aspecto del contenedor de la escena visual en pantalla
+  /// completa. Los índices corresponden a PlayerSceneAspectRatio; cero es
+  /// pantalla completa (9:16, comportamiento previo a esta columna).
+  IntColumn get playerSceneAspectRatio =>
       integer().withDefault(const Constant(0))();
 
   @override
@@ -404,7 +398,6 @@ class AppSettings extends Table {
     LyricsOverrides,
     AppSettings,
     SongVideoIds,
-    DownloadedSongs,
   ],
 )
 class NuvTuneDatabase extends _$NuvTuneDatabase {
@@ -413,7 +406,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 6;
+  int get schemaVersion => 10;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -423,6 +416,14 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   /// - Version 4: configuracion del widget de inicio.
   /// - Version 5: video de fondo, descargas online y modo regalo de listas.
   /// - Version 6: estilo preferido del visualizador del reproductor.
+  /// - Version 8: escenario persistente (video, visualizador, video + letras,
+  ///   letras o portada).
+  /// - Version 9: relacion de aspecto del contenedor de la escena en pantalla
+  ///   completa.
+  /// - Version 10: se retira `downloaded_songs` (tabla propia fuera de
+  ///   MediaStore). El motor de descarga heredado de NuvClip escribe
+  ///   directamente en MediaStore.Audio, asi que una descarga se vuelve una
+  ///   cancion normal de la biblioteca sin necesitar esta tabla aparte.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -469,7 +470,10 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
       }
       if (from < 5) {
         await migrator.createTable(songVideoIds);
-        await migrator.createTable(downloadedSongs);
+        // `downloaded_songs` se creaba aqui; se retiro en la version 10 (mas
+        // abajo, `deleteTable` con `DROP TABLE IF EXISTS` cubre tanto a quien
+        // la llegue a tener como a quien salte directo de una version previa
+        // a la 5 hasta la actual sin haberla tenido nunca).
         await migrator.addColumn(playlists, playlists.giftMode);
         await migrator.addColumn(playlists, playlists.dedication);
         await migrator.addColumn(playlists, playlists.giftFrom);
@@ -485,6 +489,18 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
           appSettings,
           appSettings.playerVisualizerStyle,
         );
+      }
+      if (from < 8) {
+        await migrator.addColumn(appSettings, appSettings.playerVisualScene);
+      }
+      if (from < 9) {
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerSceneAspectRatio,
+        );
+      }
+      if (from < 10) {
+        await migrator.deleteTable('downloaded_songs');
       }
     },
   );

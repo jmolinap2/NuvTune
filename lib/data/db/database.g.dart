@@ -6198,6 +6198,29 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _playerVisualSceneMeta = const VerificationMeta(
+    'playerVisualScene',
+  );
+  @override
+  late final GeneratedColumn<int> playerVisualScene = GeneratedColumn<int>(
+    'player_visual_scene',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
+  static const VerificationMeta _playerSceneAspectRatioMeta =
+      const VerificationMeta('playerSceneAspectRatio');
+  @override
+  late final GeneratedColumn<int> playerSceneAspectRatio = GeneratedColumn<int>(
+    'player_scene_aspect_ratio',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6240,6 +6263,8 @@ class $AppSettingsTable extends AppSettings
     librarySortJson,
     videoBackgroundEnabled,
     playerVisualizerStyle,
+    playerVisualScene,
+    playerSceneAspectRatio,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6598,6 +6623,24 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('player_visual_scene')) {
+      context.handle(
+        _playerVisualSceneMeta,
+        playerVisualScene.isAcceptableOrUnknown(
+          data['player_visual_scene']!,
+          _playerVisualSceneMeta,
+        ),
+      );
+    }
+    if (data.containsKey('player_scene_aspect_ratio')) {
+      context.handle(
+        _playerSceneAspectRatioMeta,
+        playerSceneAspectRatio.isAcceptableOrUnknown(
+          data['player_scene_aspect_ratio']!,
+          _playerSceneAspectRatioMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6767,6 +6810,14 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.int,
         data['${effectivePrefix}player_visualizer_style'],
       )!,
+      playerVisualScene: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}player_visual_scene'],
+      )!,
+      playerSceneAspectRatio: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}player_scene_aspect_ratio'],
+      )!,
     );
   }
 
@@ -6831,9 +6882,19 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// Requiere Wi-Fi (nunca datos moviles) para no gastar el plan del usuario.
   final bool videoBackgroundEnabled;
 
-  /// Estilo del visualizador reactivo cuando una cancion no tiene portada.
+  /// Estilo del visualizador reactivo del reproductor.
   /// Cero es automatico; los demas valores siguen VisualizerStyle.values.
   final int playerVisualizerStyle;
+
+  /// Escenario principal del reproductor. Los índices corresponden a
+  /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
+  /// disponible mediante Wi-Fi.
+  final int playerVisualScene;
+
+  /// Relación de aspecto del contenedor de la escena visual en pantalla
+  /// completa. Los índices corresponden a PlayerSceneAspectRatio; cero es
+  /// pantalla completa (9:16, comportamiento previo a esta columna).
+  final int playerSceneAspectRatio;
   const AppSetting({
     required this.id,
     required this.scanOnStart,
@@ -6875,6 +6936,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.librarySortJson,
     required this.videoBackgroundEnabled,
     required this.playerVisualizerStyle,
+    required this.playerVisualScene,
+    required this.playerSceneAspectRatio,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6921,6 +6984,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['library_sort_json'] = Variable<String>(librarySortJson);
     map['video_background_enabled'] = Variable<bool>(videoBackgroundEnabled);
     map['player_visualizer_style'] = Variable<int>(playerVisualizerStyle);
+    map['player_visual_scene'] = Variable<int>(playerVisualScene);
+    map['player_scene_aspect_ratio'] = Variable<int>(playerSceneAspectRatio);
     return map;
   }
 
@@ -6968,6 +7033,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       librarySortJson: Value(librarySortJson),
       videoBackgroundEnabled: Value(videoBackgroundEnabled),
       playerVisualizerStyle: Value(playerVisualizerStyle),
+      playerVisualScene: Value(playerVisualScene),
+      playerSceneAspectRatio: Value(playerSceneAspectRatio),
     );
   }
 
@@ -7033,6 +7100,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerVisualizerStyle: serializer.fromJson<int>(
         json['playerVisualizerStyle'],
       ),
+      playerVisualScene: serializer.fromJson<int>(json['playerVisualScene']),
+      playerSceneAspectRatio: serializer.fromJson<int>(
+        json['playerSceneAspectRatio'],
+      ),
     );
   }
   @override
@@ -7081,6 +7152,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'librarySortJson': serializer.toJson<String>(librarySortJson),
       'videoBackgroundEnabled': serializer.toJson<bool>(videoBackgroundEnabled),
       'playerVisualizerStyle': serializer.toJson<int>(playerVisualizerStyle),
+      'playerVisualScene': serializer.toJson<int>(playerVisualScene),
+      'playerSceneAspectRatio': serializer.toJson<int>(playerSceneAspectRatio),
     };
   }
 
@@ -7125,6 +7198,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? librarySortJson,
     bool? videoBackgroundEnabled,
     int? playerVisualizerStyle,
+    int? playerVisualScene,
+    int? playerSceneAspectRatio,
   }) => AppSetting(
     id: id ?? this.id,
     scanOnStart: scanOnStart ?? this.scanOnStart,
@@ -7168,6 +7243,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     videoBackgroundEnabled:
         videoBackgroundEnabled ?? this.videoBackgroundEnabled,
     playerVisualizerStyle: playerVisualizerStyle ?? this.playerVisualizerStyle,
+    playerVisualScene: playerVisualScene ?? this.playerVisualScene,
+    playerSceneAspectRatio:
+        playerSceneAspectRatio ?? this.playerSceneAspectRatio,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -7287,6 +7365,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerVisualizerStyle: data.playerVisualizerStyle.present
           ? data.playerVisualizerStyle.value
           : this.playerVisualizerStyle,
+      playerVisualScene: data.playerVisualScene.present
+          ? data.playerVisualScene.value
+          : this.playerVisualScene,
+      playerSceneAspectRatio: data.playerSceneAspectRatio.present
+          ? data.playerSceneAspectRatio.value
+          : this.playerSceneAspectRatio,
     );
   }
 
@@ -7332,7 +7416,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('homeSectionsJson: $homeSectionsJson, ')
           ..write('librarySortJson: $librarySortJson, ')
           ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
-          ..write('playerVisualizerStyle: $playerVisualizerStyle')
+          ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
+          ..write('playerVisualScene: $playerVisualScene, ')
+          ..write('playerSceneAspectRatio: $playerSceneAspectRatio')
           ..write(')'))
         .toString();
   }
@@ -7379,6 +7465,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     librarySortJson,
     videoBackgroundEnabled,
     playerVisualizerStyle,
+    playerVisualScene,
+    playerSceneAspectRatio,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7423,7 +7511,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.homeSectionsJson == this.homeSectionsJson &&
           other.librarySortJson == this.librarySortJson &&
           other.videoBackgroundEnabled == this.videoBackgroundEnabled &&
-          other.playerVisualizerStyle == this.playerVisualizerStyle);
+          other.playerVisualizerStyle == this.playerVisualizerStyle &&
+          other.playerVisualScene == this.playerVisualScene &&
+          other.playerSceneAspectRatio == this.playerSceneAspectRatio);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -7467,6 +7557,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> librarySortJson;
   final Value<bool> videoBackgroundEnabled;
   final Value<int> playerVisualizerStyle;
+  final Value<int> playerVisualScene;
+  final Value<int> playerSceneAspectRatio;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.scanOnStart = const Value.absent(),
@@ -7508,6 +7600,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.librarySortJson = const Value.absent(),
     this.videoBackgroundEnabled = const Value.absent(),
     this.playerVisualizerStyle = const Value.absent(),
+    this.playerVisualScene = const Value.absent(),
+    this.playerSceneAspectRatio = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7550,6 +7644,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.librarySortJson = const Value.absent(),
     this.videoBackgroundEnabled = const Value.absent(),
     this.playerVisualizerStyle = const Value.absent(),
+    this.playerVisualScene = const Value.absent(),
+    this.playerSceneAspectRatio = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -7592,6 +7688,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? librarySortJson,
     Expression<bool>? videoBackgroundEnabled,
     Expression<int>? playerVisualizerStyle,
+    Expression<int>? playerVisualScene,
+    Expression<int>? playerSceneAspectRatio,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7645,6 +7743,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'video_background_enabled': videoBackgroundEnabled,
       if (playerVisualizerStyle != null)
         'player_visualizer_style': playerVisualizerStyle,
+      if (playerVisualScene != null) 'player_visual_scene': playerVisualScene,
+      if (playerSceneAspectRatio != null)
+        'player_scene_aspect_ratio': playerSceneAspectRatio,
     });
   }
 
@@ -7689,6 +7790,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? librarySortJson,
     Value<bool>? videoBackgroundEnabled,
     Value<int>? playerVisualizerStyle,
+    Value<int>? playerVisualScene,
+    Value<int>? playerSceneAspectRatio,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -7737,6 +7840,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           videoBackgroundEnabled ?? this.videoBackgroundEnabled,
       playerVisualizerStyle:
           playerVisualizerStyle ?? this.playerVisualizerStyle,
+      playerVisualScene: playerVisualScene ?? this.playerVisualScene,
+      playerSceneAspectRatio:
+          playerSceneAspectRatio ?? this.playerSceneAspectRatio,
     );
   }
 
@@ -7875,6 +7981,14 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         playerVisualizerStyle.value,
       );
     }
+    if (playerVisualScene.present) {
+      map['player_visual_scene'] = Variable<int>(playerVisualScene.value);
+    }
+    if (playerSceneAspectRatio.present) {
+      map['player_scene_aspect_ratio'] = Variable<int>(
+        playerSceneAspectRatio.value,
+      );
+    }
     return map;
   }
 
@@ -7920,7 +8034,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('homeSectionsJson: $homeSectionsJson, ')
           ..write('librarySortJson: $librarySortJson, ')
           ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
-          ..write('playerVisualizerStyle: $playerVisualizerStyle')
+          ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
+          ..write('playerVisualScene: $playerVisualScene, ')
+          ..write('playerSceneAspectRatio: $playerSceneAspectRatio')
           ..write(')'))
         .toString();
   }
@@ -8238,655 +8354,6 @@ class SongVideoIdsCompanion extends UpdateCompanion<SongVideoId> {
   }
 }
 
-class $DownloadedSongsTable extends DownloadedSongs
-    with TableInfo<$DownloadedSongsTable, DownloadedSong> {
-  @override
-  final GeneratedDatabase attachedDatabase;
-  final String? _alias;
-  $DownloadedSongsTable(this.attachedDatabase, [this._alias]);
-  static const VerificationMeta _idMeta = const VerificationMeta('id');
-  @override
-  late final GeneratedColumn<int> id = GeneratedColumn<int>(
-    'id',
-    aliasedName,
-    false,
-    hasAutoIncrement: true,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultConstraints: GeneratedColumn.constraintIsAlways(
-      'PRIMARY KEY AUTOINCREMENT',
-    ),
-  );
-  static const VerificationMeta _titleMeta = const VerificationMeta('title');
-  @override
-  late final GeneratedColumn<String> title = GeneratedColumn<String>(
-    'title',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _artistMeta = const VerificationMeta('artist');
-  @override
-  late final GeneratedColumn<String> artist = GeneratedColumn<String>(
-    'artist',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _albumMeta = const VerificationMeta('album');
-  @override
-  late final GeneratedColumn<String> album = GeneratedColumn<String>(
-    'album',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _durationMsMeta = const VerificationMeta(
-    'durationMs',
-  );
-  @override
-  late final GeneratedColumn<int> durationMs = GeneratedColumn<int>(
-    'duration_ms',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _filePathMeta = const VerificationMeta(
-    'filePath',
-  );
-  @override
-  late final GeneratedColumn<String> filePath = GeneratedColumn<String>(
-    'file_path',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: true,
-  );
-  static const VerificationMeta _mimeTypeMeta = const VerificationMeta(
-    'mimeType',
-  );
-  @override
-  late final GeneratedColumn<String> mimeType = GeneratedColumn<String>(
-    'mime_type',
-    aliasedName,
-    false,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-    defaultValue: const Constant('audio/mp4'),
-  );
-  static const VerificationMeta _sizeBytesMeta = const VerificationMeta(
-    'sizeBytes',
-  );
-  @override
-  late final GeneratedColumn<int> sizeBytes = GeneratedColumn<int>(
-    'size_bytes',
-    aliasedName,
-    false,
-    type: DriftSqlType.int,
-    requiredDuringInsert: false,
-    defaultValue: const Constant(0),
-  );
-  static const VerificationMeta _sourceVideoIdMeta = const VerificationMeta(
-    'sourceVideoId',
-  );
-  @override
-  late final GeneratedColumn<String> sourceVideoId = GeneratedColumn<String>(
-    'source_video_id',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _coverPathMeta = const VerificationMeta(
-    'coverPath',
-  );
-  @override
-  late final GeneratedColumn<String> coverPath = GeneratedColumn<String>(
-    'cover_path',
-    aliasedName,
-    true,
-    type: DriftSqlType.string,
-    requiredDuringInsert: false,
-  );
-  static const VerificationMeta _downloadedAtMeta = const VerificationMeta(
-    'downloadedAt',
-  );
-  @override
-  late final GeneratedColumn<DateTime> downloadedAt = GeneratedColumn<DateTime>(
-    'downloaded_at',
-    aliasedName,
-    false,
-    type: DriftSqlType.dateTime,
-    requiredDuringInsert: false,
-    defaultValue: currentDateAndTime,
-  );
-  @override
-  List<GeneratedColumn> get $columns => [
-    id,
-    title,
-    artist,
-    album,
-    durationMs,
-    filePath,
-    mimeType,
-    sizeBytes,
-    sourceVideoId,
-    coverPath,
-    downloadedAt,
-  ];
-  @override
-  String get aliasedName => _alias ?? actualTableName;
-  @override
-  String get actualTableName => $name;
-  static const String $name = 'downloaded_songs';
-  @override
-  VerificationContext validateIntegrity(
-    Insertable<DownloadedSong> instance, {
-    bool isInserting = false,
-  }) {
-    final context = VerificationContext();
-    final data = instance.toColumns(true);
-    if (data.containsKey('id')) {
-      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
-    }
-    if (data.containsKey('title')) {
-      context.handle(
-        _titleMeta,
-        title.isAcceptableOrUnknown(data['title']!, _titleMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_titleMeta);
-    }
-    if (data.containsKey('artist')) {
-      context.handle(
-        _artistMeta,
-        artist.isAcceptableOrUnknown(data['artist']!, _artistMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_artistMeta);
-    }
-    if (data.containsKey('album')) {
-      context.handle(
-        _albumMeta,
-        album.isAcceptableOrUnknown(data['album']!, _albumMeta),
-      );
-    }
-    if (data.containsKey('duration_ms')) {
-      context.handle(
-        _durationMsMeta,
-        durationMs.isAcceptableOrUnknown(data['duration_ms']!, _durationMsMeta),
-      );
-    }
-    if (data.containsKey('file_path')) {
-      context.handle(
-        _filePathMeta,
-        filePath.isAcceptableOrUnknown(data['file_path']!, _filePathMeta),
-      );
-    } else if (isInserting) {
-      context.missing(_filePathMeta);
-    }
-    if (data.containsKey('mime_type')) {
-      context.handle(
-        _mimeTypeMeta,
-        mimeType.isAcceptableOrUnknown(data['mime_type']!, _mimeTypeMeta),
-      );
-    }
-    if (data.containsKey('size_bytes')) {
-      context.handle(
-        _sizeBytesMeta,
-        sizeBytes.isAcceptableOrUnknown(data['size_bytes']!, _sizeBytesMeta),
-      );
-    }
-    if (data.containsKey('source_video_id')) {
-      context.handle(
-        _sourceVideoIdMeta,
-        sourceVideoId.isAcceptableOrUnknown(
-          data['source_video_id']!,
-          _sourceVideoIdMeta,
-        ),
-      );
-    }
-    if (data.containsKey('cover_path')) {
-      context.handle(
-        _coverPathMeta,
-        coverPath.isAcceptableOrUnknown(data['cover_path']!, _coverPathMeta),
-      );
-    }
-    if (data.containsKey('downloaded_at')) {
-      context.handle(
-        _downloadedAtMeta,
-        downloadedAt.isAcceptableOrUnknown(
-          data['downloaded_at']!,
-          _downloadedAtMeta,
-        ),
-      );
-    }
-    return context;
-  }
-
-  @override
-  Set<GeneratedColumn> get $primaryKey => {id};
-  @override
-  DownloadedSong map(Map<String, dynamic> data, {String? tablePrefix}) {
-    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
-    return DownloadedSong(
-      id: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}id'],
-      )!,
-      title: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}title'],
-      )!,
-      artist: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}artist'],
-      )!,
-      album: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}album'],
-      ),
-      durationMs: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}duration_ms'],
-      )!,
-      filePath: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}file_path'],
-      )!,
-      mimeType: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}mime_type'],
-      )!,
-      sizeBytes: attachedDatabase.typeMapping.read(
-        DriftSqlType.int,
-        data['${effectivePrefix}size_bytes'],
-      )!,
-      sourceVideoId: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}source_video_id'],
-      ),
-      coverPath: attachedDatabase.typeMapping.read(
-        DriftSqlType.string,
-        data['${effectivePrefix}cover_path'],
-      ),
-      downloadedAt: attachedDatabase.typeMapping.read(
-        DriftSqlType.dateTime,
-        data['${effectivePrefix}downloaded_at'],
-      )!,
-    );
-  }
-
-  @override
-  $DownloadedSongsTable createAlias(String alias) {
-    return $DownloadedSongsTable(attachedDatabase, alias);
-  }
-}
-
-class DownloadedSong extends DataClass implements Insertable<DownloadedSong> {
-  final int id;
-  final String title;
-  final String artist;
-  final String? album;
-  final int durationMs;
-  final String filePath;
-  final String mimeType;
-  final int sizeBytes;
-  final String? sourceVideoId;
-  final String? coverPath;
-  final DateTime downloadedAt;
-  const DownloadedSong({
-    required this.id,
-    required this.title,
-    required this.artist,
-    this.album,
-    required this.durationMs,
-    required this.filePath,
-    required this.mimeType,
-    required this.sizeBytes,
-    this.sourceVideoId,
-    this.coverPath,
-    required this.downloadedAt,
-  });
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    map['id'] = Variable<int>(id);
-    map['title'] = Variable<String>(title);
-    map['artist'] = Variable<String>(artist);
-    if (!nullToAbsent || album != null) {
-      map['album'] = Variable<String>(album);
-    }
-    map['duration_ms'] = Variable<int>(durationMs);
-    map['file_path'] = Variable<String>(filePath);
-    map['mime_type'] = Variable<String>(mimeType);
-    map['size_bytes'] = Variable<int>(sizeBytes);
-    if (!nullToAbsent || sourceVideoId != null) {
-      map['source_video_id'] = Variable<String>(sourceVideoId);
-    }
-    if (!nullToAbsent || coverPath != null) {
-      map['cover_path'] = Variable<String>(coverPath);
-    }
-    map['downloaded_at'] = Variable<DateTime>(downloadedAt);
-    return map;
-  }
-
-  DownloadedSongsCompanion toCompanion(bool nullToAbsent) {
-    return DownloadedSongsCompanion(
-      id: Value(id),
-      title: Value(title),
-      artist: Value(artist),
-      album: album == null && nullToAbsent
-          ? const Value.absent()
-          : Value(album),
-      durationMs: Value(durationMs),
-      filePath: Value(filePath),
-      mimeType: Value(mimeType),
-      sizeBytes: Value(sizeBytes),
-      sourceVideoId: sourceVideoId == null && nullToAbsent
-          ? const Value.absent()
-          : Value(sourceVideoId),
-      coverPath: coverPath == null && nullToAbsent
-          ? const Value.absent()
-          : Value(coverPath),
-      downloadedAt: Value(downloadedAt),
-    );
-  }
-
-  factory DownloadedSong.fromJson(
-    Map<String, dynamic> json, {
-    ValueSerializer? serializer,
-  }) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return DownloadedSong(
-      id: serializer.fromJson<int>(json['id']),
-      title: serializer.fromJson<String>(json['title']),
-      artist: serializer.fromJson<String>(json['artist']),
-      album: serializer.fromJson<String?>(json['album']),
-      durationMs: serializer.fromJson<int>(json['durationMs']),
-      filePath: serializer.fromJson<String>(json['filePath']),
-      mimeType: serializer.fromJson<String>(json['mimeType']),
-      sizeBytes: serializer.fromJson<int>(json['sizeBytes']),
-      sourceVideoId: serializer.fromJson<String?>(json['sourceVideoId']),
-      coverPath: serializer.fromJson<String?>(json['coverPath']),
-      downloadedAt: serializer.fromJson<DateTime>(json['downloadedAt']),
-    );
-  }
-  @override
-  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
-    serializer ??= driftRuntimeOptions.defaultSerializer;
-    return <String, dynamic>{
-      'id': serializer.toJson<int>(id),
-      'title': serializer.toJson<String>(title),
-      'artist': serializer.toJson<String>(artist),
-      'album': serializer.toJson<String?>(album),
-      'durationMs': serializer.toJson<int>(durationMs),
-      'filePath': serializer.toJson<String>(filePath),
-      'mimeType': serializer.toJson<String>(mimeType),
-      'sizeBytes': serializer.toJson<int>(sizeBytes),
-      'sourceVideoId': serializer.toJson<String?>(sourceVideoId),
-      'coverPath': serializer.toJson<String?>(coverPath),
-      'downloadedAt': serializer.toJson<DateTime>(downloadedAt),
-    };
-  }
-
-  DownloadedSong copyWith({
-    int? id,
-    String? title,
-    String? artist,
-    Value<String?> album = const Value.absent(),
-    int? durationMs,
-    String? filePath,
-    String? mimeType,
-    int? sizeBytes,
-    Value<String?> sourceVideoId = const Value.absent(),
-    Value<String?> coverPath = const Value.absent(),
-    DateTime? downloadedAt,
-  }) => DownloadedSong(
-    id: id ?? this.id,
-    title: title ?? this.title,
-    artist: artist ?? this.artist,
-    album: album.present ? album.value : this.album,
-    durationMs: durationMs ?? this.durationMs,
-    filePath: filePath ?? this.filePath,
-    mimeType: mimeType ?? this.mimeType,
-    sizeBytes: sizeBytes ?? this.sizeBytes,
-    sourceVideoId: sourceVideoId.present
-        ? sourceVideoId.value
-        : this.sourceVideoId,
-    coverPath: coverPath.present ? coverPath.value : this.coverPath,
-    downloadedAt: downloadedAt ?? this.downloadedAt,
-  );
-  DownloadedSong copyWithCompanion(DownloadedSongsCompanion data) {
-    return DownloadedSong(
-      id: data.id.present ? data.id.value : this.id,
-      title: data.title.present ? data.title.value : this.title,
-      artist: data.artist.present ? data.artist.value : this.artist,
-      album: data.album.present ? data.album.value : this.album,
-      durationMs: data.durationMs.present
-          ? data.durationMs.value
-          : this.durationMs,
-      filePath: data.filePath.present ? data.filePath.value : this.filePath,
-      mimeType: data.mimeType.present ? data.mimeType.value : this.mimeType,
-      sizeBytes: data.sizeBytes.present ? data.sizeBytes.value : this.sizeBytes,
-      sourceVideoId: data.sourceVideoId.present
-          ? data.sourceVideoId.value
-          : this.sourceVideoId,
-      coverPath: data.coverPath.present ? data.coverPath.value : this.coverPath,
-      downloadedAt: data.downloadedAt.present
-          ? data.downloadedAt.value
-          : this.downloadedAt,
-    );
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('DownloadedSong(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('artist: $artist, ')
-          ..write('album: $album, ')
-          ..write('durationMs: $durationMs, ')
-          ..write('filePath: $filePath, ')
-          ..write('mimeType: $mimeType, ')
-          ..write('sizeBytes: $sizeBytes, ')
-          ..write('sourceVideoId: $sourceVideoId, ')
-          ..write('coverPath: $coverPath, ')
-          ..write('downloadedAt: $downloadedAt')
-          ..write(')'))
-        .toString();
-  }
-
-  @override
-  int get hashCode => Object.hash(
-    id,
-    title,
-    artist,
-    album,
-    durationMs,
-    filePath,
-    mimeType,
-    sizeBytes,
-    sourceVideoId,
-    coverPath,
-    downloadedAt,
-  );
-  @override
-  bool operator ==(Object other) =>
-      identical(this, other) ||
-      (other is DownloadedSong &&
-          other.id == this.id &&
-          other.title == this.title &&
-          other.artist == this.artist &&
-          other.album == this.album &&
-          other.durationMs == this.durationMs &&
-          other.filePath == this.filePath &&
-          other.mimeType == this.mimeType &&
-          other.sizeBytes == this.sizeBytes &&
-          other.sourceVideoId == this.sourceVideoId &&
-          other.coverPath == this.coverPath &&
-          other.downloadedAt == this.downloadedAt);
-}
-
-class DownloadedSongsCompanion extends UpdateCompanion<DownloadedSong> {
-  final Value<int> id;
-  final Value<String> title;
-  final Value<String> artist;
-  final Value<String?> album;
-  final Value<int> durationMs;
-  final Value<String> filePath;
-  final Value<String> mimeType;
-  final Value<int> sizeBytes;
-  final Value<String?> sourceVideoId;
-  final Value<String?> coverPath;
-  final Value<DateTime> downloadedAt;
-  const DownloadedSongsCompanion({
-    this.id = const Value.absent(),
-    this.title = const Value.absent(),
-    this.artist = const Value.absent(),
-    this.album = const Value.absent(),
-    this.durationMs = const Value.absent(),
-    this.filePath = const Value.absent(),
-    this.mimeType = const Value.absent(),
-    this.sizeBytes = const Value.absent(),
-    this.sourceVideoId = const Value.absent(),
-    this.coverPath = const Value.absent(),
-    this.downloadedAt = const Value.absent(),
-  });
-  DownloadedSongsCompanion.insert({
-    this.id = const Value.absent(),
-    required String title,
-    required String artist,
-    this.album = const Value.absent(),
-    this.durationMs = const Value.absent(),
-    required String filePath,
-    this.mimeType = const Value.absent(),
-    this.sizeBytes = const Value.absent(),
-    this.sourceVideoId = const Value.absent(),
-    this.coverPath = const Value.absent(),
-    this.downloadedAt = const Value.absent(),
-  }) : title = Value(title),
-       artist = Value(artist),
-       filePath = Value(filePath);
-  static Insertable<DownloadedSong> custom({
-    Expression<int>? id,
-    Expression<String>? title,
-    Expression<String>? artist,
-    Expression<String>? album,
-    Expression<int>? durationMs,
-    Expression<String>? filePath,
-    Expression<String>? mimeType,
-    Expression<int>? sizeBytes,
-    Expression<String>? sourceVideoId,
-    Expression<String>? coverPath,
-    Expression<DateTime>? downloadedAt,
-  }) {
-    return RawValuesInsertable({
-      if (id != null) 'id': id,
-      if (title != null) 'title': title,
-      if (artist != null) 'artist': artist,
-      if (album != null) 'album': album,
-      if (durationMs != null) 'duration_ms': durationMs,
-      if (filePath != null) 'file_path': filePath,
-      if (mimeType != null) 'mime_type': mimeType,
-      if (sizeBytes != null) 'size_bytes': sizeBytes,
-      if (sourceVideoId != null) 'source_video_id': sourceVideoId,
-      if (coverPath != null) 'cover_path': coverPath,
-      if (downloadedAt != null) 'downloaded_at': downloadedAt,
-    });
-  }
-
-  DownloadedSongsCompanion copyWith({
-    Value<int>? id,
-    Value<String>? title,
-    Value<String>? artist,
-    Value<String?>? album,
-    Value<int>? durationMs,
-    Value<String>? filePath,
-    Value<String>? mimeType,
-    Value<int>? sizeBytes,
-    Value<String?>? sourceVideoId,
-    Value<String?>? coverPath,
-    Value<DateTime>? downloadedAt,
-  }) {
-    return DownloadedSongsCompanion(
-      id: id ?? this.id,
-      title: title ?? this.title,
-      artist: artist ?? this.artist,
-      album: album ?? this.album,
-      durationMs: durationMs ?? this.durationMs,
-      filePath: filePath ?? this.filePath,
-      mimeType: mimeType ?? this.mimeType,
-      sizeBytes: sizeBytes ?? this.sizeBytes,
-      sourceVideoId: sourceVideoId ?? this.sourceVideoId,
-      coverPath: coverPath ?? this.coverPath,
-      downloadedAt: downloadedAt ?? this.downloadedAt,
-    );
-  }
-
-  @override
-  Map<String, Expression> toColumns(bool nullToAbsent) {
-    final map = <String, Expression>{};
-    if (id.present) {
-      map['id'] = Variable<int>(id.value);
-    }
-    if (title.present) {
-      map['title'] = Variable<String>(title.value);
-    }
-    if (artist.present) {
-      map['artist'] = Variable<String>(artist.value);
-    }
-    if (album.present) {
-      map['album'] = Variable<String>(album.value);
-    }
-    if (durationMs.present) {
-      map['duration_ms'] = Variable<int>(durationMs.value);
-    }
-    if (filePath.present) {
-      map['file_path'] = Variable<String>(filePath.value);
-    }
-    if (mimeType.present) {
-      map['mime_type'] = Variable<String>(mimeType.value);
-    }
-    if (sizeBytes.present) {
-      map['size_bytes'] = Variable<int>(sizeBytes.value);
-    }
-    if (sourceVideoId.present) {
-      map['source_video_id'] = Variable<String>(sourceVideoId.value);
-    }
-    if (coverPath.present) {
-      map['cover_path'] = Variable<String>(coverPath.value);
-    }
-    if (downloadedAt.present) {
-      map['downloaded_at'] = Variable<DateTime>(downloadedAt.value);
-    }
-    return map;
-  }
-
-  @override
-  String toString() {
-    return (StringBuffer('DownloadedSongsCompanion(')
-          ..write('id: $id, ')
-          ..write('title: $title, ')
-          ..write('artist: $artist, ')
-          ..write('album: $album, ')
-          ..write('durationMs: $durationMs, ')
-          ..write('filePath: $filePath, ')
-          ..write('mimeType: $mimeType, ')
-          ..write('sizeBytes: $sizeBytes, ')
-          ..write('sourceVideoId: $sourceVideoId, ')
-          ..write('coverPath: $coverPath, ')
-          ..write('downloadedAt: $downloadedAt')
-          ..write(')'))
-        .toString();
-  }
-}
-
 abstract class _$NuvTuneDatabase extends GeneratedDatabase {
   _$NuvTuneDatabase(QueryExecutor e) : super(e);
   $NuvTuneDatabaseManager get managers => $NuvTuneDatabaseManager(this);
@@ -8920,9 +8387,6 @@ abstract class _$NuvTuneDatabase extends GeneratedDatabase {
   );
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $SongVideoIdsTable songVideoIds = $SongVideoIdsTable(this);
-  late final $DownloadedSongsTable downloadedSongs = $DownloadedSongsTable(
-    this,
-  );
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -8947,7 +8411,6 @@ abstract class _$NuvTuneDatabase extends GeneratedDatabase {
     lyricsOverrides,
     appSettings,
     songVideoIds,
-    downloadedSongs,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -12497,6 +11960,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> librarySortJson,
       Value<bool> videoBackgroundEnabled,
       Value<int> playerVisualizerStyle,
+      Value<int> playerVisualScene,
+      Value<int> playerSceneAspectRatio,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -12540,6 +12005,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> librarySortJson,
       Value<bool> videoBackgroundEnabled,
       Value<int> playerVisualizerStyle,
+      Value<int> playerVisualScene,
+      Value<int> playerSceneAspectRatio,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -12748,6 +12215,16 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<int> get playerVisualizerStyle => $composableBuilder(
     column: $table.playerVisualizerStyle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playerVisualScene => $composableBuilder(
+    column: $table.playerVisualScene,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get playerSceneAspectRatio => $composableBuilder(
+    column: $table.playerSceneAspectRatio,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12960,6 +12437,16 @@ class $$AppSettingsTableOrderingComposer
     column: $table.playerVisualizerStyle,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<int> get playerVisualScene => $composableBuilder(
+    column: $table.playerVisualScene,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get playerSceneAspectRatio => $composableBuilder(
+    column: $table.playerSceneAspectRatio,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -13166,6 +12653,16 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.playerVisualizerStyle,
     builder: (column) => column,
   );
+
+  GeneratedColumn<int> get playerVisualScene => $composableBuilder(
+    column: $table.playerVisualScene,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get playerSceneAspectRatio => $composableBuilder(
+    column: $table.playerSceneAspectRatio,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -13239,6 +12736,8 @@ class $$AppSettingsTableTableManager
                 Value<String> librarySortJson = const Value.absent(),
                 Value<bool> videoBackgroundEnabled = const Value.absent(),
                 Value<int> playerVisualizerStyle = const Value.absent(),
+                Value<int> playerVisualScene = const Value.absent(),
+                Value<int> playerSceneAspectRatio = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -13280,6 +12779,8 @@ class $$AppSettingsTableTableManager
                 librarySortJson: librarySortJson,
                 videoBackgroundEnabled: videoBackgroundEnabled,
                 playerVisualizerStyle: playerVisualizerStyle,
+                playerVisualScene: playerVisualScene,
+                playerSceneAspectRatio: playerSceneAspectRatio,
               ),
           createCompanionCallback:
               ({
@@ -13323,6 +12824,8 @@ class $$AppSettingsTableTableManager
                 Value<String> librarySortJson = const Value.absent(),
                 Value<bool> videoBackgroundEnabled = const Value.absent(),
                 Value<int> playerVisualizerStyle = const Value.absent(),
+                Value<int> playerVisualScene = const Value.absent(),
+                Value<int> playerSceneAspectRatio = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -13364,6 +12867,8 @@ class $$AppSettingsTableTableManager
                 librarySortJson: librarySortJson,
                 videoBackgroundEnabled: videoBackgroundEnabled,
                 playerVisualizerStyle: playerVisualizerStyle,
+                playerVisualScene: playerVisualScene,
+                playerSceneAspectRatio: playerSceneAspectRatio,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -13573,330 +13078,6 @@ typedef $$SongVideoIdsTableProcessedTableManager =
       SongVideoId,
       PrefetchHooks Function()
     >;
-typedef $$DownloadedSongsTableCreateCompanionBuilder =
-    DownloadedSongsCompanion Function({
-      Value<int> id,
-      required String title,
-      required String artist,
-      Value<String?> album,
-      Value<int> durationMs,
-      required String filePath,
-      Value<String> mimeType,
-      Value<int> sizeBytes,
-      Value<String?> sourceVideoId,
-      Value<String?> coverPath,
-      Value<DateTime> downloadedAt,
-    });
-typedef $$DownloadedSongsTableUpdateCompanionBuilder =
-    DownloadedSongsCompanion Function({
-      Value<int> id,
-      Value<String> title,
-      Value<String> artist,
-      Value<String?> album,
-      Value<int> durationMs,
-      Value<String> filePath,
-      Value<String> mimeType,
-      Value<int> sizeBytes,
-      Value<String?> sourceVideoId,
-      Value<String?> coverPath,
-      Value<DateTime> downloadedAt,
-    });
-
-class $$DownloadedSongsTableFilterComposer
-    extends Composer<_$NuvTuneDatabase, $DownloadedSongsTable> {
-  $$DownloadedSongsTableFilterComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnFilters<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get artist => $composableBuilder(
-    column: $table.artist,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get album => $composableBuilder(
-    column: $table.album,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get durationMs => $composableBuilder(
-    column: $table.durationMs,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get filePath => $composableBuilder(
-    column: $table.filePath,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get mimeType => $composableBuilder(
-    column: $table.mimeType,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<int> get sizeBytes => $composableBuilder(
-    column: $table.sizeBytes,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get sourceVideoId => $composableBuilder(
-    column: $table.sourceVideoId,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<String> get coverPath => $composableBuilder(
-    column: $table.coverPath,
-    builder: (column) => ColumnFilters(column),
-  );
-
-  ColumnFilters<DateTime> get downloadedAt => $composableBuilder(
-    column: $table.downloadedAt,
-    builder: (column) => ColumnFilters(column),
-  );
-}
-
-class $$DownloadedSongsTableOrderingComposer
-    extends Composer<_$NuvTuneDatabase, $DownloadedSongsTable> {
-  $$DownloadedSongsTableOrderingComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  ColumnOrderings<int> get id => $composableBuilder(
-    column: $table.id,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get title => $composableBuilder(
-    column: $table.title,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get artist => $composableBuilder(
-    column: $table.artist,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get album => $composableBuilder(
-    column: $table.album,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get durationMs => $composableBuilder(
-    column: $table.durationMs,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get filePath => $composableBuilder(
-    column: $table.filePath,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get mimeType => $composableBuilder(
-    column: $table.mimeType,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<int> get sizeBytes => $composableBuilder(
-    column: $table.sizeBytes,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get sourceVideoId => $composableBuilder(
-    column: $table.sourceVideoId,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<String> get coverPath => $composableBuilder(
-    column: $table.coverPath,
-    builder: (column) => ColumnOrderings(column),
-  );
-
-  ColumnOrderings<DateTime> get downloadedAt => $composableBuilder(
-    column: $table.downloadedAt,
-    builder: (column) => ColumnOrderings(column),
-  );
-}
-
-class $$DownloadedSongsTableAnnotationComposer
-    extends Composer<_$NuvTuneDatabase, $DownloadedSongsTable> {
-  $$DownloadedSongsTableAnnotationComposer({
-    required super.$db,
-    required super.$table,
-    super.joinBuilder,
-    super.$addJoinBuilderToRootComposer,
-    super.$removeJoinBuilderFromRootComposer,
-  });
-  GeneratedColumn<int> get id =>
-      $composableBuilder(column: $table.id, builder: (column) => column);
-
-  GeneratedColumn<String> get title =>
-      $composableBuilder(column: $table.title, builder: (column) => column);
-
-  GeneratedColumn<String> get artist =>
-      $composableBuilder(column: $table.artist, builder: (column) => column);
-
-  GeneratedColumn<String> get album =>
-      $composableBuilder(column: $table.album, builder: (column) => column);
-
-  GeneratedColumn<int> get durationMs => $composableBuilder(
-    column: $table.durationMs,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get filePath =>
-      $composableBuilder(column: $table.filePath, builder: (column) => column);
-
-  GeneratedColumn<String> get mimeType =>
-      $composableBuilder(column: $table.mimeType, builder: (column) => column);
-
-  GeneratedColumn<int> get sizeBytes =>
-      $composableBuilder(column: $table.sizeBytes, builder: (column) => column);
-
-  GeneratedColumn<String> get sourceVideoId => $composableBuilder(
-    column: $table.sourceVideoId,
-    builder: (column) => column,
-  );
-
-  GeneratedColumn<String> get coverPath =>
-      $composableBuilder(column: $table.coverPath, builder: (column) => column);
-
-  GeneratedColumn<DateTime> get downloadedAt => $composableBuilder(
-    column: $table.downloadedAt,
-    builder: (column) => column,
-  );
-}
-
-class $$DownloadedSongsTableTableManager
-    extends
-        RootTableManager<
-          _$NuvTuneDatabase,
-          $DownloadedSongsTable,
-          DownloadedSong,
-          $$DownloadedSongsTableFilterComposer,
-          $$DownloadedSongsTableOrderingComposer,
-          $$DownloadedSongsTableAnnotationComposer,
-          $$DownloadedSongsTableCreateCompanionBuilder,
-          $$DownloadedSongsTableUpdateCompanionBuilder,
-          (
-            DownloadedSong,
-            BaseReferences<
-              _$NuvTuneDatabase,
-              $DownloadedSongsTable,
-              DownloadedSong
-            >,
-          ),
-          DownloadedSong,
-          PrefetchHooks Function()
-        > {
-  $$DownloadedSongsTableTableManager(
-    _$NuvTuneDatabase db,
-    $DownloadedSongsTable table,
-  ) : super(
-        TableManagerState(
-          db: db,
-          table: table,
-          createFilteringComposer: () =>
-              $$DownloadedSongsTableFilterComposer($db: db, $table: table),
-          createOrderingComposer: () =>
-              $$DownloadedSongsTableOrderingComposer($db: db, $table: table),
-          createComputedFieldComposer: () =>
-              $$DownloadedSongsTableAnnotationComposer($db: db, $table: table),
-          updateCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                Value<String> title = const Value.absent(),
-                Value<String> artist = const Value.absent(),
-                Value<String?> album = const Value.absent(),
-                Value<int> durationMs = const Value.absent(),
-                Value<String> filePath = const Value.absent(),
-                Value<String> mimeType = const Value.absent(),
-                Value<int> sizeBytes = const Value.absent(),
-                Value<String?> sourceVideoId = const Value.absent(),
-                Value<String?> coverPath = const Value.absent(),
-                Value<DateTime> downloadedAt = const Value.absent(),
-              }) => DownloadedSongsCompanion(
-                id: id,
-                title: title,
-                artist: artist,
-                album: album,
-                durationMs: durationMs,
-                filePath: filePath,
-                mimeType: mimeType,
-                sizeBytes: sizeBytes,
-                sourceVideoId: sourceVideoId,
-                coverPath: coverPath,
-                downloadedAt: downloadedAt,
-              ),
-          createCompanionCallback:
-              ({
-                Value<int> id = const Value.absent(),
-                required String title,
-                required String artist,
-                Value<String?> album = const Value.absent(),
-                Value<int> durationMs = const Value.absent(),
-                required String filePath,
-                Value<String> mimeType = const Value.absent(),
-                Value<int> sizeBytes = const Value.absent(),
-                Value<String?> sourceVideoId = const Value.absent(),
-                Value<String?> coverPath = const Value.absent(),
-                Value<DateTime> downloadedAt = const Value.absent(),
-              }) => DownloadedSongsCompanion.insert(
-                id: id,
-                title: title,
-                artist: artist,
-                album: album,
-                durationMs: durationMs,
-                filePath: filePath,
-                mimeType: mimeType,
-                sizeBytes: sizeBytes,
-                sourceVideoId: sourceVideoId,
-                coverPath: coverPath,
-                downloadedAt: downloadedAt,
-              ),
-          withReferenceMapper: (p0) => p0
-              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
-              .toList(),
-          prefetchHooksCallback: null,
-        ),
-      );
-}
-
-typedef $$DownloadedSongsTableProcessedTableManager =
-    ProcessedTableManager<
-      _$NuvTuneDatabase,
-      $DownloadedSongsTable,
-      DownloadedSong,
-      $$DownloadedSongsTableFilterComposer,
-      $$DownloadedSongsTableOrderingComposer,
-      $$DownloadedSongsTableAnnotationComposer,
-      $$DownloadedSongsTableCreateCompanionBuilder,
-      $$DownloadedSongsTableUpdateCompanionBuilder,
-      (
-        DownloadedSong,
-        BaseReferences<
-          _$NuvTuneDatabase,
-          $DownloadedSongsTable,
-          DownloadedSong
-        >,
-      ),
-      DownloadedSong,
-      PrefetchHooks Function()
-    >;
 
 class $NuvTuneDatabaseManager {
   final _$NuvTuneDatabase _db;
@@ -13939,6 +13120,4 @@ class $NuvTuneDatabaseManager {
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$SongVideoIdsTableTableManager get songVideoIds =>
       $$SongVideoIdsTableTableManager(_db, _db.songVideoIds);
-  $$DownloadedSongsTableTableManager get downloadedSongs =>
-      $$DownloadedSongsTableTableManager(_db, _db.downloadedSongs);
 }

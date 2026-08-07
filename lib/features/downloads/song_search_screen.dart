@@ -1,16 +1,21 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/app/theme/design_tokens.dart';
-import 'package:nuvtune/core/network/piped_client.dart';
+import 'package:nuvtune/core/platform/download_engine.g.dart';
+import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/downloads/downloads_controller.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
 
-/// Buscador de canciones para descargar (feature "buscar y descargar
-/// canciones"), sobre la API publica de Piped.
+/// Buscador de canciones para descargar (motor heredado de
+/// C:\Repos\NuvClip: yt-dlp + ffmpeg nativos). Las descargas terminadas
+/// aparecen solas en la biblioteca normal (Biblioteca > Canciones), no hay
+/// una lista aparte que revisar.
 ///
-/// La descarga desde YouTube esta en zona gris de sus TOS: por eso el aviso
-/// fijo debajo del buscador.
+/// La descarga esta en zona gris de los TOS de estas plataformas: por eso el
+/// aviso fijo debajo del buscador.
 class SongSearchScreen extends ConsumerStatefulWidget {
   const SongSearchScreen({super.key});
 
@@ -20,13 +25,36 @@ class SongSearchScreen extends ConsumerStatefulWidget {
 
 class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
   final _controller = TextEditingController();
-  List<PipedSearchResult> _results = const [];
+  List<SearchResultItem> _results = const [];
   bool _loading = false;
   bool _searched = false;
+
+  StreamSubscription<DownloadCompletedEvent>? _completedSub;
+  StreamSubscription<DownloadFailedEvent>? _failedSub;
+
+  @override
+  void initState() {
+    super.initState();
+    final bridge = ref.read(downloadEngineProvider);
+    _completedSub = bridge.completed.listen((event) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text('Descargada: ${event.fileName}')),
+      );
+    });
+    _failedSub = bridge.failed.listen((event) {
+      if (!mounted) return;
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(content: Text(event.errorCode.userMessage)),
+      );
+    });
+  }
 
   @override
   void dispose() {
     _controller.dispose();
+    _completedSub?.cancel();
+    _failedSub?.cancel();
     super.dispose();
   }
 
@@ -34,33 +62,33 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
     final query = _controller.text.trim();
     if (query.isEmpty) return;
     setState(() => _loading = true);
-    final results = await ref.read(pipedClientProvider).searchMany(query);
-    if (!mounted) return;
-    setState(() {
-      _results = results;
-      _loading = false;
-      _searched = true;
-    });
-  }
-
-  Future<void> _download(PipedSearchResult result) async {
-    final messenger = ScaffoldMessenger.of(context);
     try {
-      await ref.read(downloadsControllerProvider.notifier).startDownload(
-            result.videoId,
-            title: result.title,
-            artist: result.uploaderName,
-          );
+      final engine = ref.read(downloadEngineProvider);
+      // La primera vez, el motor todavia puede estar extrayendo sus
+      // binarios (arranque no bloqueante desde bootstrap.dart); esperar
+      // aqui evita buscar antes de que este listo.
+      await engine.initialize();
+      final results = await engine.api.search(query, 12);
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('Descargada: ${result.title}')),
-      );
+      setState(() {
+        _results = results;
+        _searched = true;
+      });
     } catch (_) {
       if (!mounted) return;
-      messenger.showSnackBar(
-        SnackBar(content: Text('No se pudo descargar "${result.title}"')),
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text('No se pudo buscar. Revisa tu conexión e inténtalo de nuevo.')),
       );
+    } finally {
+      if (mounted) setState(() => _loading = false);
     }
+  }
+
+  Future<void> _download(SearchResultItem result) async {
+    final messenger = ScaffoldMessenger.of(context);
+    final error = await ref.read(downloadsControllerProvider.notifier).download(result);
+    if (!mounted || error == null) return;
+    messenger.showSnackBar(SnackBar(content: Text(error)));
   }
 
   @override
@@ -121,7 +149,7 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
                         itemCount: _results.length,
                         itemBuilder: (context, index) {
                           final result = _results[index];
-                          final percent = progress[result.videoId];
+                          final percent = progress[result.sourceUrl];
                           return ListTile(
                             leading: const Icon(Icons.music_note_rounded),
                             title: Text(
@@ -130,7 +158,7 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
                               overflow: TextOverflow.ellipsis,
                             ),
                             subtitle: Text(
-                              result.uploaderName,
+                              result.author ?? 'Autor desconocido',
                               maxLines: 1,
                               overflow: TextOverflow.ellipsis,
                             ),

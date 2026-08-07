@@ -215,7 +215,6 @@ class _BootstrapScreen extends ConsumerWidget {
             const SizedBox(height: Tokens.space3),
             Text(
               switch (state.stage) {
-                BootstrapStage.scanning => AppStrings.scanning,
                 BootstrapStage.requestingPermission =>
                   AppStrings.permissionTitle,
                 _ => 'Preparando el motor de audio…',

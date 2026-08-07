@@ -1,33 +1,36 @@
 import 'package:flutter/material.dart';
 
-/// Estilos del lienzo reactivo usado cuando una pista no tiene portada.
-/// [automatic] elige uno de los otros estilos de forma determinista por cancion.
+/// Estilos disponibles para el lienzo reactivo del reproductor.
 enum VisualizerStyle {
   automatic(
     'Automático',
     'Un estilo propio para cada canción',
     Icons.auto_awesome_rounded,
   ),
-  aurora('Aurora', 'Nebulosas fluidas y luminosas', Icons.blur_on_rounded),
   ribbons(
-    'Cintas',
-    'Ondas continuas que siguen los tonos',
-    Icons.waves_rounded,
+    'Frecuencias 360°',
+    'Barras circulares que suben y bajan con el beat',
+    Icons.blur_circular_rounded,
   ),
   prism(
-    'Prisma',
-    'Geometría que pulsa con el ritmo',
-    Icons.change_history_rounded,
+    'Partículas fluidas',
+    'Una malla de puntos que fluye con la música',
+    Icons.grain_rounded,
   ),
-  spectrum(
-    'Espectro',
-    'Barras reflejadas por frecuencias',
+  minimalSpectrum(
+    'Espectro minimalista',
+    'Frecuencias limpias con colores dinámicos',
     Icons.graphic_eq_rounded,
   ),
-  orbit(
-    'Órbita',
-    'Partículas alrededor del artista',
-    Icons.blur_circular_rounded,
+  electricWaves(
+    'Ondas eléctricas',
+    'Cintas luminosas que giran, vibran y estallan con la música',
+    Icons.electric_bolt_rounded,
+  ),
+  cosmicOrbs(
+    'Viaje psicodélico',
+    'Cintas psicodélicas que atraviesan un túnel de color',
+    Icons.public_rounded,
   );
 
   const VisualizerStyle(this.label, this.description, this.icon);
@@ -36,12 +39,14 @@ enum VisualizerStyle {
   final String description;
   final IconData icon;
 
-  static VisualizerStyle fromIndex(int index) =>
-      index >= 0 && index < values.length ? values[index] : automatic;
+  static VisualizerStyle fromIndex(int index) {
+    if (index < 0 || index >= values.length) return automatic;
+    return values[index];
+  }
 
   VisualizerStyle resolveFor(int seed) {
     if (this != automatic) return this;
-    final concrete = values.skip(1).toList(growable: false);
-    return concrete[seed.abs() % concrete.length];
+    final concreteCount = values.length - 1;
+    return values[1 + seed.abs() % concreteCount];
   }
 }

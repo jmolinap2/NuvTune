@@ -58,8 +58,19 @@ android {
     }
 
     packaging {
-        // TagLib se enlaza estaticamente dentro de libnuvtune_taglib.so.
-        jniLibs.useLegacyPackaging = false
+        // TagLib se enlaza estaticamente dentro de libnuvtune_taglib.so, asi
+        // que ese .so real no depende de este ajuste. Tiene que ser `true`
+        // (empaquetado "legacy", comprimido y extraido a disco) porque el
+        // motor de descarga heredado de NuvClip (youtubedl-android) disfraza
+        // su runtime de Python como `libpython.zip.so`/`libffmpeg.zip.so`
+        // -en realidad archivos ZIP, no binarios nativos- y los abre como
+        // archivo de verdad en `nativeLibraryDir` en tiempo de ejecucion. Con
+        // `false` (empaquetado moderno, sin comprimir, mapeado directo desde
+        // el APK) esos archivos nunca se extraen a disco y la inicializacion
+        // del motor falla con `FileNotFoundException` (confirmado en
+        // logcat: YoutubeDL.initPython -> ZipUtils.unzip -> libpython.zip.so
+        // "No such file or directory").
+        jniLibs.useLegacyPackaging = true
     }
 
     buildTypes {
@@ -109,4 +120,19 @@ dependencies {
     // Media3 no habla SMB, de modo que ademas hace falta un DataSource propio
     // (SmbDataSource) que traduzca smb:// a lecturas de este cliente.
     implementation("com.hierynomus:smbj:0.14.0")
+
+    // Motor de descarga (busqueda + descarga de audio), heredado de
+    // C:\Repos\NuvClip: yt-dlp + ffmpeg nativos, en vez del cliente Piped
+    // anterior que no devolvia resultados descargables en la practica.
+    val youtubedlAndroidVer = "0.18.1"
+    implementation("io.github.junkfood02.youtubedl-android:library:$youtubedlAndroidVer")
+    implementation("io.github.junkfood02.youtubedl-android:ffmpeg:$youtubedlAndroidVer")
+
+    // youtubedl-android expone `YoutubeDL.getInstance().objectMapper` (usado
+    // por YtDlpEngine.search para leer el JSON crudo de "ytsearchN:", que la
+    // libreria no modela como tipo propio) pero solo declara Jackson como
+    // dependencia de runtime, no de compilacion: sin esto el tipo
+    // ObjectMapper no resuelve en tiempo de compilacion aunque si funcione en
+    // tiempo de ejecucion.
+    implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
 }

@@ -3,6 +3,7 @@ package com.nuvtune.engine
 import android.content.ContentResolver
 import android.content.ContentUris
 import android.content.Context
+import android.content.SharedPreferences
 import android.database.ContentObserver
 import android.graphics.Bitmap
 import android.media.MediaScannerConnection
@@ -12,6 +13,9 @@ import android.os.Looper
 import android.provider.MediaStore
 import android.util.Size
 import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.async
+import kotlinx.coroutines.awaitAll
+import kotlinx.coroutines.coroutineScope
 import kotlinx.coroutines.withContext
 import java.io.ByteArrayOutputStream
 import java.io.File
@@ -34,8 +38,19 @@ internal class MediaStoreRepository(private val context: Context) {
     @Volatile
     private var excludedFolderPaths: List<String> = emptyList()
 
-    /** Presencia de portada resuelta por album, no por cancion. */
-    private val albumCoverPresence = HashMap<Long, Boolean>()
+    private val coverPrefs: SharedPreferences by lazy {
+        context.getSharedPreferences(COVER_PREFS_NAME, Context.MODE_PRIVATE)
+    }
+
+    /**
+     * Presencia de portada resuelta por album, no por cancion. Se precarga
+     * desde disco para no tener que volver a sondear miniaturas en cada
+     * arranque: sin esto, este mapa nace vacio en cada proceso nuevo y
+     * `resolveCoverPresence` repite el trabajo completo cada vez.
+     */
+    private val albumCoverPresence: HashMap<Long, Boolean> by lazy {
+        loadPersistedCoverPresence()
+    }
 
     private var observer: ContentObserver? = null
 
@@ -77,6 +92,7 @@ internal class MediaStoreRepository(private val context: Context) {
             excludedFolderPaths = excludedFolders.map { normalizeFolder(it) }
             if (forceFullRescan) {
                 albumCoverPresence.clear()
+                coverPrefs.edit().clear().apply()
             }
             val scanned = querySongs()
             resolveCoverPresence(scanned)
@@ -208,16 +224,62 @@ internal class MediaStoreRepository(private val context: Context) {
      * Consecuencia asumida: en un album donde solo algunas pistas traen
      * portada, todas quedan marcadas igual. La lista inteligente "canciones sin
      * portada" trabaja por lo tanto con granularidad de album.
+     *
+     * Los albumes pendientes (los que no vienen ya de [albumCoverPresence],
+     * precargado desde disco) se resuelven en paralelo con un limite de
+     * concurrencia: `loadThumbnail` es una llamada de E/S bloqueante y
+     * resolverlas una por una es lo que mas alargaba el escaneo con bibliotecas
+     * grandes.
      */
-    private fun resolveCoverPresence(scanned: List<Song>) {
+    private suspend fun resolveCoverPresence(scanned: List<Song>) {
         val albumRepresentative = LinkedHashMap<Long, Song>()
         for (song in scanned) {
             albumRepresentative.putIfAbsent(song.albumId, song)
         }
-        for ((albumId, song) in albumRepresentative) {
-            if (albumCoverPresence.containsKey(albumId)) continue
-            albumCoverPresence[albumId] = loadThumbnail(song.id, COVER_PROBE_SIZE) != null
+        val pending = albumRepresentative.filterKeys { !albumCoverPresence.containsKey(it) }
+            .entries.toList()
+        if (pending.isEmpty()) return
+
+        // Por bloques de COVER_PROBE_CONCURRENCY, no todas las corrutinas de
+        // golpe: en el primer escaneo de una biblioteca grande (miles de
+        // albumes, cache persistido aun vacio) lanzarlas todas a la vez
+        // mantendria en memoria una corrutina y una referencia de Song en
+        // espera por cada una. Procesando por bloques, nunca hay mas de
+        // COVER_PROBE_CONCURRENCY resoluciones en vuelo sin importar cuantos
+        // albumes falten, y cada bloque libera su memoria antes de que
+        // empiece el siguiente.
+        for (chunk in pending.chunked(COVER_PROBE_CONCURRENCY)) {
+            val resolved = coroutineScope {
+                chunk.map { (albumId, song) ->
+                    async { albumId to (loadThumbnail(song.id, COVER_PROBE_SIZE) != null) }
+                }.awaitAll()
+            }
+            for ((albumId, hasCover) in resolved) {
+                albumCoverPresence[albumId] = hasCover
+            }
         }
+        persistCoverPresence()
+    }
+
+    private fun loadPersistedCoverPresence(): HashMap<Long, Boolean> {
+        val withCover = coverPrefs.getStringSet(KEY_ALBUMS_WITH_COVER, emptySet()).orEmpty()
+        val withoutCover = coverPrefs.getStringSet(KEY_ALBUMS_WITHOUT_COVER, emptySet()).orEmpty()
+        val map = HashMap<Long, Boolean>(withCover.size + withoutCover.size)
+        withCover.forEach { it.toLongOrNull()?.let { albumId -> map[albumId] = true } }
+        withoutCover.forEach { it.toLongOrNull()?.let { albumId -> map[albumId] = false } }
+        return map
+    }
+
+    private fun persistCoverPresence() {
+        val withCover = HashSet<String>()
+        val withoutCover = HashSet<String>()
+        for ((albumId, hasCover) in albumCoverPresence) {
+            if (hasCover) withCover.add(albumId.toString()) else withoutCover.add(albumId.toString())
+        }
+        coverPrefs.edit()
+            .putStringSet(KEY_ALBUMS_WITH_COVER, withCover)
+            .putStringSet(KEY_ALBUMS_WITHOUT_COVER, withoutCover)
+            .apply()
     }
 
     private fun normalizeFolder(path: String): String =
@@ -347,6 +409,7 @@ internal class MediaStoreRepository(private val context: Context) {
     /** Invalida la portada en cache de un album tras incrustar una nueva. */
     fun invalidateAlbumCover(albumId: Long) {
         albumCoverPresence.remove(albumId)
+        persistCoverPresence()
     }
 
     private companion object {
@@ -354,5 +417,9 @@ internal class MediaStoreRepository(private val context: Context) {
         const val UNKNOWN_ALBUM = "Album desconocido"
         const val COVER_PROBE_SIZE = 64
         const val COVER_JPEG_QUALITY = 88
+        const val COVER_PROBE_CONCURRENCY = 6
+        const val COVER_PREFS_NAME = "nuvtune_cover_presence"
+        const val KEY_ALBUMS_WITH_COVER = "albums_with_cover"
+        const val KEY_ALBUMS_WITHOUT_COVER = "albums_without_cover"
     }
 }

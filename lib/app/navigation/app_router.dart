@@ -3,7 +3,6 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/navigation/root_shell.dart';
 import 'package:nuvtune/core/providers.dart';
-import 'package:nuvtune/features/downloads/downloaded_songs_screen.dart';
 import 'package:nuvtune/features/downloads/song_search_screen.dart';
 import 'package:nuvtune/features/equalizer/equalizer_screen.dart';
 import 'package:nuvtune/features/home/home_screen.dart';
@@ -229,13 +228,11 @@ GoRouter createRouter() {
       ),
 
       // Descargas desde internet (feature "Buscar y descargar canciones").
+      // Las descargas terminadas aparecen solas en la biblioteca (escritas
+      // directamente en MediaStore.Audio), asi que no hace falta una lista
+      // aparte: esta es la unica pantalla.
       GoRoute(
         path: '/downloads',
-        parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const DownloadedSongsScreen(),
-      ),
-      GoRoute(
-        path: '/downloads/search',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SongSearchScreen(),
       ),

@@ -1,46 +1,111 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import 'package:nuvtune/core/platform/download_engine.g.dart';
+import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/providers.dart';
-import 'package:nuvtune/data/db/database.dart';
 
-/// Canciones descargadas, mas recientes primero.
-final downloadedSongsProvider = StreamProvider<List<DownloadedSong>>(
-  (ref) => ref.watch(downloadRepositoryProvider).watchDownloads(),
-);
-
-/// Progreso (0-100) de las descargas en curso, por videoId de Piped.
+/// Progreso (0-100) de las descargas en curso, por `sourceUrl` del resultado
+/// de busqueda. La descarga en si corre en el servicio nativo en primer
+/// plano (motor heredado de C:\Repos\NuvClip): esto solo refleja los eventos
+/// de progreso que llegan por [DownloadEngineBridge].
+///
+/// No hay una lista propia de "canciones descargadas": el motor las escribe
+/// directamente en MediaStore.Audio, asi que aparecen solas en la biblioteca
+/// normal en cuanto el escaneo incremental (ya disparado por el observador de
+/// MediaStore) las recoge.
 final downloadsControllerProvider =
     NotifierProvider<DownloadsController, Map<String, int>>(
   DownloadsController.new,
 );
 
 class DownloadsController extends Notifier<Map<String, int>> {
+  final _urlByDownloadId = <String, String>{};
+
   @override
-  Map<String, int> build() => const {};
+  Map<String, int> build() {
+    final bridge = ref.watch(downloadEngineProvider);
+    final progressSub = bridge.progress.listen((event) {
+      final url = _urlByDownloadId[event.downloadId];
+      if (url == null || !state.containsKey(url)) return;
+      state = {...state, url: event.percent.round().clamp(0, 100)};
+    });
+    final completedSub = bridge.completed.listen((event) => _clear(event.downloadId));
+    final failedSub = bridge.failed.listen((event) => _clear(event.downloadId));
+    ref.onDispose(() {
+      progressSub.cancel();
+      completedSub.cancel();
+      failedSub.cancel();
+    });
+    return const {};
+  }
 
-  bool isDownloading(String videoId) => state.containsKey(videoId);
+  bool isDownloading(String sourceUrl) => state.containsKey(sourceUrl);
 
-  Future<void> startDownload(
-    String videoId, {
-    required String title,
-    required String artist,
-    String? album,
-  }) async {
-    if (isDownloading(videoId)) return;
-    state = {...state, videoId: 0};
+  /// Busca el resultado elegido, analiza su enlace real y encola la
+  /// descarga de audio. Devuelve un mensaje de error si algo no dejo
+  /// encolar la descarga; `null` significa que quedo en curso (el resultado
+  /// final llega por los streams de [DownloadEngineBridge]).
+  Future<String?> download(SearchResultItem result) async {
+    if (isDownloading(result.sourceUrl)) return null;
+    state = {...state, result.sourceUrl: 0};
+
     try {
-      await ref.read(downloadRepositoryProvider).downloadFromVideoId(
-            videoId,
-            title: title,
-            artist: artist,
-            album: album,
-            onProgress: (percent) {
-              if (!state.containsKey(videoId)) return;
-              state = {...state, videoId: percent};
-            },
-          );
+      final engine = ref.read(downloadEngineProvider);
+      await engine.initialize();
+      final analysis = await engine.api.analyzeUrl(result.sourceUrl);
+      final video = analysis.video;
+      if (video == null) {
+        return analysis.errorCode?.userMessage ?? 'No se pudo analizar la canción.';
+      }
+      if (video.audioFormats.isEmpty) {
+        return 'No hay audio disponible para descargar.';
+      }
+
+      // Primera opcion = mejor bitrate (YtDlpEngine.toAudioFormatOptions las
+      // entrega ordenadas 192/128/64 kbps).
+      final format = video.audioFormats.first;
+      final downloadId = DateTime.now().microsecondsSinceEpoch.toString();
+      _urlByDownloadId[downloadId] = result.sourceUrl;
+
+      await engine.api.startDownload(
+        DownloadRequest(
+          downloadId: downloadId,
+          sourceUrl: result.sourceUrl,
+          platform: video.platform,
+          formatId: format.formatId,
+          suggestedFileName: _fileNameFor(result.title),
+          wifiOnly: false,
+          audioOnly: true,
+          approxTotalBytes: format.approxSizeBytes,
+          songTitle: result.title,
+          songArtist: result.author,
+        ),
+      );
+      return null;
+    } catch (_) {
+      return 'No se pudo iniciar la descarga.';
     } finally {
-      final next = {...state}..remove(videoId);
-      state = next;
+      // El caso exitoso lo limpia _onCompleted/_onFailed via el downloadId;
+      // esto solo cubre las salidas tempranas (arriba) que nunca llegaron a
+      // registrar uno.
+      if (!_urlByDownloadId.containsValue(result.sourceUrl)) {
+        _clearByUrl(result.sourceUrl);
+      }
     }
+  }
+
+  void _clear(String downloadId) {
+    final url = _urlByDownloadId.remove(downloadId);
+    if (url != null) _clearByUrl(url);
+  }
+
+  void _clearByUrl(String sourceUrl) {
+    if (!state.containsKey(sourceUrl)) return;
+    final next = {...state}..remove(sourceUrl);
+    state = next;
+  }
+
+  static String _fileNameFor(String title) {
+    final safe = title.replaceAll(RegExp(r'[^\w\s-]'), '').trim();
+    return '${safe.isEmpty ? 'cancion' : safe}.mp3';
   }
 }
