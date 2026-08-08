@@ -20,13 +20,65 @@ class MainActivity : FlutterActivity() {
 
     companion object {
         private const val SYSTEM_VOLUME_CHANNEL = "com.nuvtune.app/system_volume"
+        private const val GIFT_INTENT_CHANNEL = "com.nuvtune.app/gift_intent"
     }
 
     private var plugin: FlutterMusicPlugin? = null
     private var systemVolumeChannel: MethodChannel? = null
+    private var giftIntentChannel: MethodChannel? = null
+
+    /**
+     * Uri del archivo de regalo con el que se abrio la aplicacion, a la
+     * espera de que Dart la consuma. Se guarda en vez de enviarse porque en
+     * un arranque en frio el intent llega antes de que exista el motor de
+     * Flutter que podria recibirlo.
+     */
+    private var pendingGiftUri: String? = null
+
+    override fun onCreate(savedInstanceState: android.os.Bundle?) {
+        super.onCreate(savedInstanceState)
+        pendingGiftUri = extractGiftUri(intent)
+    }
+
+    override fun onNewIntent(intent: Intent) {
+        super.onNewIntent(intent)
+        // `launchMode="singleTop"`: con la aplicacion ya abierta el regalo
+        // llega por aqui y no por onCreate.
+        extractGiftUri(intent)?.let { pendingGiftUri = it }
+    }
+
+    /**
+     * Acepta las dos formas en que puede llegar un archivo: `ACTION_VIEW`
+     * (tocarlo en un gestor de archivos) y `ACTION_SEND` (compartirlo hacia
+     * NuvTune desde otra aplicacion).
+     */
+    private fun extractGiftUri(intent: Intent?): String? = when (intent?.action) {
+        Intent.ACTION_VIEW -> intent.data?.toString()
+        Intent.ACTION_SEND ->
+            @Suppress("DEPRECATION")
+            intent.getParcelableExtra<android.net.Uri>(Intent.EXTRA_STREAM)?.toString()
+        else -> null
+    }
 
     override fun configureFlutterEngine(flutterEngine: FlutterEngine) {
         super.configureFlutterEngine(flutterEngine)
+
+        giftIntentChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            GIFT_INTENT_CHANNEL,
+        ).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                if (call.method == "takePendingGift") {
+                    result.success(pendingGiftUri)
+                    // Se consume una sola vez: un hot restart o una segunda
+                    // consulta no deben reabrir el mismo regalo como si
+                    // acabara de llegar.
+                    pendingGiftUri = null
+                } else {
+                    result.notImplemented()
+                }
+            }
+        }
         val created = FlutterMusicPlugin(
             context = applicationContext,
             messenger = flutterEngine.dartExecutor.binaryMessenger,
@@ -74,6 +126,8 @@ class MainActivity : FlutterActivity() {
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
         systemVolumeChannel?.setMethodCallHandler(null)
         systemVolumeChannel = null
+        giftIntentChannel?.setMethodCallHandler(null)
+        giftIntentChannel = null
         plugin?.let {
             it.activity = null
             it.detach()

@@ -21,7 +21,7 @@ import java.io.IOException
  * permiso de almacenamiento adicional.
  */
 object MediaStoreWriter {
-    private const val RELATIVE_FOLDER = "NuvTune descargas"
+    const val DOWNLOADS_FOLDER = "NuvTune descargas"
 
     fun saveAudio(
         context: Context,
@@ -30,6 +30,8 @@ object MediaStoreWriter {
         title: String?,
         artist: String?,
         album: String?,
+        /** Carpeta visible bajo `Music/`. Separa lo descargado de lo regalado. */
+        relativeFolder: String = DOWNLOADS_FOLDER,
     ): Uri {
         val resolver = context.contentResolver
         val mimeType = mimeTypeFor(source.extension)
@@ -37,7 +39,7 @@ object MediaStoreWriter {
         val values = ContentValues().apply {
             put(MediaStore.Audio.Media.DISPLAY_NAME, displayName)
             put(MediaStore.Audio.Media.MIME_TYPE, mimeType)
-            put(MediaStore.Audio.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MUSIC}/$RELATIVE_FOLDER")
+            put(MediaStore.Audio.Media.RELATIVE_PATH, "${Environment.DIRECTORY_MUSIC}/$relativeFolder")
             put(MediaStore.Audio.Media.IS_MUSIC, 1)
             put(MediaStore.Audio.Media.IS_PENDING, 1)
             if (!title.isNullOrBlank()) put(MediaStore.Audio.Media.TITLE, title)

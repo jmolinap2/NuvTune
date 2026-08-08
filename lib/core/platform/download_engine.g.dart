@@ -708,6 +708,46 @@ class DownloadEngineHostApi {
     return pigeonVar_replyValue! as AnalysisResult;
   }
 
+  /// Reproduce una vista previa del audio sin descargarlo: resuelve la URL
+  /// directa del stream con yt-dlp y la abre en un reproductor aparte del
+  /// principal, para que escuchar un resultado de busqueda no destruya la
+  /// cola de reproduccion del usuario.
+  Future<void> startPreview(String sourceUrl) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.startPreview$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[sourceUrl]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  Future<void> stopPreview() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.stopPreview$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
   /// No bloquea: encola la descarga en el servicio en primer plano y
   /// retorna. El resultado llega despues por
   /// onDownloadCompleted/onDownloadFailed.

@@ -28,6 +28,8 @@ class DownloadEnginePlugin :
     private val job = Job()
     private val scope = CoroutineScope(Dispatchers.IO + job)
     private val mainHandler = Handler(Looper.getMainLooper())
+    /** Se crea al primer uso: la mayoria de las sesiones nunca oye una vista previa. */
+    private var previewPlayer: PreviewPlayer? = null
 
     override fun onAttachedToEngine(binding: FlutterPlugin.FlutterPluginBinding) {
         this.binding = binding
@@ -37,6 +39,8 @@ class DownloadEnginePlugin :
     }
 
     override fun onDetachedFromEngine(binding: FlutterPlugin.FlutterPluginBinding) {
+        previewPlayer?.stop()
+        previewPlayer = null
         DownloadEventBus.unregister(this)
         DownloadEngineHostApi.setUp(binding.binaryMessenger, null)
         flutterApi = null
@@ -100,6 +104,22 @@ class DownloadEnginePlugin :
             }
             callback(Result.success(result))
         }
+    }
+
+    override fun startPreview(sourceUrl: String, callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            val result = runCatching {
+                val streamUrl = YtDlpEngine.audioStreamUrl(sourceUrl)
+                    ?: error("yt-dlp no devolvio una URL de audio para $sourceUrl")
+                val active = previewPlayer ?: PreviewPlayer(requireContext()).also { previewPlayer = it }
+                active.play(streamUrl)
+            }.onFailure { error -> Log.w(TAG, "startPreview fallo para $sourceUrl", error) }
+            callback(result)
+        }
+    }
+
+    override fun stopPreview() {
+        previewPlayer?.stop()
     }
 
     override fun startDownload(request: DownloadRequest) {

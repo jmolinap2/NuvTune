@@ -12,12 +12,14 @@ import 'package:nuvtune/features/metadata_editor/batch_editor_screen.dart';
 import 'package:nuvtune/features/metadata_editor/song_editor_screen.dart';
 import 'package:nuvtune/features/player/player_screen.dart';
 import 'package:nuvtune/features/playlists/gift_intro_screen.dart';
+import 'package:nuvtune/features/playlists/gift_receive_wizard.dart';
 import 'package:nuvtune/features/playlists/playlist_detail_screen.dart';
 import 'package:nuvtune/features/playlists/playlists_screen.dart';
 import 'package:nuvtune/features/queue/queue_screen.dart';
 import 'package:nuvtune/features/remote_sources/remote_sources_screen.dart';
 import 'package:nuvtune/features/settings/appearance_screen.dart';
 import 'package:nuvtune/features/settings/folders_screen.dart';
+import 'package:nuvtune/features/settings/playback_failure_log_screen.dart';
 import 'package:nuvtune/features/settings/settings_screen.dart';
 import 'package:nuvtune/features/settings/widgets_screen.dart';
 
@@ -207,6 +209,15 @@ GoRouter createRouter() {
           playlistId: int.parse(state.pathParameters['id']!),
         ),
       ),
+      // Asistente de recepcion de un regalo. `uri` llega cuando el archivo se
+      // abre desde otra aplicacion; sin el, el asistente pide elegirlo.
+      GoRoute(
+        path: '/gift/receive',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => GiftReceiveWizard(
+          initialUri: state.uri.queryParameters['uri'],
+        ),
+      ),
       GoRoute(
         path: '/playlist/:id/gift',
         parentNavigatorKey: rootNavigatorKey,
@@ -256,6 +267,11 @@ GoRouter createRouter() {
         path: '/settings/source-folders',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SourceFoldersScreen(),
+      ),
+      GoRoute(
+        path: '/settings/playback-failure-log',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const PlaybackFailureLogScreen(),
       ),
     ],
   );

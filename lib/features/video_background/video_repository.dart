@@ -20,6 +20,22 @@ class VideoRepository {
   String songKeyOf(Song song) =>
       '${song.artist}||${song.title}'.trim().toLowerCase();
 
+  /// Solo lo que ya esta en cache, sin tocar la red.
+  ///
+  /// Lo usa el envio de un regalo: adjuntar la fuente exacta de cada cancion
+  /// hace que el receptor descargue la misma version y no "lo primero que
+  /// aparezca". Preguntarle a Piped por cada cancion de la lista en ese
+  /// momento dejaria el envio esperando por decenas de solicitudes, de modo
+  /// que se aprovecha lo que ya se resolvio antes (por el video de fondo) y
+  /// el resto lo confirma el receptor.
+  Future<String?> cachedVideoIdFor(Song song) async {
+    final cached = await (_database.select(_database.songVideoIds)
+          ..where((table) => table.songKey.equals(songKeyOf(song))))
+        .getSingleOrNull();
+    final videoId = cached?.videoId;
+    return (videoId == null || videoId.isEmpty) ? null : videoId;
+  }
+
   Future<String?> videoIdFor(Song song) async {
     final key = songKeyOf(song);
     final rejected = _rejectedIds[key] ?? const <String>{};

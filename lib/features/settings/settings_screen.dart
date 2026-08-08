@@ -192,6 +192,15 @@ class SettingsScreen extends ConsumerWidget {
               trailing: const Icon(Icons.chevron_right_rounded),
               onTap: () => context.push('/downloads'),
             ),
+            ListTile(
+              leading: const Icon(Icons.bug_report_outlined),
+              title: const Text('Registro de reproducción'),
+              subtitle: const Text(
+                'Qué canciones fallaron al escanear o reproducir, y por qué.',
+              ),
+              trailing: const Icon(Icons.chevron_right_rounded),
+              onTap: () => context.push('/settings/playback-failure-log'),
+            ),
 
             // -- Bluetooth y Android Auto -------------------------------------
             _Section(title: AppStrings.settingsBluetooth),

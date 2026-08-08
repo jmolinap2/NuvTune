@@ -54,6 +54,7 @@ internal class FlutterMusicPlugin(
     private var controller: MediaController? = null
     private val pendingActivityResults =
         HashMap<Int, CompletableDeferred<Pair<Int, Intent?>>>()
+    private val giftPackager by lazy { GiftPackager(context, components.library) }
 
     fun attach() {
         MusicEngineHostApi.setUp(messenger, this)
@@ -790,6 +791,62 @@ internal class FlutterMusicPlugin(
                     ),
                 ),
             )
+        }
+    }
+
+    // -- Regalos --------------------------------------------------------------
+
+    override fun createGiftPackage(
+        suggestedFileName: String,
+        metadataJson: String,
+        songIds: List<Long>,
+        callback: (Result<String>) -> Unit,
+    ) {
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) {
+                    giftPackager.create(suggestedFileName, metadataJson, songIds)
+                }
+            }
+            callback(result)
+        }
+    }
+
+    override fun readGiftPackage(uri: String, callback: (Result<GiftPackage>) -> Unit) {
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { giftPackager.read(uri) }
+            }
+            callback(result)
+        }
+    }
+
+    override fun importGiftAudio(uri: String, callback: (Result<Long>) -> Unit) {
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { giftPackager.importAudio(uri) }
+            }
+            callback(result)
+        }
+    }
+
+    // -- Registro de fallos de reproduccion ------------------------------------
+
+    override fun readPlaybackFailureLog(callback: (Result<String>) -> Unit) {
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { PlaybackFailureLog.readAllAsJson() }
+            }
+            callback(result)
+        }
+    }
+
+    override fun clearPlaybackFailureLog(callback: (Result<Unit>) -> Unit) {
+        scope.launch {
+            val result = runCatching {
+                withContext(Dispatchers.IO) { PlaybackFailureLog.clear() }
+            }
+            callback(result)
         }
     }
 

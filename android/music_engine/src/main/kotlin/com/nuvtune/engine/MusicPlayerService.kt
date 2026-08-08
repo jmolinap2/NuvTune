@@ -365,6 +365,14 @@ class MusicPlayerService : MediaLibraryService() {
 
     private inner class PlayerListener : Player.Listener {
 
+        /**
+         * Si la pista que suena ahora empezo sola (cola avanzando o repeticion)
+         * en vez de por un toque del usuario. [PlaybackFailureLog] necesita
+         * esta distincion para separar "el usuario intento reproducirla y
+         * fallo" de "fallo mientras la cola avanzaba sin que nadie la tocara".
+         */
+        private var currentItemStartedAutomatically = false
+
         override fun onEvents(player: Player, events: Player.Events) {
             if (events.containsAny(
                     Player.EVENT_PLAYBACK_STATE_CHANGED,
@@ -384,9 +392,15 @@ class MusicPlayerService : MediaLibraryService() {
             when (reason) {
                 Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
                 Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT,
-                -> fadeController.onAutomaticTransition()
+                -> {
+                    fadeController.onAutomaticTransition()
+                    currentItemStartedAutomatically = true
+                }
 
-                else -> fadeController.onManualTransition()
+                else -> {
+                    fadeController.onManualTransition()
+                    currentItemStartedAutomatically = false
+                }
             }
 
             // El temporizador con la opcion de terminar la cancion detiene la
@@ -407,6 +421,38 @@ class MusicPlayerService : MediaLibraryService() {
             publishQueue()
         }
 
+        override fun onPositionDiscontinuity(
+            oldPosition: Player.PositionInfo,
+            newPosition: Player.PositionInfo,
+            reason: Int,
+        ) {
+            // No hubo ningun error: el extractor dio la pista por terminada
+            // sola. Pero si termino mucho antes de lo que su propia duracion
+            // declarada prometia, es la firma de una descarga truncada o un
+            // archivo corrupto que el extractor no rechaza, solo acorta -el
+            // mismo caso que se percibe como "la cancion se salto sola".
+            if (reason != Player.DISCONTINUITY_REASON_AUTO_TRANSITION) return
+            val song = oldPosition.mediaItem?.mediaId?.toLongOrNull()
+                ?.let { components.library.songById(it) }
+                ?: return
+            val declaredMs = song.durationMs
+            val playedMs = oldPosition.positionMs
+            if (declaredMs < MIN_DURATION_FOR_SHORT_PLAYBACK_CHECK_MS) return
+            if (playedMs >= declaredMs * SHORT_PLAYBACK_RATIO_THRESHOLD) return
+
+            PlaybackFailureLog.record(
+                stage = PlaybackFailureLog.Stage.SHORT_PLAYBACK,
+                songId = song.id,
+                title = song.title,
+                filePath = song.filePath,
+                mimeType = song.mimeType,
+                code = null,
+                message = "Termino en ${playedMs}ms de ${declaredMs}ms declarados " +
+                    "(${(playedMs * 100 / declaredMs.coerceAtLeast(1))}%): " +
+                    "posible archivo truncado o corrupto",
+            )
+        }
+
         override fun onPlayerError(error: PlaybackException) {
             val song = player.currentMediaItem?.mediaId?.toLongOrNull()
                 ?.let { components.library.songById(it) }
@@ -414,6 +460,19 @@ class MusicPlayerService : MediaLibraryService() {
             PlaybackStateHolder.publishError(
                 error.errorCodeName,
                 "No se pudo reproducir $detail: ${error.localizedMessage ?: error.errorCodeName}",
+            )
+            PlaybackFailureLog.record(
+                stage = if (currentItemStartedAutomatically) {
+                    PlaybackFailureLog.Stage.AUTO_SKIP
+                } else {
+                    PlaybackFailureLog.Stage.MANUAL_PLAY
+                },
+                songId = song?.id,
+                title = song?.title,
+                filePath = song?.filePath,
+                mimeType = song?.mimeType,
+                code = error.errorCodeName,
+                message = error.localizedMessage ?: error.errorCodeName,
             )
         }
     }
@@ -477,6 +536,12 @@ class MusicPlayerService : MediaLibraryService() {
 
         const val COMMAND_TOGGLE_FAVORITE = "com.nuvtune.engine.TOGGLE_FAVORITE"
         private const val NOTIFICATION_CHANNEL_ID = "nuvtune_playback"
+
+        /** Bajo esta duracion declarada no vale la pena comparar: demasiado ruido. */
+        private const val MIN_DURATION_FOR_SHORT_PLAYBACK_CHECK_MS = 20_000L
+
+        /** Si sono menos de este porcentaje de lo declarado, se registra como sospechoso. */
+        private const val SHORT_PLAYBACK_RATIO_THRESHOLD = 0.5
 
         /**
          * Media vez por segundo basta para una barra de progreso y mantiene el

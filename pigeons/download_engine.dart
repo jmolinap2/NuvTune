@@ -141,6 +141,15 @@ abstract class DownloadEngineHostApi {
   @async
   AnalysisResult analyzeUrl(String url);
 
+  /// Reproduce una vista previa del audio sin descargarlo: resuelve la URL
+  /// directa del stream con yt-dlp y la abre en un reproductor aparte del
+  /// principal, para que escuchar un resultado de busqueda no destruya la
+  /// cola de reproduccion del usuario.
+  @async
+  void startPreview(String sourceUrl);
+
+  void stopPreview();
+
   /// No bloquea: encola la descarga en el servicio en primer plano y
   /// retorna. El resultado llega despues por
   /// onDownloadCompleted/onDownloadFailed.

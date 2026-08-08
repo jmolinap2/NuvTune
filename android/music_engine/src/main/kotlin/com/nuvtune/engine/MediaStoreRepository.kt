@@ -168,13 +168,31 @@ internal class MediaStoreRepository(private val context: Context) {
 
                 val id = cursor.getLong(idColumn)
                 val rawTrack = cursor.getInt(trackColumn)
+                val title = cursor.getString(titleColumn) ?: File(filePath).nameWithoutExtension
+                val supported = FormatSupport.isSupported(mimeType)
+
+                if (!supported) {
+                    // Se registra en el escaneo, antes de que el usuario
+                    // llegue a tocarla: es el primer punto donde se sabe que
+                    // esta cancion no va a poder reproducirse.
+                    PlaybackFailureLog.record(
+                        stage = PlaybackFailureLog.Stage.SCAN,
+                        songId = id,
+                        title = title,
+                        filePath = filePath,
+                        mimeType = mimeType,
+                        code = null,
+                        message = FormatSupport.unsupportedReason(mimeType)
+                            ?: "Formato no reconocido por el motor",
+                    )
+                }
 
                 result.add(
                     Song(
                         id = id,
                         uri = contentUriFor(id).toString(),
                         filePath = filePath,
-                        title = cursor.getString(titleColumn) ?: File(filePath).nameWithoutExtension,
+                        title = title,
                         artist = cursor.getString(artistColumn) ?: UNKNOWN_ARTIST,
                         artistId = cursor.getLong(artistIdColumn),
                         album = cursor.getString(albumColumn) ?: UNKNOWN_ALBUM,
@@ -193,7 +211,7 @@ internal class MediaStoreRepository(private val context: Context) {
                         folderPath = folderPath,
                         folderName = File(folderPath).name,
                         hasCover = false,
-                        isSupported = FormatSupport.isSupported(mimeType),
+                        isSupported = supported,
                     )
                 )
             }

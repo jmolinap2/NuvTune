@@ -156,6 +156,19 @@ class MetadataEdit {
   String? lyrics;
 }
 
+/// Contenido de un archivo `.nuvtune-gift` ya leido, antes de importarlo.
+class GiftPackage {
+  /// JSON con la dedicatoria y la lista de canciones.
+  late String metadataJson;
+
+  /// Cuantas canciones traen su audio dentro del archivo. Cero significa un
+  /// regalo del formato antiguo, de solo texto.
+  late int embeddedAudioCount;
+
+  /// Peso total del archivo, para avisar antes de copiar nada.
+  late int sizeBytes;
+}
+
 class WriteResult {
   late WriteOutcome outcome;
   late int songId;
@@ -620,6 +633,49 @@ abstract class MusicEngineHostApi {
   /// (requerimiento 16).
   @async
   WriteResult deleteSongFile(int songId);
+
+  /// Empaqueta la dedicatoria y el audio de las canciones en un unico archivo
+  /// `.nuvtune-gift` (un zip) y devuelve su ruta temporal para compartirlo.
+  ///
+  /// El audio viaja dentro: un regalo tiene que ser el regalo, no una lista
+  /// de titulos que el receptor tenga que salir a buscar y que puede terminar
+  /// resolviendo con la version equivocada (o no encontrar, si es musica que
+  /// no esta publicada en internet).
+  @async
+  String createGiftPackage(
+    String suggestedFileName,
+    String metadataJson,
+    List<int> songIds,
+  );
+
+  /// Lee un archivo de regalo sin importarlo todavia, para poder mostrar que
+  /// trae antes de tocar la biblioteca.
+  @async
+  GiftPackage readGiftPackage(String uri);
+
+  /// Copia a la biblioteca de musica el audio incrustado en el regalo.
+  /// Devuelve cuantas canciones se agregaron.
+  @async
+  int importGiftAudio(String uri);
+
+  // -- Registro de fallos de reproduccion ------------------------------------
+
+  /// Cada fallo real registrado: durante el escaneo (formato no soportado),
+  /// al intentar reproducir a proposito, mientras la cola avanzaba sola sin
+  /// que el usuario tocara nada, o una pista que termino mucho antes de su
+  /// duracion declarada (sintoma de archivo truncado o corrupto sin que el
+  /// extractor llegue a fallar).
+  ///
+  /// JSON en vez de una clase Pigeon: son entradas heterogeneas que se
+  /// acumulan en un archivo de texto plano en el motor nativo, y forzar cada
+  /// una a cruzar el canal como un mensaje individual solo para listar el
+  /// registro completo seria mas lento sin ganar nada.
+  @async
+  String readPlaybackFailureLog();
+
+  /// Vacia el registro.
+  @async
+  void clearPlaybackFailureLog();
 }
 
 // ---------------------------------------------------------------------------

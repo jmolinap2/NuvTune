@@ -748,6 +748,66 @@ class MetadataEdit {
   }
 }
 
+/// Contenido de un archivo `.nuvtune-gift` ya leido, antes de importarlo.
+class GiftPackage {
+  GiftPackage({
+    required this.metadataJson,
+    required this.embeddedAudioCount,
+    required this.sizeBytes,
+  });
+
+  /// JSON con la dedicatoria y la lista de canciones.
+  String metadataJson;
+
+  /// Cuantas canciones traen su audio dentro del archivo. Cero significa un
+  /// regalo del formato antiguo, de solo texto.
+  int embeddedAudioCount;
+
+  /// Peso total del archivo, para avisar antes de copiar nada.
+  int sizeBytes;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      metadataJson,
+      embeddedAudioCount,
+      sizeBytes,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static GiftPackage decode(Object result) {
+    result as List<Object?>;
+    return GiftPackage(
+      metadataJson: result[0]! as String,
+      embeddedAudioCount: result[1]! as int,
+      sizeBytes: result[2]! as int,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! GiftPackage || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(metadataJson, other.metadataJson) && _deepEquals(embeddedAudioCount, other.embeddedAudioCount) && _deepEquals(sizeBytes, other.sizeBytes);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'GiftPackage(metadataJson: $metadataJson, embeddedAudioCount: $embeddedAudioCount, sizeBytes: $sizeBytes)';
+  }
+}
+
 class WriteResult {
   WriteResult({
     required this.outcome,
@@ -1724,44 +1784,47 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is MetadataEdit) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    }    else if (value is WriteResult) {
+    }    else if (value is GiftPackage) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    }    else if (value is EqualizerSettings) {
+    }    else if (value is WriteResult) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    }    else if (value is PlaybackOptions) {
+    }    else if (value is EqualizerSettings) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    }    else if (value is EnhancementSettings) {
+    }    else if (value is PlaybackOptions) {
       buffer.putUint8(148);
       writeValue(buffer, value.encode());
-    }    else if (value is LoudnessAnalysis) {
+    }    else if (value is EnhancementSettings) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    }    else if (value is WidgetConfig) {
+    }    else if (value is LoudnessAnalysis) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteSource) {
+    }    else if (value is WidgetConfig) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteEntry) {
+    }    else if (value is RemoteSource) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    }    else if (value is EqualizerBands) {
+    }    else if (value is RemoteEntry) {
       buffer.putUint8(153);
       writeValue(buffer, value.encode());
-    }    else if (value is PickedDocument) {
+    }    else if (value is EqualizerBands) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
-    }    else if (value is GrantedFolder) {
+    }    else if (value is PickedDocument) {
       buffer.putUint8(155);
       writeValue(buffer, value.encode());
-    }    else if (value is CoverImage) {
+    }    else if (value is GrantedFolder) {
       buffer.putUint8(156);
       writeValue(buffer, value.encode());
-    }    else if (value is LyricsPayload) {
+    }    else if (value is CoverImage) {
       buffer.putUint8(157);
+      writeValue(buffer, value.encode());
+    }    else if (value is LyricsPayload) {
+      buffer.putUint8(158);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -1815,30 +1878,32 @@ class _PigeonCodec extends StandardMessageCodec {
       case 144:
         return MetadataEdit.decode(readValue(buffer)!);
       case 145:
-        return WriteResult.decode(readValue(buffer)!);
+        return GiftPackage.decode(readValue(buffer)!);
       case 146:
-        return EqualizerSettings.decode(readValue(buffer)!);
+        return WriteResult.decode(readValue(buffer)!);
       case 147:
-        return PlaybackOptions.decode(readValue(buffer)!);
+        return EqualizerSettings.decode(readValue(buffer)!);
       case 148:
-        return EnhancementSettings.decode(readValue(buffer)!);
+        return PlaybackOptions.decode(readValue(buffer)!);
       case 149:
-        return LoudnessAnalysis.decode(readValue(buffer)!);
+        return EnhancementSettings.decode(readValue(buffer)!);
       case 150:
-        return WidgetConfig.decode(readValue(buffer)!);
+        return LoudnessAnalysis.decode(readValue(buffer)!);
       case 151:
-        return RemoteSource.decode(readValue(buffer)!);
+        return WidgetConfig.decode(readValue(buffer)!);
       case 152:
-        return RemoteEntry.decode(readValue(buffer)!);
+        return RemoteSource.decode(readValue(buffer)!);
       case 153:
-        return EqualizerBands.decode(readValue(buffer)!);
+        return RemoteEntry.decode(readValue(buffer)!);
       case 154:
-        return PickedDocument.decode(readValue(buffer)!);
+        return EqualizerBands.decode(readValue(buffer)!);
       case 155:
-        return GrantedFolder.decode(readValue(buffer)!);
+        return PickedDocument.decode(readValue(buffer)!);
       case 156:
-        return CoverImage.decode(readValue(buffer)!);
+        return GrantedFolder.decode(readValue(buffer)!);
       case 157:
+        return CoverImage.decode(readValue(buffer)!);
+      case 158:
         return LyricsPayload.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -3083,6 +3148,122 @@ class MusicEngineHostApi {
     )
     ;
     return pigeonVar_replyValue! as WriteResult;
+  }
+
+  /// Empaqueta la dedicatoria y el audio de las canciones en un unico archivo
+  /// `.nuvtune-gift` (un zip) y devuelve su ruta temporal para compartirlo.
+  ///
+  /// El audio viaja dentro: un regalo tiene que ser el regalo, no una lista
+  /// de titulos que el receptor tenga que salir a buscar y que puede terminar
+  /// resolviendo con la version equivocada (o no encontrar, si es musica que
+  /// no esta publicada en internet).
+  Future<String> createGiftPackage(String suggestedFileName, String metadataJson, List<int> songIds) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.createGiftPackage$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[suggestedFileName, metadataJson, songIds]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as String;
+  }
+
+  /// Lee un archivo de regalo sin importarlo todavia, para poder mostrar que
+  /// trae antes de tocar la biblioteca.
+  Future<GiftPackage> readGiftPackage(String uri) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readGiftPackage$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[uri]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as GiftPackage;
+  }
+
+  /// Copia a la biblioteca de musica el audio incrustado en el regalo.
+  /// Devuelve cuantas canciones se agregaron.
+  Future<int> importGiftAudio(String uri) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.importGiftAudio$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[uri]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as int;
+  }
+
+  /// Cada fallo real registrado: durante el escaneo (formato no soportado),
+  /// al intentar reproducir a proposito, mientras la cola avanzaba sola sin
+  /// que el usuario tocara nada, o una pista que termino mucho antes de su
+  /// duracion declarada (sintoma de archivo truncado o corrupto sin que el
+  /// extractor llegue a fallar).
+  ///
+  /// JSON en vez de una clase Pigeon: son entradas heterogeneas que se
+  /// acumulan en un archivo de texto plano en el motor nativo, y forzar cada
+  /// una a cruzar el canal como un mensaje individual solo para listar el
+  /// registro completo seria mas lento sin ganar nada.
+  Future<String> readPlaybackFailureLog() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readPlaybackFailureLog$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as String;
+  }
+
+  /// Vacia el registro.
+  Future<void> clearPlaybackFailureLog() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.clearPlaybackFailureLog$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 }
 

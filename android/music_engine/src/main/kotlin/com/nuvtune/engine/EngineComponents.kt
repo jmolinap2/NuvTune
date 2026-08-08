@@ -21,6 +21,7 @@ internal object EngineComponents {
     fun get(context: Context): Components {
         val existing = components
         if (existing != null) return existing
+        PlaybackFailureLog.attach(context.applicationContext)
         val created = Components(context.applicationContext)
         components = created
         return created

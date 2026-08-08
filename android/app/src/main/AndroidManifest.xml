@@ -58,6 +58,73 @@
                 <category android:name="android.intent.category.DEFAULT" />
                 <category android:name="android.intent.category.APP_MUSIC" />
             </intent-filter>
+
+            <!--
+              Abrir un regalo (.nuvtune-gift) tocandolo desde WhatsApp, Drive o
+              un gestor de archivos, sin pasar por el selector de la propia
+              aplicacion.
+
+              Van tres filtros y no uno porque Android exige que TODOS los
+              criterios declarados dentro de un mismo <intent-filter> se
+              cumplan a la vez. Un unico bloque que mezclara `mimeType` con
+              `pathPattern` dejaba a NuvTune fuera de la lista "Abrir con" de
+              WhatsApp: WhatsApp entrega una uri opaca
+              (`content://com.whatsapp.provider.media/item/<id>`) donde el
+              nombre del archivo no aparece, asi que el `pathPattern` nunca
+              casaba y descartaba el filtro entero aunque el tipo MIME si
+              coincidiera.
+
+              Sigue siendo mejor esfuerzo, no una garantia, y por eso el boton
+              de importar manual de la pantalla de Listas se conserva: es el
+              camino que siempre funciona. La validacion real del contenido la
+              hace `GiftPackager.read` + `GiftPayload.decode`, no el manifest.
+            -->
+
+            <!-- 1) Por nombre de archivo: gestores de archivos, Drive, correo,
+                 cualquiera que conserve el nombre en la uri. Es el camino
+                 preciso, sin falsos positivos. -->
+            <intent-filter android:label="Abrir regalo de NuvTune">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:host="*" />
+                <data android:mimeType="*/*" />
+                <data android:pathPattern=".*\\.nuvtune-gift" />
+                <data android:pathPattern=".*\\..*\\.nuvtune-gift" />
+                <data android:pathPattern=".*\\..*\\..*\\.nuvtune-gift" />
+                <data android:pathPattern=".*\\..*\\..*\\..*\\.nuvtune-gift" />
+            </intent-filter>
+
+            <!-- 2) Solo por tipo, sin mirar la ruta: es el que hace falta para
+                 WhatsApp y Telegram, que anuncian el regalo como
+                 `application/octet-stream` (de ahi la etiqueta "BIN"). El
+                 precio es que NuvTune tambien aparece al abrir otros archivos
+                 binarios sueltos; a cambio, tocar el regalo en el chat
+                 funciona. -->
+            <intent-filter android:label="Abrir regalo de NuvTune">
+                <action android:name="android.intent.action.VIEW" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <category android:name="android.intent.category.BROWSABLE" />
+                <data android:scheme="content" />
+                <data android:scheme="file" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+            </intent-filter>
+
+            <!-- 3) Compartir el archivo hacia NuvTune desde la conversacion
+                 (manten pulsado el documento > Compartir). Es la salida
+                 cuando el chooser de "Abrir con" no ofrece la aplicacion. -->
+            <intent-filter android:label="Abrir regalo de NuvTune">
+                <action android:name="android.intent.action.SEND" />
+                <category android:name="android.intent.category.DEFAULT" />
+                <data android:mimeType="application/octet-stream" />
+                <data android:mimeType="application/zip" />
+                <data android:mimeType="application/x-zip-compressed" />
+                <data android:mimeType="application/json" />
+            </intent-filter>
         </activity>
 
         <!-- El reproductor y la sesion multimedia viven aqui, no en el proceso

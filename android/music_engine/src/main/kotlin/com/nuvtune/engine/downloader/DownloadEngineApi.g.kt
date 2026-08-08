@@ -716,6 +716,14 @@ interface DownloadEngineHostApi {
   fun search(query: String, limit: Long, callback: (Result<List<SearchResultItem>>) -> Unit)
   fun analyzeUrl(url: String, callback: (Result<AnalysisResult>) -> Unit)
   /**
+   * Reproduce una vista previa del audio sin descargarlo: resuelve la URL
+   * directa del stream con yt-dlp y la abre en un reproductor aparte del
+   * principal, para que escuchar un resultado de busqueda no destruya la
+   * cola de reproduccion del usuario.
+   */
+  fun startPreview(sourceUrl: String, callback: (Result<Unit>) -> Unit)
+  fun stopPreview()
+  /**
    * No bloquea: encola la descarga en el servicio en primer plano y
    * retorna. El resultado llega despues por
    * onDownloadCompleted/onDownloadFailed.
@@ -787,6 +795,41 @@ interface DownloadEngineHostApi {
                 reply.reply(DownloadEngineApiPigeonUtils.wrapResult(data))
               }
             }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.startPreview$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val sourceUrlArg = args[0] as String
+            api.startPreview(sourceUrlArg) { result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(DownloadEngineApiPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(DownloadEngineApiPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.stopPreview$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.stopPreview()
+              listOf(null)
+            } catch (exception: Throwable) {
+              DownloadEngineApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
           }
         } else {
           channel.setMessageHandler(null)

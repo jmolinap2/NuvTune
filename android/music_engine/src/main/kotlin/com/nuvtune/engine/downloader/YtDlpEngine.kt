@@ -110,6 +110,28 @@ object YtDlpEngine {
     }
 
     /**
+     * URL directa del stream de audio, sin descargar nada. `-g`
+     * (`--get-url`) hace que yt-dlp resuelva el formato y escriba la URL en
+     * la salida estandar en vez de bajar el archivo; es lo que permite
+     * escuchar una vista previa antes de decidir la descarga.
+     *
+     * La URL caduca (YouTube la firma por tiempo), asi que se resuelve en el
+     * momento de reproducir y no se guarda.
+     */
+    fun audioStreamUrl(sourceUrl: String): String? {
+        assertInitialized()
+        val request = YoutubeDLRequest(sourceUrl)
+        request.addOption("--no-playlist")
+        request.addOption("--no-warnings")
+        request.addOption("-f", "bestaudio/best")
+        request.addOption("-g")
+        val response = YoutubeDL.getInstance().execute(request)
+        return response.out.lineSequence()
+            .map { it.trim() }
+            .firstOrNull { it.startsWith("http", ignoreCase = true) }
+    }
+
+    /**
      * A diferencia de un desglose por resolucion (NuvClip, que tambien
      * descarga video), estas opciones son tres bitrates fijos, siempre
      * disponibles sin importar que exponga el extractor. El tamaño es una

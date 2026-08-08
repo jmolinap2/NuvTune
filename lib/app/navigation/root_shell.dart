@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/localization/strings.dart';
+import 'package:nuvtune/core/platform/gift_intent_service.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/player/mini_player.dart';
 
@@ -16,10 +17,12 @@ class RootShell extends ConsumerStatefulWidget {
   ConsumerState<RootShell> createState() => _RootShellState();
 }
 
-class _RootShellState extends ConsumerState<RootShell> {
+class _RootShellState extends ConsumerState<RootShell>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
     // Los errores del motor se muestran una sola vez y sin cortar el uso de la
     // aplicacion.
     ref.listenManual(engineErrorsProvider, (previous, next) {
@@ -32,6 +35,29 @@ class _RootShellState extends ConsumerState<RootShell> {
         ),
       );
     });
+    WidgetsBinding.instance.addPostFrameCallback((_) => _openPendingGift());
+  }
+
+  @override
+  void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
+    super.dispose();
+  }
+
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    // Con la aplicacion ya abierta, tocar un regalo la trae al frente por
+    // `onNewIntent`: no hay un `initState` nuevo donde mirar, hay que volver
+    // a preguntar al reanudar.
+    if (state == AppLifecycleState.resumed) _openPendingGift();
+  }
+
+  /// Abre el asistente de recepcion si la aplicacion se lanzo (o se reanudo)
+  /// con un archivo `.nuvtune-gift`.
+  Future<void> _openPendingGift() async {
+    final uri = await const GiftIntentService().takePendingGift();
+    if (uri == null || !mounted) return;
+    context.push('/gift/receive?uri=${Uri.encodeQueryComponent(uri)}');
   }
 
   @override

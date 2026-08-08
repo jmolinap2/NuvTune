@@ -826,6 +826,61 @@ data class MetadataEdit (
   }
 }
 
+/**
+ * Contenido de un archivo `.nuvtune-gift` ya leido, antes de importarlo.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class GiftPackage (
+  /** JSON con la dedicatoria y la lista de canciones. */
+  val metadataJson: String,
+  /**
+   * Cuantas canciones traen su audio dentro del archivo. Cero significa un
+   * regalo del formato antiguo, de solo texto.
+   */
+  val embeddedAudioCount: Long,
+  /** Peso total del archivo, para avisar antes de copiar nada. */
+  val sizeBytes: Long
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): GiftPackage {
+      val metadataJson = pigeonVar_list[0] as String
+      val embeddedAudioCount = pigeonVar_list[1] as Long
+      val sizeBytes = pigeonVar_list[2] as Long
+      return GiftPackage(metadataJson, embeddedAudioCount, sizeBytes)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      metadataJson,
+      embeddedAudioCount,
+      sizeBytes,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as GiftPackage
+    return MusicEngineApiPigeonUtils.deepEquals(this.metadataJson, other.metadataJson) && MusicEngineApiPigeonUtils.deepEquals(this.embeddedAudioCount, other.embeddedAudioCount) && MusicEngineApiPigeonUtils.deepEquals(this.sizeBytes, other.sizeBytes)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.metadataJson)
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.embeddedAudioCount)
+    result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.sizeBytes)
+    return result
+  }
+  override fun toString(): String {
+    return "GiftPackage(metadataJson=$metadataJson, embeddedAudioCount=$embeddedAudioCount, sizeBytes=$sizeBytes)"
+  }
+}
+
 /** Generated class from Pigeon that represents data sent in messages. */
 data class WriteResult (
   val outcome: WriteOutcome,
@@ -1711,65 +1766,70 @@ private open class MusicEngineApiPigeonCodec : StandardMessageCodec() {
       }
       145.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          WriteResult.fromList(it)
+          GiftPackage.fromList(it)
         }
       }
       146.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          EqualizerSettings.fromList(it)
+          WriteResult.fromList(it)
         }
       }
       147.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PlaybackOptions.fromList(it)
+          EqualizerSettings.fromList(it)
         }
       }
       148.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          EnhancementSettings.fromList(it)
+          PlaybackOptions.fromList(it)
         }
       }
       149.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          LoudnessAnalysis.fromList(it)
+          EnhancementSettings.fromList(it)
         }
       }
       150.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          WidgetConfig.fromList(it)
+          LoudnessAnalysis.fromList(it)
         }
       }
       151.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RemoteSource.fromList(it)
+          WidgetConfig.fromList(it)
         }
       }
       152.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RemoteEntry.fromList(it)
+          RemoteSource.fromList(it)
         }
       }
       153.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          EqualizerBands.fromList(it)
+          RemoteEntry.fromList(it)
         }
       }
       154.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PickedDocument.fromList(it)
+          EqualizerBands.fromList(it)
         }
       }
       155.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          GrantedFolder.fromList(it)
+          PickedDocument.fromList(it)
         }
       }
       156.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CoverImage.fromList(it)
+          GrantedFolder.fromList(it)
         }
       }
       157.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CoverImage.fromList(it)
+        }
+      }
+      158.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           LyricsPayload.fromList(it)
         }
@@ -1843,56 +1903,60 @@ private open class MusicEngineApiPigeonCodec : StandardMessageCodec() {
         stream.write(144)
         writeValue(stream, value.toList())
       }
-      is WriteResult -> {
+      is GiftPackage -> {
         stream.write(145)
         writeValue(stream, value.toList())
       }
-      is EqualizerSettings -> {
+      is WriteResult -> {
         stream.write(146)
         writeValue(stream, value.toList())
       }
-      is PlaybackOptions -> {
+      is EqualizerSettings -> {
         stream.write(147)
         writeValue(stream, value.toList())
       }
-      is EnhancementSettings -> {
+      is PlaybackOptions -> {
         stream.write(148)
         writeValue(stream, value.toList())
       }
-      is LoudnessAnalysis -> {
+      is EnhancementSettings -> {
         stream.write(149)
         writeValue(stream, value.toList())
       }
-      is WidgetConfig -> {
+      is LoudnessAnalysis -> {
         stream.write(150)
         writeValue(stream, value.toList())
       }
-      is RemoteSource -> {
+      is WidgetConfig -> {
         stream.write(151)
         writeValue(stream, value.toList())
       }
-      is RemoteEntry -> {
+      is RemoteSource -> {
         stream.write(152)
         writeValue(stream, value.toList())
       }
-      is EqualizerBands -> {
+      is RemoteEntry -> {
         stream.write(153)
         writeValue(stream, value.toList())
       }
-      is PickedDocument -> {
+      is EqualizerBands -> {
         stream.write(154)
         writeValue(stream, value.toList())
       }
-      is GrantedFolder -> {
+      is PickedDocument -> {
         stream.write(155)
         writeValue(stream, value.toList())
       }
-      is CoverImage -> {
+      is GrantedFolder -> {
         stream.write(156)
         writeValue(stream, value.toList())
       }
-      is LyricsPayload -> {
+      is CoverImage -> {
         stream.write(157)
+        writeValue(stream, value.toList())
+      }
+      is LyricsPayload -> {
+        stream.write(158)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -2036,6 +2100,41 @@ interface MusicEngineHostApi {
    * (requerimiento 16).
    */
   fun deleteSongFile(songId: Long, callback: (Result<WriteResult>) -> Unit)
+  /**
+   * Empaqueta la dedicatoria y el audio de las canciones en un unico archivo
+   * `.nuvtune-gift` (un zip) y devuelve su ruta temporal para compartirlo.
+   *
+   * El audio viaja dentro: un regalo tiene que ser el regalo, no una lista
+   * de titulos que el receptor tenga que salir a buscar y que puede terminar
+   * resolviendo con la version equivocada (o no encontrar, si es musica que
+   * no esta publicada en internet).
+   */
+  fun createGiftPackage(suggestedFileName: String, metadataJson: String, songIds: List<Long>, callback: (Result<String>) -> Unit)
+  /**
+   * Lee un archivo de regalo sin importarlo todavia, para poder mostrar que
+   * trae antes de tocar la biblioteca.
+   */
+  fun readGiftPackage(uri: String, callback: (Result<GiftPackage>) -> Unit)
+  /**
+   * Copia a la biblioteca de musica el audio incrustado en el regalo.
+   * Devuelve cuantas canciones se agregaron.
+   */
+  fun importGiftAudio(uri: String, callback: (Result<Long>) -> Unit)
+  /**
+   * Cada fallo real registrado: durante el escaneo (formato no soportado),
+   * al intentar reproducir a proposito, mientras la cola avanzaba sola sin
+   * que el usuario tocara nada, o una pista que termino mucho antes de su
+   * duracion declarada (sintoma de archivo truncado o corrupto sin que el
+   * extractor llegue a fallar).
+   *
+   * JSON en vez de una clase Pigeon: son entradas heterogeneas que se
+   * acumulan en un archivo de texto plano en el motor nativo, y forzar cada
+   * una a cruzar el canal como un mensaje individual solo para listar el
+   * registro completo seria mas lento sin ganar nada.
+   */
+  fun readPlaybackFailureLog(callback: (Result<String>) -> Unit)
+  /** Vacia el registro. */
+  fun clearPlaybackFailureLog(callback: (Result<Unit>) -> Unit)
 
   companion object {
     /** The codec used by MusicEngineHostApi. */
@@ -3260,6 +3359,103 @@ interface MusicEngineHostApi {
           channel.setMessageHandler(null)
         }
       }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.MusicEngineHostApi.createGiftPackage$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val suggestedFileNameArg = args[0] as String
+            val metadataJsonArg = args[1] as String
+            val songIdsArg = args[2] as List<Long>
+            api.createGiftPackage(suggestedFileNameArg, metadataJsonArg, songIdsArg) { result: Result<String> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MusicEngineApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MusicEngineApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readGiftPackage$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val uriArg = args[0] as String
+            api.readGiftPackage(uriArg) { result: Result<GiftPackage> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MusicEngineApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MusicEngineApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.MusicEngineHostApi.importGiftAudio$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val uriArg = args[0] as String
+            api.importGiftAudio(uriArg) { result: Result<Long> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MusicEngineApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MusicEngineApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readPlaybackFailureLog$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.readPlaybackFailureLog{ result: Result<String> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MusicEngineApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(MusicEngineApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.MusicEngineHostApi.clearPlaybackFailureLog$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.clearPlaybackFailureLog{ result: Result<Unit> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(MusicEngineApiPigeonUtils.wrapError(error))
+              } else {
+                reply.reply(MusicEngineApiPigeonUtils.wrapResult(null))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
     }
   }
 }
@@ -3285,7 +3481,7 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
         }
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
-      }
+      } 
     }
   }
   fun currentTrackChanged(indexArg: Long, songIdArg: Long?, callback: (Result<Unit>) -> Unit)
@@ -3302,7 +3498,7 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
         }
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
-      }
+      } 
     }
   }
   fun positionChanged(positionMsArg: Long, durationMsArg: Long, bufferedMsArg: Long, callback: (Result<Unit>) -> Unit)
@@ -3319,7 +3515,7 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
         }
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
-      }
+      } 
     }
   }
   fun queueChanged(queueArg: List<Song>, currentIndexArg: Long, callback: (Result<Unit>) -> Unit)
@@ -3370,7 +3566,7 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
         }
       } else {
         callback(Result.failure(MusicEngineApiPigeonUtils.createConnectionError(channelName)))
-      }
+      } 
     }
   }
   /** El motor detecto cambios en MediaStore y la biblioteca fue reconstruida. */
