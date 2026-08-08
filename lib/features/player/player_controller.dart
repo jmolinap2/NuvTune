@@ -126,16 +126,16 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     _subscriptions.add(
       engine.queue.listen((update) {
-        state = state.copyWith(
-          queue: update.songs,
-          snapshot: _withIndex(state.snapshot, update.currentIndex),
-        );
+        // Solo la lista. El indice es propiedad exclusiva del snapshot, y el
+        // motor emite uno junto a cada cambio de cola precisamente para que
+        // aqui no haga falta tocarlo.
+        state = state.copyWith(queue: update.songs);
         unawaited(
           ref
               .read(queueRepositoryProvider)
               .saveQueue(
                 update.songs.map((song) => song.id).toList(),
-                update.currentIndex,
+                state.snapshot.currentIndex,
               ),
         );
       }),
@@ -143,14 +143,15 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     _subscriptions.add(
       engine.currentTrack.listen((change) {
-        state = state.copyWith(
-          snapshot: _withIndex(state.snapshot, change.index),
-        );
+        // El indice no se escribe aqui: su unica fuente es el snapshot. Este
+        // flujo solo dispara los efectos que dependen de QUE cancion empezo, y
+        // usa el id que trae el propio evento en vez de leerlo de `state`, que
+        // depende de otro evento y podria no haber llegado todavia.
         _registerPlayIfNeeded(change.songId);
         _pushFavoriteStateToEngine(change.songId);
         // La ganancia de normalizacion es distinta en cada pista, de modo que
         // hay que republicarla en cada cambio (requerimiento 5.2).
-        unawaited(pushEnhancement());
+        unawaited(pushEnhancement(songId: change.songId));
       }),
     );
 
@@ -212,22 +213,6 @@ class PlaybackController extends Notifier<PlaybackState> {
 
     return PlaybackState.initial();
   }
-
-  PlaybackSnapshot _withIndex(PlaybackSnapshot snapshot, int index) =>
-      PlaybackSnapshot(
-        isPlaying: snapshot.isPlaying,
-        processingState: snapshot.processingState,
-        positionMs: snapshot.positionMs,
-        durationMs: snapshot.durationMs,
-        bufferedMs: snapshot.bufferedMs,
-        currentIndex: index,
-        currentSongId: snapshot.currentSongId,
-        shuffleEnabled: snapshot.shuffleEnabled,
-        repeatMode: snapshot.repeatMode,
-        speed: snapshot.speed,
-        pitch: snapshot.pitch,
-        sleepTimerRemainingMs: snapshot.sleepTimerRemainingMs,
-      );
 
   void _onSnapshot(PlaybackSnapshot snapshot) {
     unawaited(
@@ -418,12 +403,19 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   /// Publica la cadena de mejora, incluyendo la ganancia analizada de la pista
   /// actual (requerimiento 5.2).
-  Future<void> pushEnhancement() async {
+  ///
+  /// [songId] permite pasar el id ya conocido por el evento que dispara la
+  /// llamada en vez de releerlo de [state]: el motor manda el cambio de pista
+  /// y el snapshot de reproduccion por dos canales Pigeon separados, sin
+  /// garantia de orden de llegada entre ellos, asi que `state.snapshot` puede
+  /// no estar actualizado todavia cuando esta funcion se dispara desde el
+  /// cambio de pista.
+  Future<void> pushEnhancement({int? songId}) async {
     final repository = ref.read(enhancementRepositoryProvider);
-    final songId = state.snapshot.currentSongId;
-    final analysis = songId == null
+    final resolvedSongId = songId ?? state.snapshot.currentSongId;
+    final analysis = resolvedSongId == null
         ? null
-        : await repository.analysisFor(songId);
+        : await repository.analysisFor(resolvedSongId);
     _api.setEnhancement(
       await repository.engineSettings(trackGainDb: analysis?.gainDb ?? 0),
     );

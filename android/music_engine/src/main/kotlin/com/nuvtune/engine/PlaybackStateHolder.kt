@@ -14,7 +14,9 @@ internal object PlaybackStateHolder {
 
     interface Listener {
         fun onSnapshot(snapshot: PlaybackSnapshot) {}
-        fun onQueue(queue: List<Song>, currentIndex: Int) {}
+        /// El indice no viaja aqui: lo lleva [onSnapshot], que es su unica
+        /// fuente hacia Flutter.
+        fun onQueue(queue: List<Song>) {}
         fun onTrack(index: Int, songId: Long?) {}
         fun onPosition(positionMs: Long, durationMs: Long, bufferedMs: Long) {}
         fun onAudioOutput(output: AudioOutput, deviceName: String) {}
@@ -60,10 +62,13 @@ internal object PlaybackStateHolder {
         forEachListener { it.onSnapshot(value) }
     }
 
+    /// [index] alimenta [currentSong] y [nextSong], que el widget de inicio lee
+    /// dentro de este mismo proceso; hacia Flutter no sale, para no duplicar la
+    /// autoridad del indice.
     fun publishQueue(value: List<Song>, index: Int) {
         queue = value
         currentIndex = index
-        forEachListener { it.onQueue(value, index) }
+        forEachListener { it.onQueue(value) }
     }
 
     fun publishTrack(index: Int, songId: Long?) {

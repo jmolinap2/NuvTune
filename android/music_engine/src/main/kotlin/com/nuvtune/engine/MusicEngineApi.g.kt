@@ -3467,6 +3467,16 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
       MusicEngineApiPigeonCodec()
     }
   }
+  /**
+   * Estado completo de la reproduccion. Es la UNICA fuente del indice de la
+   * pista en curso: ningun otro evento lo transporta.
+   *
+   * Antes lo llevaban tambien [currentTrackChanged] y [queueChanged], asi que
+   * en Flutter habia tres escritores para el mismo dato y bastaba con que uno
+   * llegara tarde para mostrar la pista equivocada. El motor publica un
+   * snapshot siempre que el indice pueda haber cambiado, incluida la
+   * reordenacion de la cola.
+   */
   fun playbackStateChanged(snapshotArg: PlaybackSnapshot, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
@@ -3484,6 +3494,11 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
       } 
     }
   }
+  /**
+   * Cambio de pista. Solo dispara efectos que dependen de la cancion (contar
+   * la reproduccion, favorito, ganancia de normalizacion); el indice viaja en
+   * [playbackStateChanged].
+   */
   fun currentTrackChanged(indexArg: Long, songIdArg: Long?, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
@@ -3518,12 +3533,16 @@ class MusicEngineFlutterApi(private val binaryMessenger: BinaryMessenger, privat
       } 
     }
   }
-  fun queueChanged(queueArg: List<Song>, currentIndexArg: Long, callback: (Result<Unit>) -> Unit)
+  /**
+   * Contenido de la cola. No lleva indice a proposito: ver
+   * [playbackStateChanged].
+   */
+  fun queueChanged(queueArg: List<Song>, callback: (Result<Unit>) -> Unit)
 {
     val separatedMessageChannelSuffix = if (messageChannelSuffix.isNotEmpty()) ".$messageChannelSuffix" else ""
     val channelName = "dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.queueChanged$separatedMessageChannelSuffix"
     val channel = BasicMessageChannel<Any?>(binaryMessenger, channelName, codec)
-    channel.send(listOf(queueArg, currentIndexArg)) {
+    channel.send(listOf(queueArg)) {
       if (it is List<*>) {
         if (it.size > 1) {
           callback(Result.failure(FlutterError(it[0] as String, it[1] as String, it[2] as String?)))

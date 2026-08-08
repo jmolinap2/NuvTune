@@ -39,7 +39,22 @@ internal object PlaybackFailureLog {
     private const val MAX_BYTES = 2 * 1024 * 1024L
     private const val TRIM_TARGET_LINES = 1000
 
+    /**
+     * Ventana durante la cual no se repite la misma entrada.
+     *
+     * Sin esto, cada rescaneo de la biblioteca (que puede pasar varias veces
+     * por sesion: al abrir la app, al detectar un cambio externo, tras
+     * importar un regalo) volvia a escribir la misma cancion no soportada
+     * una vez por archivo, llenando el registro de miles de copias
+     * identicas de las mismas 5 canciones y ahogando cualquier fallo real de
+     * reproduccion. 30 minutos es suficiente para no repetir dentro de una
+     * misma sesion de uso, mientras sigue mostrando si el problema persiste
+     * dia tras dia.
+     */
+    private const val DEDUPE_WINDOW_MS = 30 * 60 * 1000L
+
     private lateinit var logFile: File
+    private val lastLoggedAt = HashMap<String, Long>()
 
     @Synchronized
     fun attach(context: Context) {
@@ -58,8 +73,15 @@ internal object PlaybackFailureLog {
         message: String,
     ) {
         if (!::logFile.isInitialized) return
+
+        val now = System.currentTimeMillis()
+        val dedupeKey = "${stage.name}|$songId|$message"
+        val last = lastLoggedAt[dedupeKey]
+        if (last != null && now - last < DEDUPE_WINDOW_MS) return
+        lastLoggedAt[dedupeKey] = now
+
         val entry = JSONObject().apply {
-            put("ts", System.currentTimeMillis())
+            put("ts", now)
             put("stage", stage.name)
             put("songId", songId ?: JSONObject.NULL)
             put("title", title ?: JSONObject.NULL)
@@ -91,6 +113,10 @@ internal object PlaybackFailureLog {
     @Synchronized
     fun clear() {
         if (::logFile.isInitialized) logFile.writeText("")
+        // Vaciar el registro a mano es una señal de "quiero volver a ver todo
+        // desde cero": la ventana de deduplicacion no debe seguir ocultando
+        // entradas que el usuario acaba de borrar a proposito.
+        lastLoggedAt.clear()
     }
 
     /** Ruta del archivo, para compartirlo tal cual con `ShareHelper`. */

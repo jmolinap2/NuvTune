@@ -684,10 +684,26 @@ abstract class MusicEngineHostApi {
 
 @FlutterApi()
 abstract class MusicEngineFlutterApi {
+  /// Estado completo de la reproduccion. Es la UNICA fuente del indice de la
+  /// pista en curso: ningun otro evento lo transporta.
+  ///
+  /// Antes lo llevaban tambien [currentTrackChanged] y [queueChanged], asi que
+  /// en Flutter habia tres escritores para el mismo dato y bastaba con que uno
+  /// llegara tarde para mostrar la pista equivocada. El motor publica un
+  /// snapshot siempre que el indice pueda haber cambiado, incluida la
+  /// reordenacion de la cola.
   void playbackStateChanged(PlaybackSnapshot snapshot);
+
+  /// Cambio de pista. Solo dispara efectos que dependen de la cancion (contar
+  /// la reproduccion, favorito, ganancia de normalizacion); el indice viaja en
+  /// [playbackStateChanged].
   void currentTrackChanged(int index, int? songId);
+
   void positionChanged(int positionMs, int durationMs, int bufferedMs);
-  void queueChanged(List<Song> queue, int currentIndex);
+
+  /// Contenido de la cola. No lleva indice a proposito: ver
+  /// [playbackStateChanged].
+  void queueChanged(List<Song> queue);
   void audioDeviceChanged(AudioOutput output, String deviceName);
   void audioAnalysisChanged(AudioAnalysisFrame frame);
 

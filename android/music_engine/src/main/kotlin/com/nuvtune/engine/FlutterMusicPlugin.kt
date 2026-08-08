@@ -188,6 +188,12 @@ internal class FlutterMusicPlugin(
 
     override fun playQueueIndex(index: Long) {
         val target = controller ?: return
+        // Se traza porque el carrusel de portadas tambien llega por aqui al
+        // soltar el arrastre: si un solo toque en "siguiente" acaba disparando
+        // ademas un playQueueIndex, el salto de mas se ve en esta linea.
+        EngineTrace.log(
+            "ORDEN playQueueIndex($index) | indice antes=${target.currentMediaItemIndex}",
+        )
         target.seekTo(index.toInt(), 0)
         target.play()
     }
@@ -231,11 +237,19 @@ internal class FlutterMusicPlugin(
     }
 
     override fun skipNext() {
-        controller?.seekToNextMediaItem()
+        val target = controller ?: return
+        EngineTrace.log(
+            "ORDEN skipNext desde la interfaz | indice antes=${target.currentMediaItemIndex}",
+        )
+        target.seekToNextMediaItem()
     }
 
     override fun skipPrevious() {
-        controller?.seekToPreviousMediaItem()
+        val target = controller ?: return
+        EngineTrace.log(
+            "ORDEN skipPrevious desde la interfaz | indice antes=${target.currentMediaItemIndex}",
+        )
+        target.seekToPreviousMediaItem()
     }
 
     override fun setShuffle(enabled: Boolean) {
@@ -873,8 +887,8 @@ internal class FlutterMusicPlugin(
         NuvTuneWidgetProvider.refreshAll(context)
     }
 
-    override fun onQueue(queue: List<Song>, currentIndex: Int) {
-        flutterApi.queueChanged(queue, currentIndex.toLong()) {}
+    override fun onQueue(queue: List<Song>) {
+        flutterApi.queueChanged(queue) {}
     }
 
     override fun onTrack(index: Int, songId: Long?) {

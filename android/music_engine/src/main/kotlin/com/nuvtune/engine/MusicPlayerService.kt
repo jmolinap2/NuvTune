@@ -389,6 +389,12 @@ class MusicPlayerService : MediaLibraryService() {
         }
 
         override fun onMediaItemTransition(mediaItem: MediaItem?, reason: Int) {
+            val songId = mediaItem?.mediaId?.toLongOrNull()
+            EngineTrace.log(
+                "TRANSICION motivo=${EngineTrace.transitionReason(reason)} " +
+                    "-> indice=${player.currentMediaItemIndex} " +
+                    "cancion=\"${songId?.let { components.library.songById(it)?.title } ?: "?"}\"",
+            )
             when (reason) {
                 Player.MEDIA_ITEM_TRANSITION_REASON_AUTO,
                 Player.MEDIA_ITEM_TRANSITION_REASON_REPEAT,
@@ -419,6 +425,12 @@ class MusicPlayerService : MediaLibraryService() {
 
         override fun onTimelineChanged(timeline: Timeline, reason: Int) {
             publishQueue()
+            // Reordenar, insertar o quitar de la cola mueve el indice de la
+            // pista en curso sin que llegue ningun otro evento. Como el
+            // snapshot es la unica fuente del indice hacia Flutter, aqui tiene
+            // que emitirse: si no, la interfaz se quedaria con el indice viejo
+            // apuntando a otra cancion.
+            publishSnapshot()
         }
 
         override fun onPositionDiscontinuity(
@@ -426,6 +438,12 @@ class MusicPlayerService : MediaLibraryService() {
             newPosition: Player.PositionInfo,
             reason: Int,
         ) {
+            EngineTrace.log(
+                "DISCONTINUIDAD motivo=${EngineTrace.discontinuityReason(reason)} " +
+                    "indice ${oldPosition.mediaItemIndex}->${newPosition.mediaItemIndex} " +
+                    "posicion=${oldPosition.positionMs}ms",
+            )
+
             // No hubo ningun error: el extractor dio la pista por terminada
             // sola. Pero si termino mucho antes de lo que su propia duracion
             // declarada prometia, es la firma de una descarga truncada o un
@@ -456,6 +474,10 @@ class MusicPlayerService : MediaLibraryService() {
         override fun onPlayerError(error: PlaybackException) {
             val song = player.currentMediaItem?.mediaId?.toLongOrNull()
                 ?.let { components.library.songById(it) }
+            EngineTrace.log(
+                "ERROR indice=${player.currentMediaItemIndex} " +
+                    "cancion=\"${song?.title ?: "?"}\" codigo=${error.errorCodeName}",
+            )
             val detail = song?.let { "${it.title} (${it.mimeType})" } ?: "la pista actual"
             PlaybackStateHolder.publishError(
                 error.errorCodeName,

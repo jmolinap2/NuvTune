@@ -84,8 +84,7 @@ class EngineBridge implements MusicEngineFlutterApi {
       );
 
   @override
-  void queueChanged(List<Song> queue, int currentIndex) =>
-      _queue.add(QueueUpdate(songs: queue, currentIndex: currentIndex));
+  void queueChanged(List<Song> queue) => _queue.add(QueueUpdate(songs: queue));
 
   @override
   void audioDeviceChanged(AudioOutput output, String deviceName) => _audioOutput
@@ -132,11 +131,16 @@ class PositionUpdate {
   final int bufferedMs;
 }
 
+/// Contenido de la cola.
+///
+/// No lleva el indice de la pista en curso a proposito: su unica fuente es
+/// `PlaybackSnapshot.currentIndex`. Cuando lo llevaba tambien aqui, la cola y
+/// el estado escribian por separado el mismo campo y cualquiera de los dos
+/// podia dejar la interfaz mostrando otra cancion.
 class QueueUpdate {
-  const QueueUpdate({required this.songs, required this.currentIndex});
+  const QueueUpdate({required this.songs});
 
   final List<Song> songs;
-  final int currentIndex;
 }
 
 class AudioOutputChange {

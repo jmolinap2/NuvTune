@@ -1586,13 +1586,57 @@ class _NowPlayingTab extends ConsumerStatefulWidget {
   ConsumerState<_NowPlayingTab> createState() => _NowPlayingTabState();
 }
 
+/// Quien decide, en este instante, que portada muestra el carrusel.
+///
+/// El indice visible tenia antes dos escritores independientes -el indice que
+/// reporta el motor y las notificaciones de scroll del propio carrusel- y se
+/// pisaban entre si. Al pasar de la pista 146 a la 147, el indice se ponia en
+/// 147 y acto seguido `animateToPage` arrancaba desde la pagina 146.0; las
+/// notificaciones de esa animacion devolvian `round() == 146` durante su
+/// primera mitad y reescribian el indice a 146, hasta que la pagina cruzaba
+/// 146.5 y volvia a 147. Eso era el parpadeo: siguiente, anterior, siguiente.
+///
+/// Con la autoridad explicita el dato tiene un unico origen en cada estado, y
+/// las transiciones entre estados son las de la propia interaccion: no hay
+/// banderas defensivas ni temporizadores.
+enum _CarouselAuthority {
+  /// Manda el motor: la portada visible es la que suena. Las notificaciones de
+  /// scroll se ignoran porque son el eco de una animacion que pedimos nosotros.
+  engine,
+
+  /// Manda el dedo: la portada visible sale de la posicion del carrusel.
+  drag,
+
+  /// El usuario ya eligio y la orden viaja al motor; manda lo elegido hasta
+  /// que el motor conteste. Sin este estado la portada volveria a la anterior
+  /// durante los milisegundos que tarda la respuesta.
+  pendingEngine,
+}
+
 class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
+  /// Margen para comparar la posicion continua del carrusel contra un indice
+  /// entero: `PageController.page` no aterriza nunca en un valor exacto.
+  static const double _pageEpsilon = 0.01;
+
   late final PageController _pageController;
-  late int _previewIndex;
-  late int _lastEngineIndex;
-  bool _pageSyncPending = false;
-  bool _pageSyncScheduled = false;
-  bool _pageSyncNeedsJump = false;
+
+  /// Ultimo indice reportado por el motor. Unica fuente cuando la autoridad es
+  /// [_CarouselAuthority.engine].
+  late int _engineIndex;
+
+  /// Indice bajo el dedo. Unica fuente mientras la autoridad es
+  /// [_CarouselAuthority.drag].
+  late int _dragIndex;
+
+  /// Indice que el usuario acaba de elegir. Unica fuente mientras la autoridad
+  /// es [_CarouselAuthority.pendingEngine].
+  late int _pendingIndex;
+
+  _CarouselAuthority _authority = _CarouselAuthority.engine;
+
+  /// Impide encolar mas de una sincronizacion por fotograma.
+  bool _syncScheduled = false;
+
   double _visualizerDragDx = 0;
 
   @override
@@ -1604,8 +1648,9 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
         : state.snapshot.currentIndex
               .clamp(0, math.max(0, state.queue.length - 1))
               .toInt();
-    _previewIndex = initial;
-    _lastEngineIndex = initial;
+    _engineIndex = initial;
+    _dragIndex = initial;
+    _pendingIndex = initial;
     _pageController = PageController(
       initialPage: initial,
       viewportFraction: 0.9,
@@ -1618,81 +1663,137 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     super.dispose();
   }
 
+  /// Portada que se muestra. Sale de un unico campo, elegido por la autoridad
+  /// vigente: nunca de dos a la vez.
+  int get _visibleIndex => switch (_authority) {
+    _CarouselAuthority.engine => _engineIndex,
+    _CarouselAuthority.drag => _dragIndex,
+    _CarouselAuthority.pendingEngine => _pendingIndex,
+  };
+
   bool _handleCarouselScroll(ScrollNotification notification) {
+    final queueLength = ref.read(playbackProvider).queue.length;
+    if (queueLength == 0) return false;
+
+    // `dragDetails` solo llega cuando hay un dedo empujando; una animacion
+    // nuestra no lo trae. Es lo que separa "el usuario esta eligiendo" de "el
+    // carrusel se mueve porque se lo pedimos", y es exactamente la distincion
+    // que faltaba.
+    if (notification is ScrollStartNotification &&
+        notification.dragDetails != null) {
+      _authority = _CarouselAuthority.drag;
+    }
+
+    if (_authority != _CarouselAuthority.drag) return false;
+
     final page = _pageController.hasClients ? _pageController.page : null;
     if (page != null) {
-      final queueLength = ref.read(playbackProvider).queue.length;
-      final target = page
-          .round()
-          .clamp(0, math.max(0, queueLength - 1))
-          .toInt();
-      if (target != _previewIndex && mounted) {
-        setState(() => _previewIndex = target);
-      }
+      final target = page.round().clamp(0, queueLength - 1).toInt();
+      if (target != _dragIndex) setState(() => _dragIndex = target);
     }
-    if (notification is ScrollEndNotification) _commitVisiblePage();
+
+    // El scroll termina cuando el carrusel ya se asento, con el dedo fuera:
+    // ese es el momento de fijar la eleccion.
+    if (notification is ScrollEndNotification) _commitDrag();
     return false;
   }
 
-  void _commitVisiblePage() {
-    if (!_pageController.hasClients) return;
+  /// El usuario solto el carrusel: se ordena la portada elegida.
+  void _commitDrag() {
+    final state = ref.read(playbackProvider);
+    final chosen = _dragIndex;
+    if (state.queue.isEmpty || chosen == state.snapshot.currentIndex) {
+      setState(() => _authority = _CarouselAuthority.engine);
+      return;
+    }
+    _requestIndex(chosen);
+  }
+
+  /// Intencion explicita de reproducir una portada concreta: tocarla, o el
+  /// boton de "a continuacion".
+  ///
+  /// Se le ordena al motor directamente en vez de animar el carrusel y deducir
+  /// la intencion del final del scroll. Deducirla del scroll obligaba a que
+  /// una animacion nuestra fuera indistinguible de un gesto del usuario, que
+  /// es la raiz del problema que este rediseño elimina.
+  void _requestIndex(int index) {
     final state = ref.read(playbackProvider);
     if (state.queue.isEmpty) return;
-    final target =
-        (_pageController.page ?? state.snapshot.currentIndex.toDouble())
-            .round()
-            .clamp(0, state.queue.length - 1)
-            .toInt();
+    final target = index.clamp(0, state.queue.length - 1).toInt();
     if (target == state.snapshot.currentIndex) return;
+
     HapticFeedback.selectionClick();
+    setState(() {
+      _pendingIndex = target;
+      _authority = _CarouselAuthority.pendingEngine;
+    });
     ref.read(playbackProvider.notifier).playQueueIndex(target);
+    _scheduleCarouselSync();
   }
 
-  void _showPage(int index) {
-    if (!_pageController.hasClients) return;
-    _pageController.animateToPage(
-      index,
-      duration: Tokens.durationMedium,
-      curve: Curves.easeOutCubic,
-    );
-  }
-
+  /// Incorpora el indice del motor al estado local. Se llama desde `build`, de
+  /// modo que el propio fotograma que lo recibe ya pinta con el valor nuevo.
   void _syncWithEngine(int engineIndex) {
     if (engineIndex < 0) return;
-    if (engineIndex != _lastEngineIndex) {
-      _lastEngineIndex = engineIndex;
-      _previewIndex = engineIndex;
-      _pageSyncPending = true;
+
+    final changed = engineIndex != _engineIndex;
+    _engineIndex = engineIndex;
+
+    // Cualquier indice que reporte el motor cierra la espera, coincida o no
+    // con lo pedido: el motor es la verdad. Asi la espera no depende de que
+    // llegue un valor concreto y no hace falta un tiempo maximo.
+    if (changed && _authority == _CarouselAuthority.pendingEngine) {
+      _authority = _CarouselAuthority.engine;
     }
-    if (!_pageSyncPending || _pageSyncScheduled) return;
-    if (!_pageController.hasClients) _pageSyncNeedsJump = true;
-    _pageSyncScheduled = true;
+
+    // Mientras el dedo manda, el carrusel no se toca.
+    if (_authority == _CarouselAuthority.drag) return;
+    _scheduleCarouselSync();
+  }
+
+  void _scheduleCarouselSync() {
+    if (_syncScheduled) return;
+    _syncScheduled = true;
     WidgetsBinding.instance.addPostFrameCallback((_) {
-      _pageSyncScheduled = false;
+      _syncScheduled = false;
       if (!mounted) return;
-      if (!_pageController.hasClients) {
-        // El carrusel puede estar desmontado mientras se muestra el
-        // visualizador. Conservamos el trabajo pendiente para resincronizarlo
-        // justo cuando vuelva a aparecer una portada.
-        _pageSyncNeedsJump = true;
-        return;
-      }
-      final target = _lastEngineIndex;
-      final page = _pageController.page ?? target.toDouble();
-      _pageSyncPending = false;
-      final shouldJump = _pageSyncNeedsJump;
-      _pageSyncNeedsJump = false;
-      if ((page - target).abs() < 0.01) return;
-      if (shouldJump) {
-        _pageController.jumpToPage(target);
-      } else {
-        _pageController.animateToPage(
-          target,
-          duration: Tokens.durationMedium,
-          curve: Curves.easeOutCubic,
-        );
-      }
+      _applyCarouselSync();
     });
+  }
+
+  /// Invariante del carrusel: terminado cada fotograma en que el dedo no
+  /// manda, la pagina visible coincide con [_visibleIndex].
+  ///
+  /// Se aplica siempre, no solo cuando cambia el indice, y por eso no hace
+  /// falta recordar sincronizaciones pendientes cuando el carrusel esta
+  /// desmontado (ocurre al mostrar el visualizador): al volver a montarse, el
+  /// primer fotograma lo recoloca.
+  void _applyCarouselSync() {
+    if (_authority == _CarouselAuthority.drag) return;
+    if (!_pageController.hasClients) return;
+    final page = _pageController.page;
+    if (page == null) return;
+
+    final target = _visibleIndex;
+    final distance = (page - target).abs();
+    if (distance < _pageEpsilon) return;
+
+    // Solo se anima el paso entre portadas contiguas, que es el unico caso en
+    // que el movimiento comunica algo. Con el modo aleatorio dos pistas
+    // consecutivas pueden estar a cientos de posiciones de distancia en la
+    // cola (146 -> 753 en la traza real), y animar esa distancia hace desfilar
+    // cientos de caratulas en un tercio de segundo: eso es lo que se percibia
+    // como "salto varias canciones de golpe" cuando el motor solo habia
+    // avanzado una.
+    if (distance > 1 + _pageEpsilon) {
+      _pageController.jumpToPage(target);
+    } else {
+      _pageController.animateToPage(
+        target,
+        duration: Tokens.durationMedium,
+        curve: Curves.easeOutCubic,
+      );
+    }
   }
 
   bool _skipFromVisualizer({required bool next}) {
@@ -1797,7 +1898,7 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     _syncWithEngine(engineIndex);
     final safePreviewIndex = state.queue.isEmpty
         ? 0
-        : _previewIndex.clamp(0, state.queue.length - 1).toInt();
+        : _visibleIndex.clamp(0, state.queue.length - 1).toInt();
     final displaySong = state.queue.isEmpty
         ? widget.song
         : state.queue[safePreviewIndex];
@@ -1971,7 +2072,7 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                                     child: GestureDetector(
                                       onTap: () async {
                                         if (index != engineIndex) {
-                                          _showPage(index);
+                                          _requestIndex(index);
                                           return;
                                         }
                                         await widget.onOpenFullscreen(
@@ -2169,7 +2270,7 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                 Padding(
                   padding: const EdgeInsets.only(top: Tokens.space2),
                   child: TextButton.icon(
-                    onPressed: () => _showPage(engineIndex + 1),
+                    onPressed: () => _requestIndex(engineIndex + 1),
                     icon: const Icon(Icons.queue_music_rounded, size: 18),
                     label: ConstrainedBox(
                       constraints: BoxConstraints(
