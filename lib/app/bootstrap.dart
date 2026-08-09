@@ -6,7 +6,7 @@ import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/library/library_controller.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
-import 'package:nuvtune/features/settings/widgets_screen.dart';
+import 'package:nuvtune/features/settings/settings_engine_config.dart';
 
 enum BootstrapStage {
   starting,
@@ -28,8 +28,9 @@ class BootstrapState {
       stage == BootstrapStage.permissionPermanentlyDenied;
 }
 
-final bootstrapProvider =
-    NotifierProvider<BootstrapController, BootstrapState>(BootstrapController.new);
+final bootstrapProvider = NotifierProvider<BootstrapController, BootstrapState>(
+  BootstrapController.new,
+);
 
 /// Arranque de la aplicacion, en el orden en que las cosas dependen unas de
 /// otras: permiso, motor, ajustes de audio y por ultimo biblioteca y cola
@@ -78,6 +79,10 @@ class BootstrapController extends Notifier<BootstrapState> {
     // dibujarlo con la aplicacion cerrada. Se resincroniza en cada arranque por
     // si la base de datos se restauro desde una copia de seguridad.
     ref.read(engineProvider).api.setWidgetConfig(widgetConfigOf(settings));
+    ref
+        .read(engineProvider)
+        .api
+        .setDeviceControlConfig(deviceControlConfigOf(settings));
 
     state = const BootstrapState(stage: BootstrapStage.ready);
     unawaited(_finishLoadingLibrary(settings));

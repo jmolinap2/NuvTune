@@ -1,325 +1,162 @@
-# Deploy Android a celular
+# Deploy Android de NuvTune
 
-Guia para compilar NuvTune, instalarlo o actualizarlo en tu celular por ADB y
-dejar una copia de la APK en el telefono. Este es el mismo flujo que usamos en
-Iron Kata, pero adaptado a Flutter.
-
-## Resumen rapido
-
-Desde PowerShell:
+NuvTune tiene un unico script de despliegue:
 
 ```powershell
-cd C:\Repos\NuvTune
-& 'C:\Program Files\Git\bin\bash.exe' tools/deploy.sh 192.168.1.108:38723
+pwsh tool/deploy.ps1
 ```
 
-Desde Git Bash:
+El deploy es local, genera una APK release, la instala por ADB y mantiene una
+copia versionada en el almacenamiento compartido del telefono.
 
-```bash
-cd /c/Repos/NuvTune
-tools/deploy.sh 192.168.1.108:38723
+## Requisitos
+
+- Flutter instalado y disponible en `PATH`, o en una de las rutas conocidas
+  por `tool/deploy.ps1`.
+- Android SDK con `adb` disponible en `PATH`, `C:\Android\Sdk` o el SDK del
+  usuario local.
+- El POCO X6 Pro vinculado previamente para depuracion inalambrica.
+- El telefono y la PC conectados a la misma red.
+
+No hace falta guardar la IP ni el puerto de depuracion. El script identifica el
+telefono por modelo/producto y, si no esta conectado, busca por mDNS el puerto
+que Android anuncia en ese momento.
+
+## Version antes del deploy
+
+Cada avance que se instale debe incrementar `version:` en `pubspec.yaml`:
+
+```yaml
+version: 1.3.2+9
 ```
 
-Si el celular ya aparece conectado en `adb devices`, tambien puedes ejecutar:
+- `1.3.2` es el `versionName` visible.
+- `9` es el `versionCode` interno de Android y siempre debe aumentar.
 
-```bash
-tools/deploy.sh
-```
-
-## Requisitos en la PC
-
-- Android SDK instalado.
-- `adb.exe`: `C:\Android\Sdk\platform-tools\adb.exe`.
-- `aapt.exe`: `C:\Android\Sdk\build-tools\36.0.0\aapt.exe`.
-- Flutter instalado. El script espera:
-  `/c/Users/USER/flutter/bin/flutter`.
-- Git Bash instalado en:
-  `C:\Program Files\Git\bin\bash.exe`.
-
-Si alguna ruta cambia, edita estas variables al inicio de `tools/deploy.sh`:
-
-```bash
-ADB="${ADB:-/c/Android/Sdk/platform-tools/adb.exe}"
-AAPT="${AAPT:-/c/Android/Sdk/build-tools/36.0.0/aapt.exe}"
-FLUTTER="${FLUTTER:-/c/Users/USER/flutter/bin/flutter}"
-```
-
-## Preparar el celular
-
-1. Abre Opciones de desarrollador.
-2. Activa Depuracion USB.
-3. Activa Depuracion inalambrica.
-4. Entra en Depuracion inalambrica.
-5. Usa el valor que dice Direccion IP y puerto.
-
-Importante: no confundas los puertos.
-
-- Direccion IP y puerto: se usa para deploy, por ejemplo `192.168.1.108:38723`.
-- Vincular dispositivo con codigo: solo sirve para emparejar por primera vez.
-
-El puerto cambia seguido. Si ayer era `38723` y hoy Android muestra otro, usa el
-nuevo.
-
-## Verificar conexion
-
-Desde PowerShell:
-
-```powershell
-& 'C:\Android\Sdk\platform-tools\adb.exe' devices
-```
-
-Desde Git Bash:
-
-```bash
-/c/Android/Sdk/platform-tools/adb.exe devices
-```
-
-Debe aparecer algo asi:
+El nombre de la APK se construye con ambos valores:
 
 ```text
-List of devices attached
-192.168.1.108:38723    device
+NuvTune-v1.3.2-b9.apk
 ```
 
-Si aparece `unauthorized`, desbloquea el telefono y acepta el permiso de
-depuracion. Si aparece `offline`, apaga y prende Depuracion inalambrica o usa el
-puerto nuevo.
+## Flujo predeterminado
 
-## Ejecutar deploy completo
-
-Antes de cada deploy de un avance, actualiza `version:` en `pubspec.yaml`.
-La regla esta documentada en `VERSIONADO.md`.
-
-Ejemplo recomendado desde PowerShell:
+Al ejecutar:
 
 ```powershell
-cd C:\Repos\NuvTune
-& 'C:\Program Files\Git\bin\bash.exe' tools/deploy.sh 192.168.1.108:38723
+pwsh tool/deploy.ps1
 ```
 
-Ejemplo recomendado desde Git Bash:
+el script realiza, en este orden:
 
-```bash
-cd /c/Repos/NuvTune
-tools/deploy.sh 192.168.1.108:38723
+1. Encuentra el POCO X6 Pro conectado o lo reconecta por mDNS.
+2. Ejecuta `flutter build apk --release`.
+3. Copia la salida de Flutter a la raiz del repositorio con el nombre
+   versionado `NuvTune-v<versionName>-b<versionCode>.apk`.
+4. Instala la APK con `adb install -r --user 0`, conservando la biblioteca,
+   favoritos, listas y demas datos de NuvTune.
+5. Sube la APK nueva a un nombre temporal en el telefono. La APK vigente no se
+   modifica si la transferencia falla.
+6. Mueve todas las APK anteriores de NuvTune desde:
+
+   ```text
+   /sdcard/APK'S - DESARROLLOS/
+   ```
+
+   hacia:
+
+   ```text
+   /sdcard/APK'S - DESARROLLOS/respaldo/
+   ```
+
+7. Coloca la APK nueva, con su nombre versionado, en la carpeta principal.
+8. Ordena los respaldos de NuvTune desde el mas reciente y elimina los que
+   excedan el limite de cuatro.
+9. Muestra el `versionName` y `versionCode` instalados.
+
+El resultado en el telefono es:
+
+- En `APK'S - DESARROLLOS` queda una sola APK actual de NuvTune.
+- En `respaldo` quedan como maximo las cuatro APK anteriores mas recientes de
+  NuvTune.
+- Las APK de Iron Kata, NuvClip y los otros proyectos no se modifican.
+
+## Acciones disponibles
+
+```powershell
+# Deploy completo release (accion predeterminada)
+pwsh tool/deploy.ps1
+
+# Mismo flujo con una APK debug
+pwsh tool/deploy.ps1 -DebugBuild
+
+# Solo identificar o reconectar el telefono
+pwsh tool/deploy.ps1 -Action device
+
+# Solo compilar
+pwsh tool/deploy.ps1 -Action build
+
+# Solo instalar la APK ya compilada
+pwsh tool/deploy.ps1 -Action install
+
+# Deploy completo, abrir NuvTune y seguir sus logs durante 30 segundos
+pwsh tool/deploy.ps1 -Action run
+
+# Mostrar errores recientes de NuvTune
+pwsh tool/deploy.ps1 -Action logs
+
+# Seguir logs durante un tiempo especifico
+pwsh tool/deploy.ps1 -Action logs -Seconds 45
 ```
 
-El script hace esto:
+Las acciones `deploy` y `run` ejecutan el flujo completo de respaldo, copia y
+rotacion. `build` e `install` son acciones parciales y no modifican la carpeta
+de APK compartida del telefono.
 
-1. Conecta con el dispositivo si pasaste `IP:puerto`.
-2. Si no pasaste dispositivo, busca el primer `device` en `adb devices`.
-3. Compila:
+## Seguridad de los datos
 
-```bash
-flutter build apk --release
-```
+La instalacion usa `-r` para conservar los datos. Si Android informa un
+conflicto de firma, el script se detiene y no desinstala NuvTune automaticamente,
+porque una desinstalacion borraria sus datos locales.
 
-4. Toma la APK de:
+La limpieza se limita estrictamente a archivos con el patron `NuvTune-*.apk`
+dentro de `respaldo`. Nunca elimina APK de otros proyectos.
+
+## Salidas
+
+Salida original de Flutter:
 
 ```text
 build/app/outputs/flutter-apk/app-release.apk
 ```
 
-5. Crea una copia de la APK en la raiz del repo:
+Copia versionada local:
 
 ```text
 NuvTune-v<versionName>-b<versionCode>.apk
 ```
 
-6. Verifica con `aapt dump badging` que el paquete sea:
-
-```text
-com.nuvtune.app
-```
-
-7. Instala o actualiza en el celular:
-
-```bash
-adb install -r --user 0 NuvTune-v<versionName>-b<versionCode>.apk
-```
-
-8. Copia la APK al telefono:
+Copia actual en el telefono:
 
 ```text
 /sdcard/APK'S - DESARROLLOS/NuvTune-v<versionName>-b<versionCode>.apk
-```
-
-9. Si ya existia una copia anterior, la mueve a:
-
-```text
-/sdcard/APK'S - DESARROLLOS/respaldo/
-```
-
-10. Muestra la version instalada con `dumpsys package`.
-
-## Donde se guarda cada cosa
-
-En la PC, la APK que genera Flutter queda aqui:
-
-```text
-C:\Repos\NuvTune\build\app\outputs\flutter-apk\app-release.apk
-```
-
-Esa APK generada es una salida temporal de build. El script la copia a la raiz
-del repo con el nombre de la app y la version:
-
-```text
-C:\Repos\NuvTune\NuvTune-v<versionName>-b<versionCode>.apk
-```
-
-Ejemplo:
-
-```text
-C:\Repos\NuvTune\NuvTune-v1.0.0-b1.apk
-```
-
-En el celular, el script guarda otra copia aqui:
-
-```text
-/sdcard/APK'S - DESARROLLOS/NuvTune-v<versionName>-b<versionCode>.apk
-```
-
-Ejemplo:
-
-```text
-/sdcard/APK'S - DESARROLLOS/NuvTune-v1.0.0-b1.apk
-```
-
-Si ya habia una APK con el mismo nombre en el celular, antes de copiar la nueva
-la mueve a:
-
-```text
-/sdcard/APK'S - DESARROLLOS/respaldo/
-```
-
-La app instalada no queda como archivo visible en una carpeta normal: Android la
-instala internamente dentro del sistema de paquetes. La copia visible del APK es
-la de `APK'S - DESARROLLOS`.
-
-Nota: el nombre del APK usa `versionName` y `versionCode`. Por ejemplo,
-`version: 1.0.1+2` genera `NuvTune-v1.0.1-b2.apk`. Ambos deben actualizarse en
-cada avance que se instale.
-
-## Ver ayuda del script
-
-```bash
-tools/deploy.sh --help
-```
-
-## Configuracion confirmada
-
-El proyecto Flutter ya existe y los valores del script coinciden con la
-compilacion real, verificado con `aapt dump badging`:
-
-```text
-package: name='com.nuvtune.app' versionCode='1' versionName='1.0.0'
-application-label:'NuvTune'
-sdkVersion:'30'  targetSdkVersion:'36'
-native-code: 'arm64-v8a' 'armeabi-v7a' 'x86_64'
-```
-
-- `PACKAGE_NAME=com.nuvtune.app` coincide con el `applicationId`.
-- `APP_NAME=NuvTune` coincide con la etiqueta de la aplicacion.
-- `VERSION` se lee de `pubspec.yaml`.
-
-Si el `applicationId` cambia, hay que actualizar `PACKAGE_NAME` antes de
-instalar para que la verificacion no falle.
-
-## Tamano de la APK
-
-La APK release puede pesar alrededor de 60 a 70 MB porque
-`flutter build apk --release` genera una APK unica con varias arquitecturas.
-Eso es normal.
-
-Para generar APKs separadas por arquitectura:
-
-```bash
-flutter build apk --release --split-per-abi
-```
-
-El script usa la APK unica a proposito, porque sirve para cualquier telefono
-compatible sin tener que escoger archivo manualmente.
-
-## Requisito de version de Android
-
-`minSdk` es 30 (Android 11). En NuvTune esto tiene sentido por el manejo moderno
-de archivos de musica, miniaturas y permisos de almacenamiento con alcance.
-
-## Comandos manuales utiles
-
-Conectar manualmente:
-
-```bash
-/c/Android/Sdk/platform-tools/adb.exe connect 192.168.1.108:38723
-```
-
-Ver paquete de una APK:
-
-```bash
-/c/Android/Sdk/build-tools/36.0.0/aapt.exe dump badging NuvTune-v1.0.0-b1.apk
-```
-
-Instalar manualmente:
-
-```bash
-/c/Android/Sdk/platform-tools/adb.exe install -r --user 0 NuvTune-v1.0.0-b1.apk
-```
-
-Copiar manualmente al telefono desde Git Bash:
-
-```bash
-export MSYS_NO_PATHCONV=1
-/c/Android/Sdk/platform-tools/adb.exe push NuvTune-v1.0.0-b1.apk "/sdcard/APK'S - DESARROLLOS/NuvTune-v1.0.0-b1.apk"
 ```
 
 ## Problemas comunes
 
-`No se encontro pubspec.yaml`
+### No se encuentra el telefono
 
-Ejecutaste el script desde una carpeta que no contiene el proyecto Flutter, o el
-proyecto todavia no fue creado.
+Comprueba que la depuracion inalambrica este encendida y que el telefono este
+en la misma red que la PC. Si Android elimino el vinculo, hay que emparejarlo
+manualmente una vez.
 
-`No hay un dispositivo ADB conectado`
+### Conflicto de firma
 
-Pasa una direccion `IP:puerto` actual:
+La APK instalada fue firmada con otra clave. El script no la desinstala porque
+eso borraria los datos. La desinstalacion debe decidirse y ejecutarse
+manualmente.
 
-```bash
-tools/deploy.sh 192.168.1.108:38723
-```
+### No se encuentra Flutter o ADB
 
-`INSTALL_FAILED_USER_RESTRICTED`
-
-En Xiaomi/POCO/HyperOS puede pasar si Android bloquea instalaciones por ADB. El
-script ya usa `--user 0`, que suele resolverlo. Si aun falla, revisa en opciones
-de desarrollador si existe una opcion como Instalar via USB o permisos de
-depuracion.
-
-`INSTALL_FAILED_UPDATE_INCOMPATIBLE`
-
-Ya hay una app instalada con el mismo paquete pero firmada con otra clave. Hay
-que desinstalar esa app una vez y luego volver a ejecutar el deploy.
-
-`La compilacion no corresponde al paquete esperado`
-
-El `applicationId` real no coincide con `PACKAGE_NAME`. Revisa el paquete con:
-
-```bash
-/c/Android/Sdk/build-tools/36.0.0/aapt.exe dump badging build/app/outputs/flutter-apk/app-release.apk
-```
-
-Luego actualiza `PACKAGE_NAME` en `tools/deploy.sh`.
-
-`C:/Program Files/Git/sdcard/...`
-
-Eso es Git Bash convirtiendo rutas del telefono como si fueran rutas de Windows.
-El script ya exporta `MSYS_NO_PATHCONV=1` antes de hacer `adb push` y comandos
-contra `/sdcard`.
-
-## Consideraciones
-
-- El deploy siempre compila release, no debug.
-- La copia local del APK queda en la raiz del repo.
-- El telefono conserva una copia en `APK'S - DESARROLLOS`.
-- La carpeta `respaldo` en el telefono guarda APKs anteriores.
-- El puerto de depuracion inalambrica cambia mucho; confirma el actual antes de
-  pensar que el script esta mal.
+Agrega la herramienta al `PATH` o actualiza las rutas candidatas en
+`tool/deploy.ps1`.

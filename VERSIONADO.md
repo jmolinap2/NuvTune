@@ -51,7 +51,7 @@ pero el `+numero` debe subir igual.
 
 ## Como lo usa el deploy
 
-`tools/deploy.sh` lee la version desde `pubspec.yaml` y genera una APK con ese
+`tool/deploy.ps1` lee la version desde `pubspec.yaml` y genera una APK con ese
 nombre:
 
 ```text
@@ -65,8 +65,8 @@ pero no cambia `version:`, es facil perder trazabilidad.
 
 Antes de ejecutar:
 
-```bash
-tools/deploy.sh 192.168.1.108:38723
+```powershell
+pwsh tool/deploy.ps1
 ```
 
 verifica:

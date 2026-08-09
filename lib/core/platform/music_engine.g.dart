@@ -1200,8 +1200,6 @@ class WidgetConfig {
     required this.showDuration,
     required this.showNextInQueue,
     required this.openPlayerOnTap,
-    required this.pauseOnHeadphonesDisconnect,
-    required this.resumeOnHeadphonesConnect,
   });
 
   bool enabled;
@@ -1234,10 +1232,6 @@ class WidgetConfig {
 
   bool openPlayerOnTap;
 
-  bool pauseOnHeadphonesDisconnect;
-
-  bool resumeOnHeadphonesConnect;
-
   List<Object?> _toList() {
     return <Object?>[
       enabled,
@@ -1254,8 +1248,6 @@ class WidgetConfig {
       showDuration,
       showNextInQueue,
       openPlayerOnTap,
-      pauseOnHeadphonesDisconnect,
-      resumeOnHeadphonesConnect,
     ];
   }
 
@@ -1279,8 +1271,6 @@ class WidgetConfig {
       showDuration: result[11]! as bool,
       showNextInQueue: result[12]! as bool,
       openPlayerOnTap: result[13]! as bool,
-      pauseOnHeadphonesDisconnect: result[14]! as bool,
-      resumeOnHeadphonesConnect: result[15]! as bool,
     );
   }
 
@@ -1293,7 +1283,7 @@ class WidgetConfig {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(enabled, other.enabled) && _deepEquals(style, other.style) && _deepEquals(theme, other.theme) && _deepEquals(preferredSize, other.preferredSize) && _deepEquals(accentColor, other.accentColor) && _deepEquals(backgroundOpacity, other.backgroundOpacity) && _deepEquals(showCover, other.showCover) && _deepEquals(showTitle, other.showTitle) && _deepEquals(showArtist, other.showArtist) && _deepEquals(showControls, other.showControls) && _deepEquals(showProgress, other.showProgress) && _deepEquals(showDuration, other.showDuration) && _deepEquals(showNextInQueue, other.showNextInQueue) && _deepEquals(openPlayerOnTap, other.openPlayerOnTap) && _deepEquals(pauseOnHeadphonesDisconnect, other.pauseOnHeadphonesDisconnect) && _deepEquals(resumeOnHeadphonesConnect, other.resumeOnHeadphonesConnect);
+    return _deepEquals(enabled, other.enabled) && _deepEquals(style, other.style) && _deepEquals(theme, other.theme) && _deepEquals(preferredSize, other.preferredSize) && _deepEquals(accentColor, other.accentColor) && _deepEquals(backgroundOpacity, other.backgroundOpacity) && _deepEquals(showCover, other.showCover) && _deepEquals(showTitle, other.showTitle) && _deepEquals(showArtist, other.showArtist) && _deepEquals(showControls, other.showControls) && _deepEquals(showProgress, other.showProgress) && _deepEquals(showDuration, other.showDuration) && _deepEquals(showNextInQueue, other.showNextInQueue) && _deepEquals(openPlayerOnTap, other.openPlayerOnTap);
   }
 
   @override
@@ -1302,7 +1292,61 @@ class WidgetConfig {
 
   @override
   String toString() {
-    return 'WidgetConfig(enabled: $enabled, style: $style, theme: $theme, preferredSize: $preferredSize, accentColor: $accentColor, backgroundOpacity: $backgroundOpacity, showCover: $showCover, showTitle: $showTitle, showArtist: $showArtist, showControls: $showControls, showProgress: $showProgress, showDuration: $showDuration, showNextInQueue: $showNextInQueue, openPlayerOnTap: $openPlayerOnTap, pauseOnHeadphonesDisconnect: $pauseOnHeadphonesDisconnect, resumeOnHeadphonesConnect: $resumeOnHeadphonesConnect)';
+    return 'WidgetConfig(enabled: $enabled, style: $style, theme: $theme, preferredSize: $preferredSize, accentColor: $accentColor, backgroundOpacity: $backgroundOpacity, showCover: $showCover, showTitle: $showTitle, showArtist: $showArtist, showControls: $showControls, showProgress: $showProgress, showDuration: $showDuration, showNextInQueue: $showNextInQueue, openPlayerOnTap: $openPlayerOnTap)';
+  }
+}
+
+/// Comportamiento global de dispositivos de audio.
+///
+/// Se mantiene separado del widget porque también aplica cuando no hay ningún
+/// widget colocado y pertenece al Centro de control de la aplicación.
+class DeviceControlConfig {
+  DeviceControlConfig({
+    required this.pauseOnHeadphonesDisconnect,
+    required this.resumeOnHeadphonesConnect,
+  });
+
+  bool pauseOnHeadphonesDisconnect;
+
+  bool resumeOnHeadphonesConnect;
+
+  List<Object?> _toList() {
+    return <Object?>[
+      pauseOnHeadphonesDisconnect,
+      resumeOnHeadphonesConnect,
+    ];
+  }
+
+  Object encode() {
+    return _toList();  }
+
+  static DeviceControlConfig decode(Object result) {
+    result as List<Object?>;
+    return DeviceControlConfig(
+      pauseOnHeadphonesDisconnect: result[0]! as bool,
+      resumeOnHeadphonesConnect: result[1]! as bool,
+    );
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  bool operator ==(Object other) {
+    if (other is! DeviceControlConfig || other.runtimeType != runtimeType) {
+      return false;
+    }
+    if (identical(this, other)) {
+      return true;
+    }
+    return _deepEquals(pauseOnHeadphonesDisconnect, other.pauseOnHeadphonesDisconnect) && _deepEquals(resumeOnHeadphonesConnect, other.resumeOnHeadphonesConnect);
+  }
+
+  @override
+  // ignore: avoid_equals_and_hash_code_on_mutable_classes
+  int get hashCode => _deepHash(<Object?>[runtimeType, ..._toList()]);
+
+  @override
+  String toString() {
+    return 'DeviceControlConfig(pauseOnHeadphonesDisconnect: $pauseOnHeadphonesDisconnect, resumeOnHeadphonesConnect: $resumeOnHeadphonesConnect)';
   }
 }
 
@@ -1805,26 +1849,29 @@ class _PigeonCodec extends StandardMessageCodec {
     }    else if (value is WidgetConfig) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteSource) {
+    }    else if (value is DeviceControlConfig) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteEntry) {
+    }    else if (value is RemoteSource) {
       buffer.putUint8(153);
       writeValue(buffer, value.encode());
-    }    else if (value is EqualizerBands) {
+    }    else if (value is RemoteEntry) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
-    }    else if (value is PickedDocument) {
+    }    else if (value is EqualizerBands) {
       buffer.putUint8(155);
       writeValue(buffer, value.encode());
-    }    else if (value is GrantedFolder) {
+    }    else if (value is PickedDocument) {
       buffer.putUint8(156);
       writeValue(buffer, value.encode());
-    }    else if (value is CoverImage) {
+    }    else if (value is GrantedFolder) {
       buffer.putUint8(157);
       writeValue(buffer, value.encode());
-    }    else if (value is LyricsPayload) {
+    }    else if (value is CoverImage) {
       buffer.putUint8(158);
+      writeValue(buffer, value.encode());
+    }    else if (value is LyricsPayload) {
+      buffer.putUint8(159);
       writeValue(buffer, value.encode());
     } else {
       super.writeValue(buffer, value);
@@ -1892,18 +1939,20 @@ class _PigeonCodec extends StandardMessageCodec {
       case 151:
         return WidgetConfig.decode(readValue(buffer)!);
       case 152:
-        return RemoteSource.decode(readValue(buffer)!);
+        return DeviceControlConfig.decode(readValue(buffer)!);
       case 153:
-        return RemoteEntry.decode(readValue(buffer)!);
+        return RemoteSource.decode(readValue(buffer)!);
       case 154:
-        return EqualizerBands.decode(readValue(buffer)!);
+        return RemoteEntry.decode(readValue(buffer)!);
       case 155:
-        return PickedDocument.decode(readValue(buffer)!);
+        return EqualizerBands.decode(readValue(buffer)!);
       case 156:
-        return GrantedFolder.decode(readValue(buffer)!);
+        return PickedDocument.decode(readValue(buffer)!);
       case 157:
-        return CoverImage.decode(readValue(buffer)!);
+        return GrantedFolder.decode(readValue(buffer)!);
       case 158:
+        return CoverImage.decode(readValue(buffer)!);
+      case 159:
         return LyricsPayload.decode(readValue(buffer)!);
       default:
         return super.readValueOfType(type, buffer);
@@ -2584,6 +2633,25 @@ class MusicEngineHostApi {
   /// Publica la configuracion del widget y repinta los que ya esten colocados.
   Future<void> setWidgetConfig(WidgetConfig config) async {
     final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setWidgetConfig$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[config]);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
+  }
+
+  /// Publica el comportamiento de auriculares y salidas Bluetooth.
+  Future<void> setDeviceControlConfig(DeviceControlConfig config) async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setDeviceControlConfig$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,

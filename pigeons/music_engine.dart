@@ -321,6 +321,13 @@ class WidgetConfig {
 
   // Comportamiento
   late bool openPlayerOnTap;
+}
+
+/// Comportamiento global de dispositivos de audio.
+///
+/// Se mantiene separado del widget porque también aplica cuando no hay ningún
+/// widget colocado y pertenece al Centro de control de la aplicación.
+class DeviceControlConfig {
   late bool pauseOnHeadphonesDisconnect;
   late bool resumeOnHeadphonesConnect;
 }
@@ -497,6 +504,9 @@ abstract class MusicEngineHostApi {
 
   /// Publica la configuracion del widget y repinta los que ya esten colocados.
   void setWidgetConfig(WidgetConfig config);
+
+  /// Publica el comportamiento de auriculares y salidas Bluetooth.
+  void setDeviceControlConfig(DeviceControlConfig config);
 
   /// Numero de widgets colocados en la pantalla de inicio, para poder decirlo
   /// en la pantalla de ajustes en vez de dar por hecho que hay alguno.

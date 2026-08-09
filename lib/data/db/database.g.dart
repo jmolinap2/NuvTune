@@ -6221,6 +6221,105 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _playerControlPresetMeta =
+      const VerificationMeta('playerControlPreset');
+  @override
+  late final GeneratedColumn<String> playerControlPreset =
+      GeneratedColumn<String>(
+        'player_control_preset',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('complete'),
+      );
+  static const VerificationMeta _playerControlLayoutJsonMeta =
+      const VerificationMeta('playerControlLayoutJson');
+  @override
+  late final GeneratedColumn<String>
+  playerControlLayoutJson = GeneratedColumn<String>(
+    'player_control_layout_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(
+      '{"primary":["shuffle","previous","playPause","next","repeat"],'
+      '"secondary":["favorite","seekBackward","seekForward","queue","sleepTimer"]}',
+    ),
+  );
+  static const VerificationMeta _playerControlHandednessMeta =
+      const VerificationMeta('playerControlHandedness');
+  @override
+  late final GeneratedColumn<String> playerControlHandedness =
+      GeneratedColumn<String>(
+        'player_control_handedness',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('right'),
+      );
+  static const VerificationMeta _playerGestureDoubleTapMeta =
+      const VerificationMeta('playerGestureDoubleTap');
+  @override
+  late final GeneratedColumn<bool> playerGestureDoubleTap =
+      GeneratedColumn<bool>(
+        'player_gesture_double_tap',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("player_gesture_double_tap" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _playerGestureSwipeTrackMeta =
+      const VerificationMeta('playerGestureSwipeTrack');
+  @override
+  late final GeneratedColumn<bool> playerGestureSwipeTrack =
+      GeneratedColumn<bool>(
+        'player_gesture_swipe_track',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("player_gesture_swipe_track" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _playerGestureSwipeVolumeMeta =
+      const VerificationMeta('playerGestureSwipeVolume');
+  @override
+  late final GeneratedColumn<bool> playerGestureSwipeVolume =
+      GeneratedColumn<bool>(
+        'player_gesture_swipe_volume',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("player_gesture_swipe_volume" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
+  static const VerificationMeta _playerGestureSwipeDismissMeta =
+      const VerificationMeta('playerGestureSwipeDismiss');
+  @override
+  late final GeneratedColumn<bool> playerGestureSwipeDismiss =
+      GeneratedColumn<bool>(
+        'player_gesture_swipe_dismiss',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("player_gesture_swipe_dismiss" IN (0, 1))',
+        ),
+        defaultValue: const Constant(true),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6265,6 +6364,13 @@ class $AppSettingsTable extends AppSettings
     playerVisualizerStyle,
     playerVisualScene,
     playerSceneAspectRatio,
+    playerControlPreset,
+    playerControlLayoutJson,
+    playerControlHandedness,
+    playerGestureDoubleTap,
+    playerGestureSwipeTrack,
+    playerGestureSwipeVolume,
+    playerGestureSwipeDismiss,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -6641,6 +6747,69 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('player_control_preset')) {
+      context.handle(
+        _playerControlPresetMeta,
+        playerControlPreset.isAcceptableOrUnknown(
+          data['player_control_preset']!,
+          _playerControlPresetMeta,
+        ),
+      );
+    }
+    if (data.containsKey('player_control_layout_json')) {
+      context.handle(
+        _playerControlLayoutJsonMeta,
+        playerControlLayoutJson.isAcceptableOrUnknown(
+          data['player_control_layout_json']!,
+          _playerControlLayoutJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('player_control_handedness')) {
+      context.handle(
+        _playerControlHandednessMeta,
+        playerControlHandedness.isAcceptableOrUnknown(
+          data['player_control_handedness']!,
+          _playerControlHandednessMeta,
+        ),
+      );
+    }
+    if (data.containsKey('player_gesture_double_tap')) {
+      context.handle(
+        _playerGestureDoubleTapMeta,
+        playerGestureDoubleTap.isAcceptableOrUnknown(
+          data['player_gesture_double_tap']!,
+          _playerGestureDoubleTapMeta,
+        ),
+      );
+    }
+    if (data.containsKey('player_gesture_swipe_track')) {
+      context.handle(
+        _playerGestureSwipeTrackMeta,
+        playerGestureSwipeTrack.isAcceptableOrUnknown(
+          data['player_gesture_swipe_track']!,
+          _playerGestureSwipeTrackMeta,
+        ),
+      );
+    }
+    if (data.containsKey('player_gesture_swipe_volume')) {
+      context.handle(
+        _playerGestureSwipeVolumeMeta,
+        playerGestureSwipeVolume.isAcceptableOrUnknown(
+          data['player_gesture_swipe_volume']!,
+          _playerGestureSwipeVolumeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('player_gesture_swipe_dismiss')) {
+      context.handle(
+        _playerGestureSwipeDismissMeta,
+        playerGestureSwipeDismiss.isAcceptableOrUnknown(
+          data['player_gesture_swipe_dismiss']!,
+          _playerGestureSwipeDismissMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -6818,6 +6987,34 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.int,
         data['${effectivePrefix}player_scene_aspect_ratio'],
       )!,
+      playerControlPreset: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_control_preset'],
+      )!,
+      playerControlLayoutJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_control_layout_json'],
+      )!,
+      playerControlHandedness: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_control_handedness'],
+      )!,
+      playerGestureDoubleTap: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}player_gesture_double_tap'],
+      )!,
+      playerGestureSwipeTrack: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}player_gesture_swipe_track'],
+      )!,
+      playerGestureSwipeVolume: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}player_gesture_swipe_volume'],
+      )!,
+      playerGestureSwipeDismiss: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}player_gesture_swipe_dismiss'],
+      )!,
     );
   }
 
@@ -6895,6 +7092,13 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// completa. Los índices corresponden a PlayerSceneAspectRatio; cero es
   /// pantalla completa (9:16, comportamiento previo a esta columna).
   final int playerSceneAspectRatio;
+  final String playerControlPreset;
+  final String playerControlLayoutJson;
+  final String playerControlHandedness;
+  final bool playerGestureDoubleTap;
+  final bool playerGestureSwipeTrack;
+  final bool playerGestureSwipeVolume;
+  final bool playerGestureSwipeDismiss;
   const AppSetting({
     required this.id,
     required this.scanOnStart,
@@ -6938,6 +7142,13 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.playerVisualizerStyle,
     required this.playerVisualScene,
     required this.playerSceneAspectRatio,
+    required this.playerControlPreset,
+    required this.playerControlLayoutJson,
+    required this.playerControlHandedness,
+    required this.playerGestureDoubleTap,
+    required this.playerGestureSwipeTrack,
+    required this.playerGestureSwipeVolume,
+    required this.playerGestureSwipeDismiss,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -6986,6 +7197,21 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['player_visualizer_style'] = Variable<int>(playerVisualizerStyle);
     map['player_visual_scene'] = Variable<int>(playerVisualScene);
     map['player_scene_aspect_ratio'] = Variable<int>(playerSceneAspectRatio);
+    map['player_control_preset'] = Variable<String>(playerControlPreset);
+    map['player_control_layout_json'] = Variable<String>(
+      playerControlLayoutJson,
+    );
+    map['player_control_handedness'] = Variable<String>(
+      playerControlHandedness,
+    );
+    map['player_gesture_double_tap'] = Variable<bool>(playerGestureDoubleTap);
+    map['player_gesture_swipe_track'] = Variable<bool>(playerGestureSwipeTrack);
+    map['player_gesture_swipe_volume'] = Variable<bool>(
+      playerGestureSwipeVolume,
+    );
+    map['player_gesture_swipe_dismiss'] = Variable<bool>(
+      playerGestureSwipeDismiss,
+    );
     return map;
   }
 
@@ -7035,6 +7261,13 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerVisualizerStyle: Value(playerVisualizerStyle),
       playerVisualScene: Value(playerVisualScene),
       playerSceneAspectRatio: Value(playerSceneAspectRatio),
+      playerControlPreset: Value(playerControlPreset),
+      playerControlLayoutJson: Value(playerControlLayoutJson),
+      playerControlHandedness: Value(playerControlHandedness),
+      playerGestureDoubleTap: Value(playerGestureDoubleTap),
+      playerGestureSwipeTrack: Value(playerGestureSwipeTrack),
+      playerGestureSwipeVolume: Value(playerGestureSwipeVolume),
+      playerGestureSwipeDismiss: Value(playerGestureSwipeDismiss),
     );
   }
 
@@ -7104,6 +7337,27 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerSceneAspectRatio: serializer.fromJson<int>(
         json['playerSceneAspectRatio'],
       ),
+      playerControlPreset: serializer.fromJson<String>(
+        json['playerControlPreset'],
+      ),
+      playerControlLayoutJson: serializer.fromJson<String>(
+        json['playerControlLayoutJson'],
+      ),
+      playerControlHandedness: serializer.fromJson<String>(
+        json['playerControlHandedness'],
+      ),
+      playerGestureDoubleTap: serializer.fromJson<bool>(
+        json['playerGestureDoubleTap'],
+      ),
+      playerGestureSwipeTrack: serializer.fromJson<bool>(
+        json['playerGestureSwipeTrack'],
+      ),
+      playerGestureSwipeVolume: serializer.fromJson<bool>(
+        json['playerGestureSwipeVolume'],
+      ),
+      playerGestureSwipeDismiss: serializer.fromJson<bool>(
+        json['playerGestureSwipeDismiss'],
+      ),
     );
   }
   @override
@@ -7154,6 +7408,23 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'playerVisualizerStyle': serializer.toJson<int>(playerVisualizerStyle),
       'playerVisualScene': serializer.toJson<int>(playerVisualScene),
       'playerSceneAspectRatio': serializer.toJson<int>(playerSceneAspectRatio),
+      'playerControlPreset': serializer.toJson<String>(playerControlPreset),
+      'playerControlLayoutJson': serializer.toJson<String>(
+        playerControlLayoutJson,
+      ),
+      'playerControlHandedness': serializer.toJson<String>(
+        playerControlHandedness,
+      ),
+      'playerGestureDoubleTap': serializer.toJson<bool>(playerGestureDoubleTap),
+      'playerGestureSwipeTrack': serializer.toJson<bool>(
+        playerGestureSwipeTrack,
+      ),
+      'playerGestureSwipeVolume': serializer.toJson<bool>(
+        playerGestureSwipeVolume,
+      ),
+      'playerGestureSwipeDismiss': serializer.toJson<bool>(
+        playerGestureSwipeDismiss,
+      ),
     };
   }
 
@@ -7200,6 +7471,13 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     int? playerVisualizerStyle,
     int? playerVisualScene,
     int? playerSceneAspectRatio,
+    String? playerControlPreset,
+    String? playerControlLayoutJson,
+    String? playerControlHandedness,
+    bool? playerGestureDoubleTap,
+    bool? playerGestureSwipeTrack,
+    bool? playerGestureSwipeVolume,
+    bool? playerGestureSwipeDismiss,
   }) => AppSetting(
     id: id ?? this.id,
     scanOnStart: scanOnStart ?? this.scanOnStart,
@@ -7246,6 +7524,19 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     playerVisualScene: playerVisualScene ?? this.playerVisualScene,
     playerSceneAspectRatio:
         playerSceneAspectRatio ?? this.playerSceneAspectRatio,
+    playerControlPreset: playerControlPreset ?? this.playerControlPreset,
+    playerControlLayoutJson:
+        playerControlLayoutJson ?? this.playerControlLayoutJson,
+    playerControlHandedness:
+        playerControlHandedness ?? this.playerControlHandedness,
+    playerGestureDoubleTap:
+        playerGestureDoubleTap ?? this.playerGestureDoubleTap,
+    playerGestureSwipeTrack:
+        playerGestureSwipeTrack ?? this.playerGestureSwipeTrack,
+    playerGestureSwipeVolume:
+        playerGestureSwipeVolume ?? this.playerGestureSwipeVolume,
+    playerGestureSwipeDismiss:
+        playerGestureSwipeDismiss ?? this.playerGestureSwipeDismiss,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -7371,6 +7662,27 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerSceneAspectRatio: data.playerSceneAspectRatio.present
           ? data.playerSceneAspectRatio.value
           : this.playerSceneAspectRatio,
+      playerControlPreset: data.playerControlPreset.present
+          ? data.playerControlPreset.value
+          : this.playerControlPreset,
+      playerControlLayoutJson: data.playerControlLayoutJson.present
+          ? data.playerControlLayoutJson.value
+          : this.playerControlLayoutJson,
+      playerControlHandedness: data.playerControlHandedness.present
+          ? data.playerControlHandedness.value
+          : this.playerControlHandedness,
+      playerGestureDoubleTap: data.playerGestureDoubleTap.present
+          ? data.playerGestureDoubleTap.value
+          : this.playerGestureDoubleTap,
+      playerGestureSwipeTrack: data.playerGestureSwipeTrack.present
+          ? data.playerGestureSwipeTrack.value
+          : this.playerGestureSwipeTrack,
+      playerGestureSwipeVolume: data.playerGestureSwipeVolume.present
+          ? data.playerGestureSwipeVolume.value
+          : this.playerGestureSwipeVolume,
+      playerGestureSwipeDismiss: data.playerGestureSwipeDismiss.present
+          ? data.playerGestureSwipeDismiss.value
+          : this.playerGestureSwipeDismiss,
     );
   }
 
@@ -7418,7 +7730,14 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
           ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
           ..write('playerVisualScene: $playerVisualScene, ')
-          ..write('playerSceneAspectRatio: $playerSceneAspectRatio')
+          ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
+          ..write('playerControlPreset: $playerControlPreset, ')
+          ..write('playerControlLayoutJson: $playerControlLayoutJson, ')
+          ..write('playerControlHandedness: $playerControlHandedness, ')
+          ..write('playerGestureDoubleTap: $playerGestureDoubleTap, ')
+          ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
+          ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
+          ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss')
           ..write(')'))
         .toString();
   }
@@ -7467,6 +7786,13 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     playerVisualizerStyle,
     playerVisualScene,
     playerSceneAspectRatio,
+    playerControlPreset,
+    playerControlLayoutJson,
+    playerControlHandedness,
+    playerGestureDoubleTap,
+    playerGestureSwipeTrack,
+    playerGestureSwipeVolume,
+    playerGestureSwipeDismiss,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -7513,7 +7839,14 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.videoBackgroundEnabled == this.videoBackgroundEnabled &&
           other.playerVisualizerStyle == this.playerVisualizerStyle &&
           other.playerVisualScene == this.playerVisualScene &&
-          other.playerSceneAspectRatio == this.playerSceneAspectRatio);
+          other.playerSceneAspectRatio == this.playerSceneAspectRatio &&
+          other.playerControlPreset == this.playerControlPreset &&
+          other.playerControlLayoutJson == this.playerControlLayoutJson &&
+          other.playerControlHandedness == this.playerControlHandedness &&
+          other.playerGestureDoubleTap == this.playerGestureDoubleTap &&
+          other.playerGestureSwipeTrack == this.playerGestureSwipeTrack &&
+          other.playerGestureSwipeVolume == this.playerGestureSwipeVolume &&
+          other.playerGestureSwipeDismiss == this.playerGestureSwipeDismiss);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -7559,6 +7892,13 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<int> playerVisualizerStyle;
   final Value<int> playerVisualScene;
   final Value<int> playerSceneAspectRatio;
+  final Value<String> playerControlPreset;
+  final Value<String> playerControlLayoutJson;
+  final Value<String> playerControlHandedness;
+  final Value<bool> playerGestureDoubleTap;
+  final Value<bool> playerGestureSwipeTrack;
+  final Value<bool> playerGestureSwipeVolume;
+  final Value<bool> playerGestureSwipeDismiss;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.scanOnStart = const Value.absent(),
@@ -7602,6 +7942,13 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerVisualizerStyle = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
+    this.playerControlPreset = const Value.absent(),
+    this.playerControlLayoutJson = const Value.absent(),
+    this.playerControlHandedness = const Value.absent(),
+    this.playerGestureDoubleTap = const Value.absent(),
+    this.playerGestureSwipeTrack = const Value.absent(),
+    this.playerGestureSwipeVolume = const Value.absent(),
+    this.playerGestureSwipeDismiss = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -7646,6 +7993,13 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerVisualizerStyle = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
+    this.playerControlPreset = const Value.absent(),
+    this.playerControlLayoutJson = const Value.absent(),
+    this.playerControlHandedness = const Value.absent(),
+    this.playerGestureDoubleTap = const Value.absent(),
+    this.playerGestureSwipeTrack = const Value.absent(),
+    this.playerGestureSwipeVolume = const Value.absent(),
+    this.playerGestureSwipeDismiss = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -7690,6 +8044,13 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<int>? playerVisualizerStyle,
     Expression<int>? playerVisualScene,
     Expression<int>? playerSceneAspectRatio,
+    Expression<String>? playerControlPreset,
+    Expression<String>? playerControlLayoutJson,
+    Expression<String>? playerControlHandedness,
+    Expression<bool>? playerGestureDoubleTap,
+    Expression<bool>? playerGestureSwipeTrack,
+    Expression<bool>? playerGestureSwipeVolume,
+    Expression<bool>? playerGestureSwipeDismiss,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -7746,6 +8107,20 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (playerVisualScene != null) 'player_visual_scene': playerVisualScene,
       if (playerSceneAspectRatio != null)
         'player_scene_aspect_ratio': playerSceneAspectRatio,
+      if (playerControlPreset != null)
+        'player_control_preset': playerControlPreset,
+      if (playerControlLayoutJson != null)
+        'player_control_layout_json': playerControlLayoutJson,
+      if (playerControlHandedness != null)
+        'player_control_handedness': playerControlHandedness,
+      if (playerGestureDoubleTap != null)
+        'player_gesture_double_tap': playerGestureDoubleTap,
+      if (playerGestureSwipeTrack != null)
+        'player_gesture_swipe_track': playerGestureSwipeTrack,
+      if (playerGestureSwipeVolume != null)
+        'player_gesture_swipe_volume': playerGestureSwipeVolume,
+      if (playerGestureSwipeDismiss != null)
+        'player_gesture_swipe_dismiss': playerGestureSwipeDismiss,
     });
   }
 
@@ -7792,6 +8167,13 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<int>? playerVisualizerStyle,
     Value<int>? playerVisualScene,
     Value<int>? playerSceneAspectRatio,
+    Value<String>? playerControlPreset,
+    Value<String>? playerControlLayoutJson,
+    Value<String>? playerControlHandedness,
+    Value<bool>? playerGestureDoubleTap,
+    Value<bool>? playerGestureSwipeTrack,
+    Value<bool>? playerGestureSwipeVolume,
+    Value<bool>? playerGestureSwipeDismiss,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -7843,6 +8225,19 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       playerVisualScene: playerVisualScene ?? this.playerVisualScene,
       playerSceneAspectRatio:
           playerSceneAspectRatio ?? this.playerSceneAspectRatio,
+      playerControlPreset: playerControlPreset ?? this.playerControlPreset,
+      playerControlLayoutJson:
+          playerControlLayoutJson ?? this.playerControlLayoutJson,
+      playerControlHandedness:
+          playerControlHandedness ?? this.playerControlHandedness,
+      playerGestureDoubleTap:
+          playerGestureDoubleTap ?? this.playerGestureDoubleTap,
+      playerGestureSwipeTrack:
+          playerGestureSwipeTrack ?? this.playerGestureSwipeTrack,
+      playerGestureSwipeVolume:
+          playerGestureSwipeVolume ?? this.playerGestureSwipeVolume,
+      playerGestureSwipeDismiss:
+          playerGestureSwipeDismiss ?? this.playerGestureSwipeDismiss,
     );
   }
 
@@ -7989,6 +8384,41 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         playerSceneAspectRatio.value,
       );
     }
+    if (playerControlPreset.present) {
+      map['player_control_preset'] = Variable<String>(
+        playerControlPreset.value,
+      );
+    }
+    if (playerControlLayoutJson.present) {
+      map['player_control_layout_json'] = Variable<String>(
+        playerControlLayoutJson.value,
+      );
+    }
+    if (playerControlHandedness.present) {
+      map['player_control_handedness'] = Variable<String>(
+        playerControlHandedness.value,
+      );
+    }
+    if (playerGestureDoubleTap.present) {
+      map['player_gesture_double_tap'] = Variable<bool>(
+        playerGestureDoubleTap.value,
+      );
+    }
+    if (playerGestureSwipeTrack.present) {
+      map['player_gesture_swipe_track'] = Variable<bool>(
+        playerGestureSwipeTrack.value,
+      );
+    }
+    if (playerGestureSwipeVolume.present) {
+      map['player_gesture_swipe_volume'] = Variable<bool>(
+        playerGestureSwipeVolume.value,
+      );
+    }
+    if (playerGestureSwipeDismiss.present) {
+      map['player_gesture_swipe_dismiss'] = Variable<bool>(
+        playerGestureSwipeDismiss.value,
+      );
+    }
     return map;
   }
 
@@ -8036,7 +8466,14 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
           ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
           ..write('playerVisualScene: $playerVisualScene, ')
-          ..write('playerSceneAspectRatio: $playerSceneAspectRatio')
+          ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
+          ..write('playerControlPreset: $playerControlPreset, ')
+          ..write('playerControlLayoutJson: $playerControlLayoutJson, ')
+          ..write('playerControlHandedness: $playerControlHandedness, ')
+          ..write('playerGestureDoubleTap: $playerGestureDoubleTap, ')
+          ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
+          ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
+          ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss')
           ..write(')'))
         .toString();
   }
@@ -11962,6 +12399,13 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> playerVisualizerStyle,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
+      Value<String> playerControlPreset,
+      Value<String> playerControlLayoutJson,
+      Value<String> playerControlHandedness,
+      Value<bool> playerGestureDoubleTap,
+      Value<bool> playerGestureSwipeTrack,
+      Value<bool> playerGestureSwipeVolume,
+      Value<bool> playerGestureSwipeDismiss,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -12007,6 +12451,13 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> playerVisualizerStyle,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
+      Value<String> playerControlPreset,
+      Value<String> playerControlLayoutJson,
+      Value<String> playerControlHandedness,
+      Value<bool> playerGestureDoubleTap,
+      Value<bool> playerGestureSwipeTrack,
+      Value<bool> playerGestureSwipeVolume,
+      Value<bool> playerGestureSwipeDismiss,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -12225,6 +12676,41 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<int> get playerSceneAspectRatio => $composableBuilder(
     column: $table.playerSceneAspectRatio,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playerControlPreset => $composableBuilder(
+    column: $table.playerControlPreset,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playerControlLayoutJson => $composableBuilder(
+    column: $table.playerControlLayoutJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playerControlHandedness => $composableBuilder(
+    column: $table.playerControlHandedness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get playerGestureDoubleTap => $composableBuilder(
+    column: $table.playerGestureDoubleTap,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get playerGestureSwipeTrack => $composableBuilder(
+    column: $table.playerGestureSwipeTrack,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get playerGestureSwipeVolume => $composableBuilder(
+    column: $table.playerGestureSwipeVolume,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get playerGestureSwipeDismiss => $composableBuilder(
+    column: $table.playerGestureSwipeDismiss,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -12447,6 +12933,41 @@ class $$AppSettingsTableOrderingComposer
     column: $table.playerSceneAspectRatio,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get playerControlPreset => $composableBuilder(
+    column: $table.playerControlPreset,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get playerControlLayoutJson => $composableBuilder(
+    column: $table.playerControlLayoutJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get playerControlHandedness => $composableBuilder(
+    column: $table.playerControlHandedness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get playerGestureDoubleTap => $composableBuilder(
+    column: $table.playerGestureDoubleTap,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get playerGestureSwipeTrack => $composableBuilder(
+    column: $table.playerGestureSwipeTrack,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get playerGestureSwipeVolume => $composableBuilder(
+    column: $table.playerGestureSwipeVolume,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get playerGestureSwipeDismiss => $composableBuilder(
+    column: $table.playerGestureSwipeDismiss,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -12663,6 +13184,41 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.playerSceneAspectRatio,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get playerControlPreset => $composableBuilder(
+    column: $table.playerControlPreset,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get playerControlLayoutJson => $composableBuilder(
+    column: $table.playerControlLayoutJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get playerControlHandedness => $composableBuilder(
+    column: $table.playerControlHandedness,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get playerGestureDoubleTap => $composableBuilder(
+    column: $table.playerGestureDoubleTap,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get playerGestureSwipeTrack => $composableBuilder(
+    column: $table.playerGestureSwipeTrack,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get playerGestureSwipeVolume => $composableBuilder(
+    column: $table.playerGestureSwipeVolume,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get playerGestureSwipeDismiss => $composableBuilder(
+    column: $table.playerGestureSwipeDismiss,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -12738,6 +13294,13 @@ class $$AppSettingsTableTableManager
                 Value<int> playerVisualizerStyle = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
+                Value<String> playerControlPreset = const Value.absent(),
+                Value<String> playerControlLayoutJson = const Value.absent(),
+                Value<String> playerControlHandedness = const Value.absent(),
+                Value<bool> playerGestureDoubleTap = const Value.absent(),
+                Value<bool> playerGestureSwipeTrack = const Value.absent(),
+                Value<bool> playerGestureSwipeVolume = const Value.absent(),
+                Value<bool> playerGestureSwipeDismiss = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -12781,6 +13344,13 @@ class $$AppSettingsTableTableManager
                 playerVisualizerStyle: playerVisualizerStyle,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
+                playerControlPreset: playerControlPreset,
+                playerControlLayoutJson: playerControlLayoutJson,
+                playerControlHandedness: playerControlHandedness,
+                playerGestureDoubleTap: playerGestureDoubleTap,
+                playerGestureSwipeTrack: playerGestureSwipeTrack,
+                playerGestureSwipeVolume: playerGestureSwipeVolume,
+                playerGestureSwipeDismiss: playerGestureSwipeDismiss,
               ),
           createCompanionCallback:
               ({
@@ -12826,6 +13396,13 @@ class $$AppSettingsTableTableManager
                 Value<int> playerVisualizerStyle = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
+                Value<String> playerControlPreset = const Value.absent(),
+                Value<String> playerControlLayoutJson = const Value.absent(),
+                Value<String> playerControlHandedness = const Value.absent(),
+                Value<bool> playerGestureDoubleTap = const Value.absent(),
+                Value<bool> playerGestureSwipeTrack = const Value.absent(),
+                Value<bool> playerGestureSwipeVolume = const Value.absent(),
+                Value<bool> playerGestureSwipeDismiss = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -12869,6 +13446,13 @@ class $$AppSettingsTableTableManager
                 playerVisualizerStyle: playerVisualizerStyle,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
+                playerControlPreset: playerControlPreset,
+                playerControlLayoutJson: playerControlLayoutJson,
+                playerControlHandedness: playerControlHandedness,
+                playerGestureDoubleTap: playerGestureDoubleTap,
+                playerGestureSwipeTrack: playerGestureSwipeTrack,
+                playerGestureSwipeVolume: playerGestureSwipeVolume,
+                playerGestureSwipeDismiss: playerGestureSwipeDismiss,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

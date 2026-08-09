@@ -374,6 +374,10 @@ internal class FlutterMusicPlugin(
         NuvTuneWidgetProvider.refreshAll(context)
     }
 
+    override fun setDeviceControlConfig(config: DeviceControlConfig) {
+        DeviceControlConfigStore.save(context, config)
+    }
+
     override fun countPlacedWidgets(callback: (Result<Long>) -> Unit) {
         callback(Result.success(NuvTuneWidgetProvider.placedCount(context).toLong()))
     }

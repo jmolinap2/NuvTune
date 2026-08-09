@@ -8,6 +8,7 @@ import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
+import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 import 'package:nuvtune/shared/widgets/option_picker.dart';
 
 final Stopwatch _sharedVisualizerClock = Stopwatch()..start();
@@ -221,8 +222,8 @@ Future<void> showVisualizerStylePicker(
   );
   if (choice == null) return;
   await ref
-      .read(settingsRepositoryProvider)
-      .update(AppSettingsCompanion(playerVisualizerStyle: Value(choice.index)));
+      .read(settingsMutationProvider.notifier)
+      .save(AppSettingsCompanion(playerVisualizerStyle: Value(choice.index)));
 }
 
 class _VisualizerPainter extends CustomPainter {

@@ -1,6 +1,6 @@
 <#
 .SYNOPSIS
-    Compila, instala y diagnostica NuvTune en el telefono sin pedir ip ni puerto.
+    Compila, instala, respalda y diagnostica NuvTune en el telefono.
 
 .DESCRIPTION
     La depuracion inalambrica de Android cambia de puerto cada vez que se
@@ -9,20 +9,21 @@
     IDENTIDAD (ro.product.model / ro.product.device), no por su direccion, y
     si no lo encuentra conectado prueba a reconectarlo por mDNS.
 
-    Sustituye la secuencia manual de `adb devices -l` -> `adb mdns services`
-    -> `adb connect` -> `flutter build` -> `adb install` que habia que repetir
-    en cada despliegue.
+    El deploy predeterminado genera una APK release versionada, la instala sin
+    borrar los datos de la aplicacion y sincroniza la copia visible del APK en
+    "APK'S - DESARROLLOS". La APK anterior se mueve a "respaldo" y ahi se
+    conservan unicamente las cuatro versiones mas recientes de NuvTune.
 
 .PARAMETER Action
     device   Solo resolver el dispositivo e imprimir su serial.
     build    Solo compilar el apk.
     install  Solo instalar el apk ya compilado.
-    deploy   Compilar + instalar (por defecto).
+    deploy   Compilar + instalar + respaldar y copiar la APK (por defecto).
     logs     Volcar los errores recientes de NuvTune del logcat.
     run      Compilar + instalar + lanzar + seguir el log en vivo.
 
-.PARAMETER Release
-    Compila en modo release en vez de debug.
+.PARAMETER DebugBuild
+    Compila en modo debug. Sin este parametro se compila release.
 
 .PARAMETER Seconds
     Con `logs`: sigue el log en vivo esa cantidad de segundos en vez de
@@ -30,6 +31,7 @@
 
 .EXAMPLE
     pwsh tool/deploy.ps1
+    pwsh tool/deploy.ps1 -DebugBuild
     pwsh tool/deploy.ps1 -Action logs
     pwsh tool/deploy.ps1 -Action run -Seconds 45
 #>
@@ -38,7 +40,7 @@ param(
     [ValidateSet('device', 'build', 'install', 'deploy', 'logs', 'run')]
     [string]$Action = 'deploy',
 
-    [switch]$Release,
+    [switch]$DebugBuild,
 
     [int]$Seconds = 0
 )
@@ -49,7 +51,11 @@ $ErrorActionPreference = 'Stop'
 # de contra un serial de transporte, que cambia con cada reconexion.
 $DeviceModel   = '2311DRK48G'      # POCO X6 Pro 5G
 $DeviceProduct = 'duchamp_global'
+$AppName       = 'NuvTune'
 $PackageName   = 'com.nuvtune.app'
+$PhoneDir      = "/sdcard/APK'S - DESARROLLOS"
+$BackupDir     = "$PhoneDir/respaldo"
+$BackupLimit   = 4
 
 $RepoRoot = Split-Path -Parent $PSScriptRoot
 
@@ -129,17 +135,43 @@ un emparejamiento nuevo, hay que volver a vincularlo a mano una vez.
 # Acciones
 # --------------------------------------------------------------------------
 
-$ApkPath = if ($Release) {
-    Join-Path $RepoRoot 'build\app\outputs\flutter-apk\app-release.apk'
-} else {
+$BuildMode = if ($DebugBuild) { 'debug' } else { 'release' }
+$ApkPath = if ($DebugBuild) {
     Join-Path $RepoRoot 'build\app\outputs\flutter-apk\app-debug.apk'
+} else {
+    Join-Path $RepoRoot 'build\app\outputs\flutter-apk\app-release.apk'
 }
 
+function Get-AppVersion {
+    $pubspecPath = Join-Path $RepoRoot 'pubspec.yaml'
+    $versionLine = Get-Content $pubspecPath | Where-Object {
+        $_ -match '^\s*version:\s*([^\s#]+)'
+    } | Select-Object -First 1
+
+    if (-not $versionLine -or $versionLine -notmatch '^\s*version:\s*([0-9A-Za-z.-]+)\+(\d+)\s*(?:#.*)?$') {
+        throw 'pubspec.yaml debe tener una version valida, por ejemplo: version: 1.3.2+9'
+    }
+
+    [pscustomobject]@{
+        Name  = $Matches[1]
+        Build = $Matches[2]
+    }
+}
+
+$AppVersion = Get-AppVersion
+$DebugSuffix = if ($DebugBuild) { '-debug' } else { '' }
+$ArtifactName = "$AppName-v$($AppVersion.Name)-b$($AppVersion.Build)$DebugSuffix.apk"
+$VersionedApkPath = Join-Path $RepoRoot $ArtifactName
+
 function Invoke-Build {
-    $mode = if ($Release) { '--release' } else { '--debug' }
+    $mode = "--$BuildMode"
     Write-Host "Compilando apk $mode..." -ForegroundColor Cyan
     & $Flutter build apk $mode
     if ($LASTEXITCODE -ne 0) { throw 'Fallo la compilacion.' }
+    if (-not (Test-Path $ApkPath)) { throw "No se genero $ApkPath." }
+
+    Copy-Item -LiteralPath $ApkPath -Destination $VersionedApkPath -Force
+    Write-Host "APK generada: $VersionedApkPath" -ForegroundColor Cyan
 }
 
 function Invoke-Install {
@@ -151,7 +183,7 @@ function Invoke-Install {
     # `-r` reinstala conservando los datos. Si aparece un conflicto de firma NO
     # se desinstala automaticamente: eso borraria la biblioteca y las listas
     # del usuario, y es una decision que le toca a el.
-    $output = & $Adb -s $Serial install -r $ApkPath 2>&1
+    $output = & $Adb -s $Serial install -r --user 0 $ApkPath 2>&1
     $output | Write-Host
     # $output es un array de lineas: -match/-notmatch sobre un array filtran
     # elementos en vez de devolver un booleano, asi que un array no vacio de
@@ -167,6 +199,121 @@ hace solo. Confirma antes de ejecutar:
 '@
     }
     if ($joined -notmatch 'Success') { throw 'Fallo la instalacion.' }
+}
+
+function Invoke-AdbShell {
+    param(
+        [string]$Serial,
+        [string]$Command
+    )
+
+    $output = & $Adb -s $Serial shell $Command 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "Fallo el comando remoto: $Command`n$($output -join "`n")"
+    }
+    return $output
+}
+
+function Get-RemoteAppApks {
+    param(
+        [string]$Serial,
+        [string]$Directory,
+        [switch]$NewestFirst
+    )
+
+    $lsOption = if ($NewestFirst) { '-1t' } else { '-1' }
+    $command = "ls $lsOption `"$Directory`"/$AppName-*.apk 2>/dev/null || true"
+    $lines = & $Adb -s $Serial shell $command 2>&1
+    if ($LASTEXITCODE -ne 0) {
+        throw "No se pudieron listar las APK de $Directory.`n$($lines -join "`n")"
+    }
+
+    $safePath = '^' + [regex]::Escape("$Directory/$AppName-") + '[0-9A-Za-z._+-]+\.apk$'
+    foreach ($line in $lines) {
+        $remotePath = "$line".Trim()
+        if (-not $remotePath -or $remotePath.EndsWith('*.apk')) { continue }
+        if ($remotePath -notmatch $safePath) {
+            throw "ADB devolvio una ruta inesperada y no se modificara: $remotePath"
+        }
+        $remotePath
+    }
+}
+
+function Invoke-BackupRotation {
+    param([string]$Serial)
+
+    $backups = @(Get-RemoteAppApks -Serial $Serial -Directory $BackupDir -NewestFirst)
+    $obsolete = @($backups | Select-Object -Skip $BackupLimit)
+
+    foreach ($remoteApk in $obsolete) {
+        Write-Host "Eliminando respaldo antiguo: $([IO.Path]::GetFileName($remoteApk))" -ForegroundColor DarkYellow
+        Invoke-AdbShell -Serial $Serial -Command "rm -f `"$remoteApk`"" | Out-Null
+    }
+}
+
+function Publish-ApkToDevice {
+    param([string]$Serial)
+
+    if (-not (Test-Path $VersionedApkPath)) {
+        throw "No existe $VersionedApkPath. Compila primero."
+    }
+
+    Invoke-AdbShell -Serial $Serial -Command "mkdir -p `"$PhoneDir`" `"$BackupDir`"" | Out-Null
+
+    # Primero se sube a un nombre temporal. Asi, si adb push falla, la APK
+    # actualmente visible en el telefono permanece intacta.
+    $uploadName = ".$AppName-upload-$PID-$([DateTimeOffset]::UtcNow.ToUnixTimeMilliseconds()).apk"
+    $uploadPath = "$PhoneDir/$uploadName"
+    $destination = "$PhoneDir/$ArtifactName"
+    $uploadPending = $true
+
+    try {
+        Write-Host 'Copiando la APK nueva al telefono...' -ForegroundColor Cyan
+        $pushOutput = & $Adb -s $Serial push $VersionedApkPath $uploadPath 2>&1
+        $pushOutput | Write-Host
+        if ($LASTEXITCODE -ne 0) { throw 'No se pudo copiar la APK al telefono.' }
+
+        # Solo NuvTune se administra aqui. Las APK actuales de otros proyectos
+        # que comparten PHONE_DIR no se tocan.
+        $currentApks = @(Get-RemoteAppApks -Serial $Serial -Directory $PhoneDir)
+        foreach ($remoteApk in $currentApks) {
+            $baseName = [IO.Path]::GetFileNameWithoutExtension($remoteApk)
+            $timestamp = Get-Date -Format 'yyyyMMdd-HHmmssfff'
+            $backupPath = "$BackupDir/$baseName-$timestamp.apk"
+            Write-Host "Respaldando APK anterior: $([IO.Path]::GetFileName($remoteApk))" -ForegroundColor Cyan
+            Invoke-AdbShell -Serial $Serial -Command "mv `"$remoteApk`" `"$backupPath`"" | Out-Null
+        }
+
+        Invoke-AdbShell -Serial $Serial -Command "mv `"$uploadPath`" `"$destination`"" | Out-Null
+        $uploadPending = $false
+
+        Invoke-BackupRotation -Serial $Serial
+        Write-Host "APK actual en el telefono: $destination" -ForegroundColor Green
+    }
+    finally {
+        if ($uploadPending) {
+            & $Adb -s $Serial shell "rm -f `"$uploadPath`"" 2>&1 | Out-Null
+        }
+    }
+}
+
+function Show-InstalledVersion {
+    param([string]$Serial)
+
+    Write-Host 'Version instalada:' -ForegroundColor Cyan
+    & $Adb -s $Serial shell dumpsys package $PackageName 2>&1 |
+        Select-String -Pattern 'versionCode=|versionName=' |
+        Select-Object -First 2 |
+        ForEach-Object { Write-Host $_.Line.Trim() }
+}
+
+function Invoke-Deploy {
+    param([string]$Serial)
+
+    Invoke-Build
+    Invoke-Install -Serial $Serial
+    Publish-ApkToDevice -Serial $Serial
+    Show-InstalledVersion -Serial $Serial
 }
 
 function Invoke-Launch {
@@ -213,8 +360,7 @@ switch ($Action) {
     }
     'deploy' {
         $serial = Get-Device
-        Invoke-Build
-        Invoke-Install -Serial $serial
+        Invoke-Deploy -Serial $serial
         Write-Host 'Listo.' -ForegroundColor Green
     }
     'logs' {
@@ -223,8 +369,7 @@ switch ($Action) {
     }
     'run' {
         $serial = Get-Device
-        Invoke-Build
-        Invoke-Install -Serial $serial
+        Invoke-Deploy -Serial $serial
         Invoke-Launch -Serial $serial
         if ($Seconds -le 0) { $Seconds = 30 }
         Invoke-Logs -Serial $serial

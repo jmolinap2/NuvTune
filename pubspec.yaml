@@ -2,7 +2,7 @@ name: nuvtune
 description: "NuvTune — reproductor de musica local con motor nativo Media3, ecualizador y edicion de metadatos."
 publish_to: 'none'
 
-version: 1.3.1+8
+version: 1.3.2+9
 
 environment:
   sdk: ^3.12.2
@@ -47,6 +47,9 @@ dev_dependencies:
 
 flutter:
   uses-material-design: true
+
+  assets:
+    - assets/images/auris.png
 
   # Space Grotesk es la tipografia del sistema visual de NuvTune. Se empaqueta
   # en lugar de descargarla en ejecucion: la aplicacion funciona sin conexion y

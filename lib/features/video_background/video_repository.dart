@@ -2,6 +2,7 @@ import 'package:drift/drift.dart';
 import 'package:nuvtune/core/network/piped_client.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/data/db/database.dart';
+import 'package:nuvtune/features/video_background/music_video_matcher.dart';
 
 /// Resuelve el video musical de una cancion para el fondo del reproductor
 /// (feature "video de fondo en Wi-Fi"), con cache en `SongVideoIds` y cache
@@ -9,16 +10,26 @@ import 'package:nuvtune/data/db/database.dart';
 /// sin dejar bloqueado durante un dia un resultado fallido por problemas de
 /// red temporales.
 class VideoRepository {
-  VideoRepository(this._database, this._piped);
+  VideoRepository(
+    this._database,
+    this._piped, {
+    this._matcher = const MusicVideoMatcher(),
+  });
 
   final NuvTuneDatabase _database;
   final PipedClient _piped;
+  final MusicVideoMatcher _matcher;
 
   static const _negativeCacheTtl = Duration(minutes: 2);
+  static const _cacheSourcePrefix = 'music_match_v1';
   final Map<String, Set<String>> _rejectedIds = {};
 
+  /// Incluye album y duracion para no mezclar, por ejemplo, la version de
+  /// estudio con una edicion en vivo que conserve artista y titulo.
   String songKeyOf(Song song) =>
-      '${song.artist}||${song.title}'.trim().toLowerCase();
+      '${song.artist}||${song.title}||${song.album}||${song.durationMs}'
+          .trim()
+          .toLowerCase();
 
   /// Solo lo que ya esta en cache, sin tocar la red.
   ///
@@ -29,9 +40,10 @@ class VideoRepository {
   /// que se aprovecha lo que ya se resolvio antes (por el video de fondo) y
   /// el resto lo confirma el receptor.
   Future<String?> cachedVideoIdFor(Song song) async {
-    final cached = await (_database.select(_database.songVideoIds)
-          ..where((table) => table.songKey.equals(songKeyOf(song))))
-        .getSingleOrNull();
+    final cached =
+        await (_database.select(_database.songVideoIds)
+              ..where((table) => table.songKey.equals(songKeyOf(song))))
+            .getSingleOrNull();
     final videoId = cached?.videoId;
     return (videoId == null || videoId.isEmpty) ? null : videoId;
   }
@@ -44,28 +56,128 @@ class VideoRepository {
     )..where((table) => table.songKey.equals(key))).getSingleOrNull();
 
     if (cached != null) {
-      if (cached.videoId.isNotEmpty && !rejected.contains(cached.videoId)) {
+      final currentMatcherCache = cached.source.startsWith(_cacheSourcePrefix);
+      if (currentMatcherCache &&
+          cached.videoId.isNotEmpty &&
+          !rejected.contains(cached.videoId)) {
         return cached.videoId;
       }
       final expired =
           DateTime.now().difference(cached.fetchedAt) > _negativeCacheTtl;
-      if (cached.videoId.isEmpty && !expired) return null;
+      if (currentMatcherCache && cached.videoId.isEmpty && !expired) {
+        return null;
+      }
     }
 
-    final candidates = await _piped.searchMusicVideos(
-      '${song.artist} ${song.title}',
-    );
-    final found = candidates.where((id) => !rejected.contains(id)).firstOrNull;
+    final query = _initialQuery(song);
+    final initial = await _piped.searchMusicVideoCandidates(query, limit: 15);
+    var candidates = _mergeCandidates(initial);
+    var match = _select(song, candidates, rejected);
+
+    // Si la pagina directa de YouTube solo trajo resultados ambiguos, se
+    // amplia con la busqueda musical de Piped y el album cuando este existe.
+    // El matcher vuelve a decidir sobre el conjunto completo: tampoco aqui se
+    // toma simplemente el primer resultado.
+    if (match == null) {
+      final expanded = await _piped.searchMany(_expandedQuery(song));
+      candidates = _mergeCandidates([...candidates, ...expanded]);
+      match = _select(song, candidates, rejected);
+    }
+
+    final found = match?.videoId;
+    final source = match == null
+        ? '$_cacheSourcePrefix:no_match'
+        : '$_cacheSourcePrefix:${match.sourceType.name}:'
+              '${match.confidence.name}:${match.score}';
     await _database
         .into(_database.songVideoIds)
         .insertOnConflictUpdate(
           SongVideoIdsCompanion.insert(
             songKey: key,
             videoId: found ?? '',
+            source: Value(source),
             fetchedAt: Value(DateTime.now()),
           ),
         );
     return found;
+  }
+
+  MusicVideoMatch? _select(
+    Song song,
+    List<PipedSearchResult> candidates,
+    Set<String> rejected,
+  ) {
+    final available = candidates
+        .where((candidate) => !rejected.contains(candidate.videoId))
+        .toList(growable: false);
+    return _matcher.selectBestMatch(
+      MusicVideoSongMetadata(
+        title: song.title,
+        artist: _knownValue(song.artist) ?? '',
+        album: _knownValue(song.album),
+        durationSeconds: song.durationMs > 0 ? song.durationMs ~/ 1000 : null,
+      ),
+      [
+        for (var index = 0; index < available.length; index++)
+          YouTubeCandidate(
+            videoId: available[index].videoId,
+            title: available[index].title,
+            uploaderName: available[index].uploaderName,
+            durationSeconds: available[index].durationSeconds,
+            description: available[index].description,
+            uploaderVerified: available[index].uploaderVerified,
+            isMusicCategory: available[index].isMusicCategory,
+            views: available[index].views,
+            searchRank: index,
+          ),
+      ],
+    );
+  }
+
+  static List<PipedSearchResult> _mergeCandidates(
+    Iterable<PipedSearchResult> candidates,
+  ) {
+    final byId = <String, PipedSearchResult>{};
+    for (final candidate in candidates) {
+      final existing = byId[candidate.videoId];
+      if (existing == null ||
+          _metadataQuality(candidate) > _metadataQuality(existing)) {
+        byId[candidate.videoId] = candidate;
+      }
+    }
+    return byId.values.toList(growable: false);
+  }
+
+  static int _metadataQuality(PipedSearchResult candidate) =>
+      (candidate.title.isNotEmpty ? 2 : 0) +
+      (candidate.uploaderName.isNotEmpty ? 2 : 0) +
+      (candidate.durationSeconds > 0 ? 1 : 0) +
+      (candidate.description.isNotEmpty ? 1 : 0) +
+      (candidate.uploaderVerified ? 1 : 0) +
+      (candidate.isMusicCategory ? 1 : 0);
+
+  static String _initialQuery(Song song) {
+    final artist = _knownValue(song.artist);
+    return [
+      ?artist,
+      song.title.trim(),
+    ].where((part) => part.isNotEmpty).join(' ');
+  }
+
+  static String _expandedQuery(Song song) {
+    final artist = _knownValue(song.artist);
+    final album = _knownValue(song.album);
+    return [
+      song.title.trim(),
+      ?artist,
+      ?album,
+    ].where((part) => part.isNotEmpty).join(' ');
+  }
+
+  static String? _knownValue(String value) {
+    final trimmed = value.trim();
+    if (trimmed.isEmpty || trimmed.toLowerCase() == '<unknown>') return null;
+    return trimmed;
   }
 
   /// Descarta un candidato que el IFrame de YouTube rechazó. La exclusión se

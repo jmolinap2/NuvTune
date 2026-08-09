@@ -1238,9 +1238,7 @@ data class WidgetConfig (
   val showProgress: Boolean,
   val showDuration: Boolean,
   val showNextInQueue: Boolean,
-  val openPlayerOnTap: Boolean,
-  val pauseOnHeadphonesDisconnect: Boolean,
-  val resumeOnHeadphonesConnect: Boolean
+  val openPlayerOnTap: Boolean
 )
  {
   companion object {
@@ -1259,9 +1257,7 @@ data class WidgetConfig (
       val showDuration = pigeonVar_list[11] as Boolean
       val showNextInQueue = pigeonVar_list[12] as Boolean
       val openPlayerOnTap = pigeonVar_list[13] as Boolean
-      val pauseOnHeadphonesDisconnect = pigeonVar_list[14] as Boolean
-      val resumeOnHeadphonesConnect = pigeonVar_list[15] as Boolean
-      return WidgetConfig(enabled, style, theme, preferredSize, accentColor, backgroundOpacity, showCover, showTitle, showArtist, showControls, showProgress, showDuration, showNextInQueue, openPlayerOnTap, pauseOnHeadphonesDisconnect, resumeOnHeadphonesConnect)
+      return WidgetConfig(enabled, style, theme, preferredSize, accentColor, backgroundOpacity, showCover, showTitle, showArtist, showControls, showProgress, showDuration, showNextInQueue, openPlayerOnTap)
     }
   }
   fun toList(): List<Any?> {
@@ -1280,8 +1276,6 @@ data class WidgetConfig (
       showDuration,
       showNextInQueue,
       openPlayerOnTap,
-      pauseOnHeadphonesDisconnect,
-      resumeOnHeadphonesConnect,
     )
   }
   override fun equals(other: Any?): Boolean {
@@ -1292,7 +1286,7 @@ data class WidgetConfig (
       return true
     }
     val other = other as WidgetConfig
-    return MusicEngineApiPigeonUtils.deepEquals(this.enabled, other.enabled) && MusicEngineApiPigeonUtils.deepEquals(this.style, other.style) && MusicEngineApiPigeonUtils.deepEquals(this.theme, other.theme) && MusicEngineApiPigeonUtils.deepEquals(this.preferredSize, other.preferredSize) && MusicEngineApiPigeonUtils.deepEquals(this.accentColor, other.accentColor) && MusicEngineApiPigeonUtils.deepEquals(this.backgroundOpacity, other.backgroundOpacity) && MusicEngineApiPigeonUtils.deepEquals(this.showCover, other.showCover) && MusicEngineApiPigeonUtils.deepEquals(this.showTitle, other.showTitle) && MusicEngineApiPigeonUtils.deepEquals(this.showArtist, other.showArtist) && MusicEngineApiPigeonUtils.deepEquals(this.showControls, other.showControls) && MusicEngineApiPigeonUtils.deepEquals(this.showProgress, other.showProgress) && MusicEngineApiPigeonUtils.deepEquals(this.showDuration, other.showDuration) && MusicEngineApiPigeonUtils.deepEquals(this.showNextInQueue, other.showNextInQueue) && MusicEngineApiPigeonUtils.deepEquals(this.openPlayerOnTap, other.openPlayerOnTap) && MusicEngineApiPigeonUtils.deepEquals(this.pauseOnHeadphonesDisconnect, other.pauseOnHeadphonesDisconnect) && MusicEngineApiPigeonUtils.deepEquals(this.resumeOnHeadphonesConnect, other.resumeOnHeadphonesConnect)
+    return MusicEngineApiPigeonUtils.deepEquals(this.enabled, other.enabled) && MusicEngineApiPigeonUtils.deepEquals(this.style, other.style) && MusicEngineApiPigeonUtils.deepEquals(this.theme, other.theme) && MusicEngineApiPigeonUtils.deepEquals(this.preferredSize, other.preferredSize) && MusicEngineApiPigeonUtils.deepEquals(this.accentColor, other.accentColor) && MusicEngineApiPigeonUtils.deepEquals(this.backgroundOpacity, other.backgroundOpacity) && MusicEngineApiPigeonUtils.deepEquals(this.showCover, other.showCover) && MusicEngineApiPigeonUtils.deepEquals(this.showTitle, other.showTitle) && MusicEngineApiPigeonUtils.deepEquals(this.showArtist, other.showArtist) && MusicEngineApiPigeonUtils.deepEquals(this.showControls, other.showControls) && MusicEngineApiPigeonUtils.deepEquals(this.showProgress, other.showProgress) && MusicEngineApiPigeonUtils.deepEquals(this.showDuration, other.showDuration) && MusicEngineApiPigeonUtils.deepEquals(this.showNextInQueue, other.showNextInQueue) && MusicEngineApiPigeonUtils.deepEquals(this.openPlayerOnTap, other.openPlayerOnTap)
   }
 
   override fun hashCode(): Int {
@@ -1311,12 +1305,58 @@ data class WidgetConfig (
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.showDuration)
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.showNextInQueue)
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.openPlayerOnTap)
+    return result
+  }
+  override fun toString(): String {
+    return "WidgetConfig(enabled=$enabled, style=$style, theme=$theme, preferredSize=$preferredSize, accentColor=$accentColor, backgroundOpacity=$backgroundOpacity, showCover=$showCover, showTitle=$showTitle, showArtist=$showArtist, showControls=$showControls, showProgress=$showProgress, showDuration=$showDuration, showNextInQueue=$showNextInQueue, openPlayerOnTap=$openPlayerOnTap)"
+  }
+}
+
+/**
+ * Comportamiento global de dispositivos de audio.
+ *
+ * Se mantiene separado del widget porque también aplica cuando no hay ningún
+ * widget colocado y pertenece al Centro de control de la aplicación.
+ *
+ * Generated class from Pigeon that represents data sent in messages.
+ */
+data class DeviceControlConfig (
+  val pauseOnHeadphonesDisconnect: Boolean,
+  val resumeOnHeadphonesConnect: Boolean
+)
+ {
+  companion object {
+    fun fromList(pigeonVar_list: List<Any?>): DeviceControlConfig {
+      val pauseOnHeadphonesDisconnect = pigeonVar_list[0] as Boolean
+      val resumeOnHeadphonesConnect = pigeonVar_list[1] as Boolean
+      return DeviceControlConfig(pauseOnHeadphonesDisconnect, resumeOnHeadphonesConnect)
+    }
+  }
+  fun toList(): List<Any?> {
+    return listOf(
+      pauseOnHeadphonesDisconnect,
+      resumeOnHeadphonesConnect,
+    )
+  }
+  override fun equals(other: Any?): Boolean {
+    if (other == null || other.javaClass != javaClass) {
+      return false
+    }
+    if (this === other) {
+      return true
+    }
+    val other = other as DeviceControlConfig
+    return MusicEngineApiPigeonUtils.deepEquals(this.pauseOnHeadphonesDisconnect, other.pauseOnHeadphonesDisconnect) && MusicEngineApiPigeonUtils.deepEquals(this.resumeOnHeadphonesConnect, other.resumeOnHeadphonesConnect)
+  }
+
+  override fun hashCode(): Int {
+    var result = javaClass.hashCode()
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.pauseOnHeadphonesDisconnect)
     result = 31 * result + MusicEngineApiPigeonUtils.deepHash(this.resumeOnHeadphonesConnect)
     return result
   }
   override fun toString(): String {
-    return "WidgetConfig(enabled=$enabled, style=$style, theme=$theme, preferredSize=$preferredSize, accentColor=$accentColor, backgroundOpacity=$backgroundOpacity, showCover=$showCover, showTitle=$showTitle, showArtist=$showArtist, showControls=$showControls, showProgress=$showProgress, showDuration=$showDuration, showNextInQueue=$showNextInQueue, openPlayerOnTap=$openPlayerOnTap, pauseOnHeadphonesDisconnect=$pauseOnHeadphonesDisconnect, resumeOnHeadphonesConnect=$resumeOnHeadphonesConnect)"
+    return "DeviceControlConfig(pauseOnHeadphonesDisconnect=$pauseOnHeadphonesDisconnect, resumeOnHeadphonesConnect=$resumeOnHeadphonesConnect)"
   }
 }
 
@@ -1801,35 +1841,40 @@ private open class MusicEngineApiPigeonCodec : StandardMessageCodec() {
       }
       152.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RemoteSource.fromList(it)
+          DeviceControlConfig.fromList(it)
         }
       }
       153.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          RemoteEntry.fromList(it)
+          RemoteSource.fromList(it)
         }
       }
       154.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          EqualizerBands.fromList(it)
+          RemoteEntry.fromList(it)
         }
       }
       155.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          PickedDocument.fromList(it)
+          EqualizerBands.fromList(it)
         }
       }
       156.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          GrantedFolder.fromList(it)
+          PickedDocument.fromList(it)
         }
       }
       157.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
-          CoverImage.fromList(it)
+          GrantedFolder.fromList(it)
         }
       }
       158.toByte() -> {
+        return (readValue(buffer) as? List<Any?>)?.let {
+          CoverImage.fromList(it)
+        }
+      }
+      159.toByte() -> {
         return (readValue(buffer) as? List<Any?>)?.let {
           LyricsPayload.fromList(it)
         }
@@ -1931,32 +1976,36 @@ private open class MusicEngineApiPigeonCodec : StandardMessageCodec() {
         stream.write(151)
         writeValue(stream, value.toList())
       }
-      is RemoteSource -> {
+      is DeviceControlConfig -> {
         stream.write(152)
         writeValue(stream, value.toList())
       }
-      is RemoteEntry -> {
+      is RemoteSource -> {
         stream.write(153)
         writeValue(stream, value.toList())
       }
-      is EqualizerBands -> {
+      is RemoteEntry -> {
         stream.write(154)
         writeValue(stream, value.toList())
       }
-      is PickedDocument -> {
+      is EqualizerBands -> {
         stream.write(155)
         writeValue(stream, value.toList())
       }
-      is GrantedFolder -> {
+      is PickedDocument -> {
         stream.write(156)
         writeValue(stream, value.toList())
       }
-      is CoverImage -> {
+      is GrantedFolder -> {
         stream.write(157)
         writeValue(stream, value.toList())
       }
-      is LyricsPayload -> {
+      is CoverImage -> {
         stream.write(158)
+        writeValue(stream, value.toList())
+      }
+      is LyricsPayload -> {
+        stream.write(159)
         writeValue(stream, value.toList())
       }
       else -> super.writeValue(stream, value)
@@ -2035,6 +2084,8 @@ interface MusicEngineHostApi {
   fun analyzeLoudness(songId: Long, callback: (Result<LoudnessAnalysis>) -> Unit)
   /** Publica la configuracion del widget y repinta los que ya esten colocados. */
   fun setWidgetConfig(config: WidgetConfig)
+  /** Publica el comportamiento de auriculares y salidas Bluetooth. */
+  fun setDeviceControlConfig(config: DeviceControlConfig)
   /**
    * Numero de widgets colocados en la pantalla de inicio, para poder decirlo
    * en la pantalla de ajustes en vez de dar por hecho que hay alguno.
@@ -2787,6 +2838,24 @@ interface MusicEngineHostApi {
             val configArg = args[0] as WidgetConfig
             val wrapped: List<Any?> = try {
               api.setWidgetConfig(configArg)
+              listOf(null)
+            } catch (exception: Throwable) {
+              MusicEngineApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setDeviceControlConfig$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { message, reply ->
+            val args = message as List<Any?>
+            val configArg = args[0] as DeviceControlConfig
+            val wrapped: List<Any?> = try {
+              api.setDeviceControlConfig(configArg)
               listOf(null)
             } catch (exception: Throwable) {
               MusicEngineApiPigeonUtils.wrapError(exception)

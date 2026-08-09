@@ -243,8 +243,9 @@ class SavedRadios extends Table {
 
 /// Videos musicales asociados a una cancion, para el fondo del reproductor.
 ///
-/// La clave `songKey` es "artista||titulo" en minusculas para que un cambio
-/// de ID de MediaStore (por re-escaneo o reinstalacion) no invalide el cache.
+/// La clave `songKey` combina artista, titulo, album y duracion en minusculas.
+/// No usa el ID de MediaStore, de modo que un re-escaneo o reinstalacion no
+/// invalida el cache, pero dos versiones distintas de una cancion no se pisan.
 class SongVideoIds extends Table {
   TextColumn get songKey => text()();
   TextColumn get videoId => text()();
@@ -373,6 +374,27 @@ class AppSettings extends Table {
   IntColumn get playerSceneAspectRatio =>
       integer().withDefault(const Constant(0))();
 
+  // Controles y gestos del reproductor. El orden usa JSON porque representa
+  // dos listas ordenadas; los interruptores siguen siendo columnas tipadas.
+  TextColumn get playerControlPreset =>
+      text().withDefault(const Constant('complete'))();
+  TextColumn get playerControlLayoutJson => text().withDefault(
+    const Constant(
+      '{"primary":["shuffle","previous","playPause","next","repeat"],'
+      '"secondary":["favorite","seekBackward","seekForward","queue","sleepTimer"]}',
+    ),
+  )();
+  TextColumn get playerControlHandedness =>
+      text().withDefault(const Constant('right'))();
+  BoolColumn get playerGestureDoubleTap =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get playerGestureSwipeTrack =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get playerGestureSwipeVolume =>
+      boolean().withDefault(const Constant(true))();
+  BoolColumn get playerGestureSwipeDismiss =>
+      boolean().withDefault(const Constant(true))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -406,7 +428,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 10;
+  int get schemaVersion => 11;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -424,6 +446,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   ///   MediaStore). El motor de descarga heredado de NuvClip escribe
   ///   directamente en MediaStore.Audio, asi que una descarga se vuelve una
   ///   cancion normal de la biblioteca sin necesitar esta tabla aparte.
+  /// - Version 11: diseño y gestos personalizables del reproductor.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -501,6 +524,33 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
       }
       if (from < 10) {
         await migrator.deleteTable('downloaded_songs');
+      }
+      if (from < 11) {
+        await migrator.addColumn(appSettings, appSettings.playerControlPreset);
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerControlLayoutJson,
+        );
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerControlHandedness,
+        );
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerGestureDoubleTap,
+        );
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerGestureSwipeTrack,
+        );
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerGestureSwipeVolume,
+        );
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerGestureSwipeDismiss,
+        );
       }
     },
   );

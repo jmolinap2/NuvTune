@@ -18,10 +18,11 @@ import 'package:nuvtune/features/playlists/playlists_screen.dart';
 import 'package:nuvtune/features/queue/queue_screen.dart';
 import 'package:nuvtune/features/remote_sources/remote_sources_screen.dart';
 import 'package:nuvtune/features/settings/appearance_screen.dart';
+import 'package:nuvtune/features/settings/control_screen.dart';
 import 'package:nuvtune/features/settings/folders_screen.dart';
 import 'package:nuvtune/features/settings/playback_failure_log_screen.dart';
+import 'package:nuvtune/features/settings/settings_category_screens.dart';
 import 'package:nuvtune/features/settings/settings_screen.dart';
-import 'package:nuvtune/features/settings/widgets_screen.dart';
 
 /// Rutas de la aplicacion.
 ///
@@ -214,9 +215,8 @@ GoRouter createRouter() {
       GoRoute(
         path: '/gift/receive',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => GiftReceiveWizard(
-          initialUri: state.uri.queryParameters['uri'],
-        ),
+        builder: (context, state) =>
+            GiftReceiveWizard(initialUri: state.uri.queryParameters['uri']),
       ),
       GoRoute(
         path: '/playlist/:id/gift',
@@ -251,12 +251,49 @@ GoRouter createRouter() {
       GoRoute(
         path: '/settings/appearance',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AppearanceScreen(),
+        builder: (context, state) => AppearanceScreen(
+          initialTab: AppearanceTab.byId(state.uri.queryParameters['tab']),
+        ),
       ),
       GoRoute(
         path: '/settings/widgets',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const WidgetsScreen(),
+        redirect: (context, state) => '/settings/appearance?tab=widget',
+      ),
+      GoRoute(
+        path: '/settings/control',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ControlSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/control/layout',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ControlLayoutScreen(),
+      ),
+      GoRoute(
+        path: '/settings/audio',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AudioQualitySettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/library',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const LibrarySettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/sources',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SourcesSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/data',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const DataPrivacySettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/system',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const SystemHelpSettingsScreen(),
       ),
       GoRoute(
         path: '/settings/excluded-folders',

@@ -65,30 +65,30 @@ class AccentIdentity {
 
   /// Degradado de marca, de izquierda a derecha.
   LinearGradient get gradient => LinearGradient(
-        colors: [start, middle, end],
-        begin: Alignment.centerLeft,
-        end: Alignment.centerRight,
-      );
+    colors: [start, middle, end],
+    begin: Alignment.centerLeft,
+    end: Alignment.centerRight,
+  );
 
   /// Version de dos paradas para superficies pequenas, donde tres colores se
   /// leen como suciedad en lugar de como degradado.
   LinearGradient get compactGradient => LinearGradient(
-        colors: [start, middle],
-        begin: Alignment.topLeft,
-        end: Alignment.bottomRight,
-      );
+    colors: [start, middle],
+    begin: Alignment.topLeft,
+    end: Alignment.bottomRight,
+  );
 
   /// Degradado vertical para fondos de cabecera.
   LinearGradient headerGradient(Color surface) => LinearGradient(
-        colors: [
-          middle.withValues(alpha: 0.34),
-          start.withValues(alpha: 0.16),
-          surface,
-        ],
-        begin: Alignment.topCenter,
-        end: Alignment.bottomCenter,
-        stops: const [0, 0.45, 1],
-      );
+    colors: [
+      middle.withValues(alpha: 0.34),
+      start.withValues(alpha: 0.16),
+      surface,
+    ],
+    begin: Alignment.topCenter,
+    end: Alignment.bottomCenter,
+    stops: const [0, 0.45, 1],
+  );
 
   /// Color primario del esquema de Material.
   Color get primary => middle;
@@ -176,12 +176,30 @@ class AccentIdentity {
 /// Profundidad del fondo. El sistema de diseño usa un negro azulado, pero hay
 /// quien prefiere negro absoluto en pantallas OLED.
 enum BackgroundDepth {
-  night('night', 'Nocturno', Color(0xFF0B0F17), Color(0xFF131726),
-      Color(0xFF1E1B2E), Color(0xFF2B1450)),
-  violet('violet', 'Violeta', Color(0xFF0A0613), Color(0xFF150F26),
-      Color(0xFF1F1638), Color(0xFF2E1A55)),
-  pureBlack('black', 'Negro puro', Color(0xFF000000), Color(0xFF0A0A0F),
-      Color(0xFF13131A), Color(0xFF1C1C26));
+  night(
+    'night',
+    'Nocturno',
+    Color(0xFF0B0F17),
+    Color(0xFF131726),
+    Color(0xFF1E1B2E),
+    Color(0xFF2B1450),
+  ),
+  violet(
+    'violet',
+    'Violeta',
+    Color(0xFF0A0613),
+    Color(0xFF150F26),
+    Color(0xFF1F1638),
+    Color(0xFF2E1A55),
+  ),
+  pureBlack(
+    'black',
+    'AMOLED',
+    Color(0xFF000000),
+    Color(0xFF0A0A0F),
+    Color(0xFF13131A),
+    Color(0xFF1C1C26),
+  );
 
   const BackgroundDepth(
     this.id,

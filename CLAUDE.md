@@ -88,8 +88,12 @@ un formato soportado.
 
 ## Despliegue
 
-`pwsh tool/deploy.ps1` compila e instala resolviendo el teléfono por identidad
-(`model:2311DRK48G`), nunca por ip o puerto guardado, y lo reconecta por mDNS si
-hace falta. `-Action logs` vuelca los errores de NuvTune sin el ruido de MIUI.
-Ante conflicto de firma se detiene y avisa en vez de desinstalar, porque
-desinstalar borraría la biblioteca y las listas del usuario.
+`pwsh tool/deploy.ps1` es el único script de despliegue. Compila release e
+instala resolviendo el teléfono por identidad (`model:2311DRK48G`), nunca por ip
+o puerto guardado, y lo reconecta por mDNS si hace falta. Después mueve la APK
+anterior de NuvTune a `APK'S - DESARROLLOS/respaldo`, copia la actual a la
+carpeta principal y conserva solo los cuatro respaldos más recientes de
+NuvTune; no toca las APK de otros proyectos. `-Action logs` vuelca los errores
+de NuvTune sin el ruido de MIUI. Ante conflicto de firma se detiene y avisa en
+vez de desinstalar, porque desinstalar borraría la biblioteca y las listas del
+usuario.

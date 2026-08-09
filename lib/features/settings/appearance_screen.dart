@@ -10,164 +10,225 @@ import 'package:nuvtune/features/player/audio_visualizer.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
+import 'package:nuvtune/features/settings/settings_components.dart';
+import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
+import 'package:nuvtune/features/settings/widgets_screen.dart';
 import 'package:nuvtune/shared/widgets/accent_picker.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
 
-/// Apariencia de la aplicación.
-///
-/// El sistema visual de NuvTune no se apoya en un color de acento sino en un
-/// degradado de tres paradas, así que lo que se elige aquí es una identidad
-/// completa y no un color suelto. La vista previa de arriba usa los mismos
-/// componentes que el resto de la aplicación, de modo que muestra el resultado
-/// real y no una aproximación.
-class AppearanceScreen extends ConsumerWidget {
-  const AppearanceScreen({super.key});
+enum AppearanceTab {
+  app('app'),
+  player('player'),
+  widget('widget');
+
+  const AppearanceTab(this.id);
+  final String id;
+
+  static AppearanceTab byId(String? id) =>
+      values.firstWhere((tab) => tab.id == id, orElse: () => AppearanceTab.app);
+}
+
+class AppearanceScreen extends StatefulWidget {
+  const AppearanceScreen({this.initialTab = AppearanceTab.app, super.key});
+
+  final AppearanceTab initialTab;
+
+  @override
+  State<AppearanceScreen> createState() => _AppearanceScreenState();
+}
+
+class _AppearanceScreenState extends State<AppearanceScreen>
+    with SingleTickerProviderStateMixin {
+  late final TabController _controller = TabController(
+    length: AppearanceTab.values.length,
+    initialIndex: widget.initialTab.index,
+    vsync: this,
+  );
+
+  @override
+  void dispose() {
+    _controller.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(
+      title: const Text(AppStrings.settingsAppearance),
+      bottom: TabBar(
+        controller: _controller,
+        tabs: const [
+          Tab(text: 'Aplicación'),
+          Tab(text: 'Reproductor'),
+          Tab(text: 'Widget'),
+        ],
+      ),
+    ),
+    body: TabBarView(
+      controller: _controller,
+      children: const [
+        _AppAppearancePanel(),
+        _PlayerAppearancePanel(),
+        WidgetSettingsContent(),
+      ],
+    ),
+  );
+}
+
+class _AppAppearancePanel extends ConsumerWidget {
+  const _AppAppearancePanel();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider).valueOrNull;
     final appearance = ThemeScope.of(context);
-
     if (settings == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Center(child: CircularProgressIndicator());
     }
+    final mutation = ref.read(settingsMutationProvider.notifier);
 
-    return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.settingsAppearance)),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: Tokens.space6),
-        children: [
-          const _Preview(),
-
-          SectionLabel(AppStrings.appearanceAccent),
-          _Note(AppStrings.appearanceAccentNote),
-          const SizedBox(height: Tokens.space3),
-          _AccentGrid(selected: settings.accentId),
-
-          SwitchListTile(
-            secondary: const Icon(Icons.palette_outlined),
-            title: const Text(AppStrings.dynamicColor),
-            subtitle: const Text(
-              'En el reproductor, el acento se toma de la portada de la '
-              'canción que suena. El resto de la aplicación mantiene el color '
-              'elegido arriba.',
-            ),
-            value: settings.useDynamicColor,
-            onChanged: (value) =>
-                _save(ref, AppSettingsCompanion(useDynamicColor: Value(value))),
-          ),
-
-          ListTile(
-            leading: Icon(
-              PlayerVisualScene.fromIndex(settings.playerVisualScene).icon,
-            ),
-            title: const Text('Escenario del reproductor'),
-            subtitle: Text(
-              '${PlayerVisualScene.fromIndex(settings.playerVisualScene).label} · '
-              '${PlayerVisualScene.fromIndex(settings.playerVisualScene).description}',
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _selectPlayerVisualScene(
-              context,
-              ref,
-              PlayerVisualScene.fromIndex(settings.playerVisualScene),
-            ),
-          ),
-
-          ListTile(
-            leading: Icon(
-              PlayerSceneAspectRatio.fromIndex(
-                settings.playerSceneAspectRatio,
-              ).icon,
-            ),
-            title: const Text('Relación de aspecto de la escena'),
-            subtitle: Text(
-              '${PlayerSceneAspectRatio.fromIndex(settings.playerSceneAspectRatio).label} · '
-              '${PlayerSceneAspectRatio.fromIndex(settings.playerSceneAspectRatio).description}',
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => _selectAspectRatio(
-              context,
-              ref,
-              PlayerSceneAspectRatio.fromIndex(
-                settings.playerSceneAspectRatio,
-              ),
-            ),
-          ),
-
-          ListTile(
-            leading: Icon(
-              VisualizerStyle.fromIndex(settings.playerVisualizerStyle).icon,
-            ),
-            title: const Text('Estilo del visualizador'),
-            subtitle: Text(
-              '${VisualizerStyle.fromIndex(settings.playerVisualizerStyle).label} · '
-              'reacciona al ritmo y a las zonas tonales',
-            ),
-            trailing: const Icon(Icons.chevron_right_rounded),
-            onTap: () => showVisualizerStylePicker(context, ref),
-          ),
-
-          SwitchListTile(
-            secondary: const Icon(Icons.movie_filter_outlined),
-            title: const Text('Fondo de video musical en Wi-Fi'),
-            subtitle: const Text(
-              'Activa el video oficial en Video y Video + letras. Solo con '
-              'Wi-Fi, nunca con datos móviles.',
-            ),
-            value: settings.videoBackgroundEnabled,
-            onChanged: (value) => _save(
-              ref,
-              AppSettingsCompanion(videoBackgroundEnabled: Value(value)),
-            ),
-          ),
-
-          SectionLabel(AppStrings.appearanceDepth),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-            child: Row(
-              children: [
-                for (final depth in BackgroundDepth.values)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.only(right: Tokens.space2),
-                      child: _DepthOption(
-                        depth: depth,
-                        selected: appearance.depth == depth,
-                        onTap: () => _selectDepth(ref, depth),
-                      ),
-                    ),
+    return ListView(
+      padding: const EdgeInsets.only(bottom: Tokens.space6),
+      children: [
+        const _AppearancePreview(),
+        const SettingsSectionLabel('Color de acento'),
+        const _Note(AppStrings.appearanceAccentNote),
+        const SizedBox(height: Tokens.space3),
+        _AccentGrid(selected: settings.accentId),
+        const SettingsSectionLabel('Fondo'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+          child: Row(
+            children: [
+              for (
+                var index = 0;
+                index < BackgroundDepth.values.length;
+                index++
+              ) ...[
+                Expanded(
+                  child: _DepthOption(
+                    depth: BackgroundDepth.values[index],
+                    selected: appearance.depth == BackgroundDepth.values[index],
+                    onTap: () {
+                      final depth = BackgroundDepth.values[index];
+                      mutation.save(
+                        AppSettingsCompanion(
+                          backgroundDepth: Value(depth.id),
+                          pureBlackBackground: Value(
+                            depth == BackgroundDepth.pureBlack,
+                          ),
+                        ),
+                      );
+                    },
                   ),
+                ),
+                if (index < BackgroundDepth.values.length - 1)
+                  const SizedBox(width: Tokens.space2),
               ],
+            ],
+          ),
+        ),
+        const SettingsSectionLabel('Superficies'),
+        const _Note(AppStrings.appearanceGlassNote),
+        const SizedBox(height: Tokens.space3),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+          child: SegmentedButton<GlassIntensity>(
+            segments: [
+              for (final intensity in GlassIntensity.values)
+                ButtonSegment(value: intensity, label: Text(intensity.label)),
+            ],
+            selected: {appearance.glass},
+            onSelectionChanged: (selection) => mutation.save(
+              AppSettingsCompanion(glassIntensity: Value(selection.first.id)),
             ),
           ),
+        ),
+        const SizedBox(height: Tokens.space4),
+        const SettingsInfoPanel(
+          icon: Icons.accessibility_new_rounded,
+          title: 'Movimiento según Android',
+          message:
+              'Auris, el visualizador y las transiciones se detienen automáticamente cuando el sistema pide reducir animaciones.',
+        ),
+      ],
+    );
+  }
+}
 
-          SectionLabel(AppStrings.appearanceGlass),
-          _Note(AppStrings.appearanceGlassNote),
-          const SizedBox(height: Tokens.space3),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-            child: SegmentedButton<GlassIntensity>(
-              segments: [
-                for (final intensity in GlassIntensity.values)
-                  ButtonSegment(value: intensity, label: Text(intensity.label)),
-              ],
-              selected: {appearance.glass},
-              onSelectionChanged: (selection) => _save(
-                ref,
-                AppSettingsCompanion(glassIntensity: Value(selection.first.id)),
+class _PlayerAppearancePanel extends ConsumerWidget {
+  const _PlayerAppearancePanel();
+
+  @override
+  Widget build(BuildContext context, WidgetRef ref) {
+    final settings = ref.watch(settingsProvider).valueOrNull;
+    if (settings == null) {
+      return const Center(child: CircularProgressIndicator());
+    }
+    final mutation = ref.read(settingsMutationProvider.notifier);
+    final scene = PlayerVisualScene.fromIndex(settings.playerVisualScene);
+    final ratio = PlayerSceneAspectRatio.fromIndex(
+      settings.playerSceneAspectRatio,
+    );
+    final visualizer = VisualizerStyle.fromIndex(
+      settings.playerVisualizerStyle,
+    );
+
+    return ListView(
+      padding: const EdgeInsets.only(bottom: Tokens.space6),
+      children: [
+        const _PlayerPreview(),
+        const SettingsSectionLabel('Color y fondo'),
+        SettingsGroup(
+          children: [
+            SwitchListTile(
+              secondary: const Icon(Icons.palette_outlined),
+              title: const Text(AppStrings.dynamicColor),
+              subtitle: const Text('Usa el color dominante de la portada.'),
+              value: settings.useDynamicColor,
+              onChanged: (value) => mutation.save(
+                AppSettingsCompanion(useDynamicColor: Value(value)),
               ),
             ),
-          ),
-        ],
-      ),
+            SwitchListTile(
+              secondary: const Icon(Icons.movie_filter_outlined),
+              title: const Text('Fondo de video musical en Wi-Fi'),
+              subtitle: const Text('Nunca utiliza datos móviles.'),
+              value: settings.videoBackgroundEnabled,
+              onChanged: (value) => mutation.save(
+                AppSettingsCompanion(videoBackgroundEnabled: Value(value)),
+              ),
+            ),
+          ],
+        ),
+        const SettingsSectionLabel('Escena visual'),
+        SettingsGroup(
+          children: [
+            SettingsNavigationRow(
+              icon: scene.icon,
+              title: 'Escenario del reproductor',
+              subtitle: '${scene.label} · ${scene.description}',
+              onTap: () => _selectScene(context, ref, scene),
+            ),
+            SettingsNavigationRow(
+              icon: ratio.icon,
+              title: 'Relación de aspecto',
+              subtitle: '${ratio.label} · ${ratio.description}',
+              onTap: () => _selectRatio(context, ref, ratio),
+            ),
+            SettingsNavigationRow(
+              icon: visualizer.icon,
+              title: 'Estilo del visualizador',
+              subtitle: '${visualizer.label} · reacciona al ritmo',
+              onTap: () => showVisualizerStylePicker(context, ref),
+            ),
+          ],
+        ),
+      ],
     );
   }
 
-  Future<void> _save(WidgetRef ref, AppSettingsCompanion companion) =>
-      ref.read(settingsRepositoryProvider).update(companion);
-
-  Future<void> _selectPlayerVisualScene(
+  Future<void> _selectScene(
     BuildContext context,
     WidgetRef ref,
     PlayerVisualScene selected,
@@ -177,13 +238,12 @@ class AppearanceScreen extends ConsumerWidget {
       selected: selected,
     );
     if (choice == null) return;
-    await _save(
-      ref,
-      AppSettingsCompanion(playerVisualScene: Value(choice.index)),
-    );
+    await ref
+        .read(settingsMutationProvider.notifier)
+        .save(AppSettingsCompanion(playerVisualScene: Value(choice.index)));
   }
 
-  Future<void> _selectAspectRatio(
+  Future<void> _selectRatio(
     BuildContext context,
     WidgetRef ref,
     PlayerSceneAspectRatio selected,
@@ -193,22 +253,12 @@ class AppearanceScreen extends ConsumerWidget {
       selected: selected,
     );
     if (choice == null) return;
-    await _save(
-      ref,
-      AppSettingsCompanion(playerSceneAspectRatio: Value(choice.index)),
-    );
+    await ref
+        .read(settingsMutationProvider.notifier)
+        .save(
+          AppSettingsCompanion(playerSceneAspectRatio: Value(choice.index)),
+        );
   }
-
-  /// `pureBlackBackground` es el ajuste de Fase 1 y sigue mandando sobre la
-  /// profundidad, de modo que hay que mantener los dos coherentes en lugar de
-  /// dejar que se contradigan.
-  Future<void> _selectDepth(WidgetRef ref, BackgroundDepth depth) => _save(
-    ref,
-    AppSettingsCompanion(
-      backgroundDepth: Value(depth.id),
-      pureBlackBackground: Value(depth == BackgroundDepth.pureBlack),
-    ),
-  );
 }
 
 class _Note extends StatelessWidget {
@@ -228,15 +278,13 @@ class _Note extends StatelessWidget {
   );
 }
 
-/// Vista previa con los componentes reales del sistema visual.
-class _Preview extends StatelessWidget {
-  const _Preview();
+class _AppearancePreview extends StatelessWidget {
+  const _AppearancePreview();
 
   @override
   Widget build(BuildContext context) {
     final accent = ThemeScope.of(context).accent;
     final scheme = Theme.of(context).colorScheme;
-
     return Container(
       margin: const EdgeInsets.fromLTRB(
         Tokens.gutter,
@@ -249,101 +297,68 @@ class _Preview extends StatelessWidget {
         borderRadius: BorderRadius.circular(Tokens.radiusXLarge),
         gradient: accent.headerGradient(scheme.surfaceContainerLow),
       ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Text(
-            AppStrings.appearancePreview.toUpperCase(),
-            style: Theme.of(
-              context,
-            ).textTheme.labelSmall?.copyWith(color: scheme.onSurfaceVariant),
-          ),
-          const SizedBox(height: Tokens.space3),
-          GlassCard(
-            child: Row(
-              children: [
-                Container(
-                  width: 56,
-                  height: 56,
-                  decoration: BoxDecoration(
-                    borderRadius: BorderRadius.circular(Tokens.radiusSmall),
-                    gradient: accent.compactGradient,
-                  ),
-                  alignment: Alignment.center,
-                  child: const Icon(
-                    Icons.graphic_eq_rounded,
-                    color: Colors.white,
-                  ),
+      child: RepaintBoundary(
+        child: GlassCard(
+          child: Row(
+            children: [
+              Container(
+                width: 56,
+                height: 56,
+                decoration: BoxDecoration(
+                  borderRadius: BorderRadius.circular(Tokens.radiusSmall),
+                  gradient: accent.compactGradient,
                 ),
-                const SizedBox(width: Tokens.space3),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        'Eclipse Interior',
-                        style: Theme.of(context).textTheme.titleSmall,
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        'Aurora Vector',
-                        style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                          color: scheme.onSurfaceVariant,
-                        ),
-                      ),
-                    ],
-                  ),
-                ),
-                GradientPlayButton(isPlaying: true, onPressed: () {}, size: 44),
-              ],
-            ),
-          ),
-          const SizedBox(height: Tokens.space3),
-          // Barras del ecualizador, que es donde el degradado se ve entero.
-          SizedBox(
-            height: 46,
-            child: Row(
-              crossAxisAlignment: CrossAxisAlignment.end,
-              children: [
-                for (final height in _previewBars)
-                  Expanded(
-                    child: Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 2),
-                      child: Container(
-                        height: 46 * height,
-                        decoration: BoxDecoration(
-                          borderRadius: BorderRadius.circular(3),
-                          gradient: LinearGradient(
-                            colors: [accent.end, accent.start],
-                            begin: Alignment.topCenter,
-                            end: Alignment.bottomCenter,
-                          ),
-                        ),
-                      ),
+                child: const Icon(Icons.graphic_eq_rounded),
+              ),
+              const SizedBox(width: Tokens.space3),
+              const Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: [
+                    Text(
+                      'Eclipse Interior',
+                      style: TextStyle(fontWeight: FontWeight.w700),
                     ),
-                  ),
-              ],
-            ),
+                    Text('Aurora Vector'),
+                  ],
+                ),
+              ),
+              GradientPlayButton(isPlaying: true, onPressed: () {}, size: 44),
+            ],
           ),
-        ],
+        ),
       ),
     );
   }
+}
 
-  static const _previewBars = <double>[
-    0.35,
-    0.6,
-    0.85,
-    0.5,
-    0.7,
-    1,
-    0.65,
-    0.4,
-    0.75,
-    0.55,
-    0.9,
-    0.45,
-  ];
+class _PlayerPreview extends StatelessWidget {
+  const _PlayerPreview();
+
+  @override
+  Widget build(BuildContext context) => Container(
+    height: 176,
+    margin: const EdgeInsets.fromLTRB(
+      Tokens.gutter,
+      Tokens.space4,
+      Tokens.gutter,
+      0,
+    ),
+    decoration: BoxDecoration(
+      borderRadius: BorderRadius.circular(Tokens.radiusXLarge),
+      border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
+      gradient: RadialGradient(
+        colors: [
+          Theme.of(context).colorScheme.primary.withValues(alpha: 0.42),
+          Theme.of(context).colorScheme.surface,
+        ],
+      ),
+    ),
+    child: const RepaintBoundary(
+      child: Center(child: Icon(Icons.graphic_eq_rounded, size: 72)),
+    ),
+  );
 }
 
 class _AccentGrid extends ConsumerWidget {
@@ -352,17 +367,15 @@ class _AccentGrid extends ConsumerWidget {
   final String selected;
 
   @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-      child: AccentSwatchGrid(
-        selected: selected,
-        onSelected: (identity) => ref
-            .read(settingsRepositoryProvider)
-            .update(AppSettingsCompanion(accentId: Value(identity.id))),
-      ),
-    );
-  }
+  Widget build(BuildContext context, WidgetRef ref) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+    child: AccentSwatchGrid(
+      selected: selected,
+      onSelected: (identity) => ref
+          .read(settingsMutationProvider.notifier)
+          .save(AppSettingsCompanion(accentId: Value(identity.id))),
+    ),
+  );
 }
 
 class _DepthOption extends StatelessWidget {
@@ -379,56 +392,59 @@ class _DepthOption extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final accent = ThemeScope.of(context).accent;
-
-    return GestureDetector(
-      onTap: onTap,
-      child: AnimatedContainer(
-        duration: Tokens.durationFast,
-        padding: const EdgeInsets.all(Tokens.space3),
-        decoration: BoxDecoration(
-          borderRadius: BorderRadius.circular(Tokens.radiusMedium),
-          color: depth.background,
-          border: Border.all(
-            color: selected
-                ? accent.middle
-                : Colors.white.withValues(alpha: 0.08),
-            width: selected ? 2 : 1,
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: depth.label,
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(Tokens.radiusMedium),
+        child: AnimatedContainer(
+          duration: MediaQuery.disableAnimationsOf(context)
+              ? Duration.zero
+              : Tokens.durationFast,
+          padding: const EdgeInsets.all(Tokens.space3),
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Tokens.radiusMedium),
+            color: depth.background,
+            border: Border.all(
+              color: selected
+                  ? accent.middle
+                  : Colors.white.withValues(alpha: 0.08),
+              width: selected ? 2 : 1,
+            ),
           ),
-        ),
-        child: Column(
-          children: [
-            // Muestra de las tres superficies de esta profundidad.
-            Row(
-              mainAxisAlignment: MainAxisAlignment.center,
-              children: [
-                for (final color in [
-                  depth.surface,
-                  depth.surfaceHigh,
-                  depth.surfaceHighest,
-                ])
-                  Container(
-                    width: 14,
-                    height: 14,
-                    margin: const EdgeInsets.symmetric(horizontal: 2),
-                    decoration: BoxDecoration(
-                      color: color,
-                      borderRadius: BorderRadius.circular(4),
-                      border: Border.all(
-                        color: Colors.white.withValues(alpha: 0.10),
+          child: Column(
+            children: [
+              Row(
+                mainAxisAlignment: MainAxisAlignment.center,
+                children: [
+                  for (final color in [
+                    depth.surface,
+                    depth.surfaceHigh,
+                    depth.surfaceHighest,
+                  ])
+                    Container(
+                      width: 12,
+                      height: 12,
+                      margin: const EdgeInsets.symmetric(horizontal: 1),
+                      decoration: BoxDecoration(
+                        color: color,
+                        borderRadius: BorderRadius.circular(4),
                       ),
                     ),
-                  ),
-              ],
-            ),
-            const SizedBox(height: Tokens.space2),
-            Text(
-              depth.label,
-              textAlign: TextAlign.center,
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                ],
               ),
-            ),
-          ],
+              const SizedBox(height: Tokens.space2),
+              Text(
+                depth.label,
+                textAlign: TextAlign.center,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: const TextStyle(fontSize: 11.5),
+              ),
+            ],
+          ),
         ),
       ),
     );

@@ -10,12 +10,22 @@ class PipedSearchResult {
     required this.title,
     required this.uploaderName,
     required this.durationSeconds,
+    this.description = '',
+    this.uploaderVerified = false,
+    this.isMusicCategory = false,
+    this.views = 0,
+    this.searchRank = 0,
   });
 
   final String videoId;
   final String title;
   final String uploaderName;
   final int durationSeconds;
+  final String description;
+  final bool uploaderVerified;
+  final bool isMusicCategory;
+  final int views;
+  final int searchRank;
 }
 
 class PipedAudioStream {
@@ -83,25 +93,34 @@ class PipedClient {
   /// Piped queda como ultimo respaldo. [searchMany] y [streamsOf] siguen
   /// usando exclusivamente Piped para el buscador y las descargas.
   Future<String?> searchMusicVideo(String query) async {
-    final candidates = await searchMusicVideos(query, limit: 1);
-    return candidates.isEmpty ? null : candidates.first;
+    final candidates = await searchMusicVideoCandidates(query, limit: 1);
+    return candidates.isEmpty ? null : candidates.first.videoId;
   }
 
   /// Devuelve varios candidatos ordenados para poder recuperarse cuando el
   /// primer resultado no permite reproducción embebida o ya no está disponible.
   Future<List<String>> searchMusicVideos(String query, {int limit = 5}) async {
+    final candidates = await searchMusicVideoCandidates(query, limit: limit);
+    return candidates
+        .map((candidate) => candidate.videoId)
+        .toList(growable: false);
+  }
+
+  /// Candidatos completos para `MusicVideoMatcher`. La consulta se mantiene
+  /// como `artista cancion`: anadir "official" sesgaria los resultados sin
+  /// demostrar que el canal o el contenido sean oficiales.
+  Future<List<PipedSearchResult>> searchMusicVideoCandidates(
+    String query, {
+    int limit = 12,
+  }) async {
     if (limit <= 0) return const [];
-    final directResults = await _searchYouTube('$query official music video');
+    final directResults = await _searchYouTube(query);
     if (directResults.isNotEmpty) {
       return directResults.take(limit).toList(growable: false);
     }
 
     final fallback = await searchMany(query);
-    return fallback
-        .map((result) => result.videoId)
-        .toSet()
-        .take(limit)
-        .toList(growable: false);
+    return fallback.take(limit).toList(growable: false);
   }
 
   /// Primer resultado de musica para `artista titulo`, o `null` si ninguna
@@ -113,21 +132,34 @@ class PipedClient {
 
   /// Todos los resultados de musica para `query` (buscador de descargas).
   Future<List<PipedSearchResult>> searchMany(String query) async {
+    return _searchMany(query, filter: 'music_songs', isMusicCategory: true);
+  }
+
+  Future<List<PipedSearchResult>> _searchMany(
+    String query, {
+    required String filter,
+    required bool isMusicCategory,
+  }) async {
     for (final instance in _instances) {
       final uri = Uri.parse(
         '$instance/search',
-      ).replace(queryParameters: {'q': query, 'filter': 'music_songs'});
+      ).replace(queryParameters: {'q': query, 'filter': filter});
       try {
         final response = await _http.get(uri).timeout(_timeout);
         if (response.statusCode != 200) continue;
         final decoded = jsonDecode(response.body);
         final items = decoded is Map ? decoded['items'] : null;
         if (items is! List) continue;
-        return items
-            .whereType<Map>()
-            .map((item) => _parseSearchResult(item))
-            .whereType<PipedSearchResult>()
-            .toList();
+        final results = <PipedSearchResult>[];
+        for (final item in items.whereType<Map>()) {
+          final parsed = _parseSearchResult(
+            item,
+            searchRank: results.length,
+            isMusicCategory: isMusicCategory,
+          );
+          if (parsed != null) results.add(parsed);
+        }
+        return results;
       } catch (_) {
         continue;
       }
@@ -135,7 +167,7 @@ class PipedClient {
     return const [];
   }
 
-  Future<List<String>> _searchYouTube(String query) async {
+  Future<List<PipedSearchResult>> _searchYouTube(String query) async {
     final uri = Uri.parse(_youtubeResultsUrl).replace(
       queryParameters: {'search_query': query, 'hl': 'en', 'persist_hl': '1'},
     );
@@ -156,16 +188,28 @@ class PipedClient {
           .timeout(_youtubeTimeout);
       if (response.statusCode != 200) return const [];
 
-      // El mismo video aparece en varios nodos del JSON incrustado. Un
-      // LinkedHashSet implicito (lista + set) conserva el orden real de los
-      // resultados y evita devolver IDs repetidos.
+      final parsed = _parseYouTubeInitialData(response.body);
+      if (parsed.isNotEmpty) return parsed;
+
+      // Respaldo de compatibilidad si YouTube cambia la envoltura del JSON.
+      // Conserva IDs para recuperacion de embeds, pero al no inventar titulo,
+      // canal ni duracion estos candidatos no superan por si solos el matcher.
       final seen = <String>{};
-      final videoIds = <String>[];
+      final results = <PipedSearchResult>[];
       for (final match in _youtubeVideoIdPattern.allMatches(response.body)) {
         final videoId = match.group(1);
-        if (videoId != null && seen.add(videoId)) videoIds.add(videoId);
+        if (videoId == null || !seen.add(videoId)) continue;
+        results.add(
+          PipedSearchResult(
+            videoId: videoId,
+            title: '',
+            uploaderName: '',
+            durationSeconds: 0,
+            searchRank: results.length,
+          ),
+        );
       }
-      return videoIds;
+      return results;
     } catch (_) {
       return const [];
     }
@@ -204,7 +248,11 @@ class PipedClient {
     return null;
   }
 
-  PipedSearchResult? _parseSearchResult(Map item) {
+  PipedSearchResult? _parseSearchResult(
+    Map item, {
+    int searchRank = 0,
+    bool isMusicCategory = false,
+  }) {
     final url = item['url'] as String?;
     final videoId = _videoIdFromUrl(url);
     if (videoId == null) return null;
@@ -213,7 +261,165 @@ class PipedClient {
       title: item['title'] as String? ?? '',
       uploaderName: item['uploaderName'] as String? ?? '',
       durationSeconds: (item['duration'] as num?)?.toInt() ?? 0,
+      description:
+          item['shortDescription'] as String? ??
+          item['description'] as String? ??
+          '',
+      uploaderVerified: item['uploaderVerified'] as bool? ?? false,
+      isMusicCategory: isMusicCategory,
+      views: (item['views'] as num?)?.toInt() ?? 0,
+      searchRank: searchRank,
     );
+  }
+
+  List<PipedSearchResult> _parseYouTubeInitialData(String body) {
+    Object? initialData;
+    for (final marker in const ['var ytInitialData =', 'ytInitialData =']) {
+      final rawJson = _jsonObjectAfter(body, marker);
+      if (rawJson == null) continue;
+      try {
+        initialData = jsonDecode(rawJson);
+        break;
+      } catch (_) {
+        continue;
+      }
+    }
+    if (initialData == null) return const [];
+
+    final renderers = <Map>[];
+    _collectVideoRenderers(initialData, renderers);
+    final seen = <String>{};
+    final results = <PipedSearchResult>[];
+    for (final renderer in renderers) {
+      final videoId = renderer['videoId'] as String?;
+      if (videoId == null ||
+          !_validVideoId.hasMatch(videoId) ||
+          !seen.add(videoId)) {
+        continue;
+      }
+      final uploader = _textOf(renderer['ownerText']).isNotEmpty
+          ? _textOf(renderer['ownerText'])
+          : _textOf(renderer['shortBylineText']);
+      results.add(
+        PipedSearchResult(
+          videoId: videoId,
+          title: _textOf(renderer['title']),
+          uploaderName: uploader,
+          durationSeconds: _durationFromRenderer(renderer),
+          description: _descriptionOf(renderer),
+          uploaderVerified: _isVerifiedRenderer(renderer),
+          views: _viewsFromRenderer(renderer),
+          searchRank: results.length,
+        ),
+      );
+    }
+    return results;
+  }
+
+  static String? _jsonObjectAfter(String source, String marker) {
+    final markerIndex = source.indexOf(marker);
+    if (markerIndex < 0) return null;
+    final start = source.indexOf('{', markerIndex + marker.length);
+    if (start < 0) return null;
+
+    var depth = 0;
+    var inString = false;
+    var escaped = false;
+    for (var index = start; index < source.length; index++) {
+      final codeUnit = source.codeUnitAt(index);
+      if (inString) {
+        if (escaped) {
+          escaped = false;
+        } else if (codeUnit == 0x5C) {
+          escaped = true;
+        } else if (codeUnit == 0x22) {
+          inString = false;
+        }
+        continue;
+      }
+      if (codeUnit == 0x22) {
+        inString = true;
+      } else if (codeUnit == 0x7B) {
+        depth++;
+      } else if (codeUnit == 0x7D) {
+        depth--;
+        if (depth == 0) return source.substring(start, index + 1);
+      }
+    }
+    return null;
+  }
+
+  static void _collectVideoRenderers(Object? node, List<Map> output) {
+    if (node is Map) {
+      final renderer = node['videoRenderer'];
+      if (renderer is Map) output.add(renderer);
+      for (final value in node.values) {
+        _collectVideoRenderers(value, output);
+      }
+    } else if (node is List) {
+      for (final value in node) {
+        _collectVideoRenderers(value, output);
+      }
+    }
+  }
+
+  static String _textOf(Object? node) {
+    if (node is! Map) return '';
+    final simple = node['simpleText'];
+    if (simple is String) return simple;
+    final runs = node['runs'];
+    if (runs is! List) return '';
+    return runs
+        .whereType<Map>()
+        .map((run) => run['text'])
+        .whereType<String>()
+        .join();
+  }
+
+  static int _durationFromRenderer(Map renderer) {
+    final raw = _textOf(renderer['lengthText']);
+    if (raw.isEmpty) return 0;
+    final parts = raw.split(':').map(int.tryParse).toList();
+    if (parts.any((part) => part == null) || parts.length > 3) return 0;
+    var seconds = 0;
+    for (final part in parts) {
+      seconds = seconds * 60 + part!;
+    }
+    return seconds;
+  }
+
+  static String _descriptionOf(Map renderer) {
+    final snippets = renderer['detailedMetadataSnippets'];
+    if (snippets is! List) return '';
+    return snippets
+        .whereType<Map>()
+        .map((snippet) => _textOf(snippet['snippetText']))
+        .where((text) => text.isNotEmpty)
+        .join(' ');
+  }
+
+  static bool _isVerifiedRenderer(Map renderer) {
+    final badges = <Object?>[renderer['ownerBadges'], renderer['badges']];
+    for (final collection in badges.whereType<List>()) {
+      for (final badge in collection.whereType<Map>()) {
+        final metadata = badge['metadataBadgeRenderer'];
+        if (metadata is! Map) continue;
+        final style = '${metadata['style']}'.toLowerCase();
+        final label = '${metadata['label']}'.toLowerCase();
+        if (style.contains('verified') || label.contains('verified')) {
+          return true;
+        }
+      }
+    }
+    return false;
+  }
+
+  static int _viewsFromRenderer(Map renderer) {
+    final raw = _textOf(renderer['viewCountText']).isNotEmpty
+        ? _textOf(renderer['viewCountText'])
+        : _textOf(renderer['shortViewCountText']);
+    final digits = raw.replaceAll(RegExp(r'[^0-9]'), '');
+    return int.tryParse(digits) ?? 0;
   }
 
   /// Piped devuelve `url` como `/watch?v=<id>`.
@@ -224,4 +430,6 @@ class PipedClient {
   }
 
   void dispose() => _http.close();
+
+  static final _validVideoId = RegExp(r'^[A-Za-z0-9_-]{11}$');
 }

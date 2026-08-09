@@ -39,7 +39,7 @@ internal class HeadphoneMonitor(
     private val noisyReceiver = object : BroadcastReceiver() {
         override fun onReceive(context: Context?, intent: Intent?) {
             if (intent?.action != AudioManager.ACTION_AUDIO_BECOMING_NOISY) return
-            if (!WidgetConfigStore.load(this@HeadphoneMonitor.context)
+            if (!DeviceControlConfigStore.load(this@HeadphoneMonitor.context)
                     .pauseOnHeadphonesDisconnect
             ) {
                 return
@@ -53,7 +53,7 @@ internal class HeadphoneMonitor(
 
     private val deviceCallback = object : AudioDeviceCallback() {
         override fun onAudioDevicesAdded(addedDevices: Array<out AudioDeviceInfo>?) {
-            val config = WidgetConfigStore.load(context)
+            val config = DeviceControlConfigStore.load(context)
             if (!config.resumeOnHeadphonesConnect) return
             if (!pausedByDisconnect) return
             if (addedDevices?.any { it.isHeadphone } != true) return

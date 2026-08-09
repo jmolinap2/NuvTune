@@ -29,8 +29,6 @@ internal object WidgetConfigStore {
     private const val KEY_DURATION = "duration"
     private const val KEY_NEXT = "next"
     private const val KEY_OPEN_ON_TAP = "openOnTap"
-    private const val KEY_PAUSE_ON_DISCONNECT = "pauseOnDisconnect"
-    private const val KEY_RESUME_ON_CONNECT = "resumeOnConnect"
 
     fun save(context: Context, config: WidgetConfig) {
         context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -49,8 +47,6 @@ internal object WidgetConfigStore {
             .putBoolean(KEY_DURATION, config.showDuration)
             .putBoolean(KEY_NEXT, config.showNextInQueue)
             .putBoolean(KEY_OPEN_ON_TAP, config.openPlayerOnTap)
-            .putBoolean(KEY_PAUSE_ON_DISCONNECT, config.pauseOnHeadphonesDisconnect)
-            .putBoolean(KEY_RESUME_ON_CONNECT, config.resumeOnHeadphonesConnect)
             .apply()
     }
 
@@ -79,10 +75,6 @@ internal object WidgetConfigStore {
             showDuration = preferences.getBoolean(KEY_DURATION, false),
             showNextInQueue = preferences.getBoolean(KEY_NEXT, false),
             openPlayerOnTap = preferences.getBoolean(KEY_OPEN_ON_TAP, true),
-            pauseOnHeadphonesDisconnect =
-                preferences.getBoolean(KEY_PAUSE_ON_DISCONNECT, true),
-            resumeOnHeadphonesConnect =
-                preferences.getBoolean(KEY_RESUME_ON_CONNECT, false),
         )
     }
 

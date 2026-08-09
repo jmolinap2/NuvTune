@@ -7,6 +7,7 @@ import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
+import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
 
 /// Número de widgets ya colocados en la pantalla de inicio.
@@ -18,274 +19,228 @@ final placedWidgetsProvider = FutureProvider<int>(
 ///
 /// Cada cambio se guarda y se publica en el motor de inmediato, de modo que el
 /// widget de la pantalla de inicio se repinta sin tener que salir de aquí.
-class WidgetsScreen extends ConsumerWidget {
+class WidgetsScreen extends StatelessWidget {
   const WidgetsScreen({super.key});
+
+  @override
+  Widget build(BuildContext context) => Scaffold(
+    appBar: AppBar(title: const Text(AppStrings.settingsWidgets)),
+    body: const WidgetSettingsContent(),
+  );
+}
+
+/// Panel incrustable de apariencia y contenido del widget.
+class WidgetSettingsContent extends ConsumerWidget {
+  const WidgetSettingsContent({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final settings = ref.watch(settingsProvider).valueOrNull;
     if (settings == null) {
-      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+      return const Center(child: CircularProgressIndicator());
     }
 
     final placed = ref.watch(placedWidgetsProvider).valueOrNull ?? 0;
     final style = WidgetStyle.values[settings.widgetStyle];
     final size = WidgetSize.values[settings.widgetSize];
 
-    return Scaffold(
-      appBar: AppBar(title: const Text(AppStrings.settingsWidgets)),
-      body: ListView(
-        padding: const EdgeInsets.only(bottom: Tokens.space6),
-        children: [
-          SwitchListTile(
-            secondary: const Icon(Icons.widgets_outlined),
-            title: const Text(AppStrings.widgetsEnable),
-            subtitle: Text(
-              placed == 0
-                  ? 'Todavía no hay ningún widget en la pantalla de inicio.'
-                  : placed == 1
-                      ? 'Hay 1 widget en la pantalla de inicio.'
-                      : 'Hay $placed widgets en la pantalla de inicio.',
-            ),
-            value: settings.widgetEnabled,
-            onChanged: (value) =>
-                _save(ref, AppSettingsCompanion(widgetEnabled: Value(value))),
+    return ListView(
+      padding: const EdgeInsets.only(bottom: Tokens.space6),
+      children: [
+        SwitchListTile(
+          secondary: const Icon(Icons.widgets_outlined),
+          title: const Text(AppStrings.widgetsEnable),
+          subtitle: Text(
+            placed == 0
+                ? 'Todavía no hay ningún widget en la pantalla de inicio.'
+                : placed == 1
+                ? 'Hay 1 widget en la pantalla de inicio.'
+                : 'Hay $placed widgets en la pantalla de inicio.',
           ),
+          value: settings.widgetEnabled,
+          onChanged: (value) =>
+              _save(ref, AppSettingsCompanion(widgetEnabled: Value(value))),
+        ),
 
-          if (settings.widgetEnabled) ...[
-            SectionLabel(AppStrings.widgetsPreview),
-            _WidgetPreview(settings: settings, style: style, size: size),
+        if (settings.widgetEnabled) ...[
+          SectionLabel(AppStrings.widgetsPreview),
+          _WidgetPreview(settings: settings, style: style, size: size),
 
-            SectionLabel(AppStrings.widgetsStyle),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-              child: Row(
-                children: [
-                  for (final option in WidgetStyle.values)
-                    Expanded(
-                      child: Padding(
-                        padding: const EdgeInsets.only(right: Tokens.space2),
-                        child: _StyleCard(
-                          style: option,
-                          selected: style == option,
-                          onTap: () => _save(
-                            ref,
-                            AppSettingsCompanion(
-                              widgetStyle: Value(option.index),
-                              // Cada estilo trae su tema natural; el usuario
-                              // puede cambiarlo después.
-                              widgetTheme: Value(
-                                option == WidgetStyle.ios
-                                    ? WidgetTheme.light.index
-                                    : WidgetTheme.dark.index,
-                              ),
+          SectionLabel(AppStrings.widgetsStyle),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+            child: Row(
+              children: [
+                for (final option in WidgetStyle.values)
+                  Expanded(
+                    child: Padding(
+                      padding: const EdgeInsets.only(right: Tokens.space2),
+                      child: _StyleCard(
+                        style: option,
+                        selected: style == option,
+                        onTap: () => _save(
+                          ref,
+                          AppSettingsCompanion(
+                            widgetStyle: Value(option.index),
+                            // Cada estilo trae su tema natural; el usuario
+                            // puede cambiarlo después.
+                            widgetTheme: Value(
+                              option == WidgetStyle.ios
+                                  ? WidgetTheme.light.index
+                                  : WidgetTheme.dark.index,
                             ),
                           ),
                         ),
                       ),
                     ),
-                ],
+                  ),
+              ],
+            ),
+          ),
+
+          SectionLabel(AppStrings.widgetsSize),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+            child: SegmentedButton<WidgetSize>(
+              segments: const [
+                ButtonSegment(value: WidgetSize.compact, label: Text('4x1')),
+                ButtonSegment(value: WidgetSize.normal, label: Text('4x2')),
+                ButtonSegment(value: WidgetSize.large, label: Text('4x3')),
+              ],
+              selected: {size},
+              onSelectionChanged: (selection) => _save(
+                ref,
+                AppSettingsCompanion(widgetSize: Value(selection.first.index)),
               ),
             ),
+          ),
+          const _Note(
+            'Es una preferencia: manda el tamaño que le des al widget al '
+            'colocarlo, y NuvTune ajusta lo que muestra a lo que quepa.',
+          ),
 
-            SectionLabel(AppStrings.widgetsSize),
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-              child: SegmentedButton<WidgetSize>(
-                segments: const [
-                  ButtonSegment(
-                    value: WidgetSize.compact,
-                    label: Text('4x1'),
-                  ),
-                  ButtonSegment(value: WidgetSize.normal, label: Text('4x2')),
-                  ButtonSegment(value: WidgetSize.large, label: Text('4x3')),
-                ],
-                selected: {size},
-                onSelectionChanged: (selection) => _save(
-                  ref,
-                  AppSettingsCompanion(
-                    widgetSize: Value(selection.first.index),
-                  ),
+          SectionLabel(AppStrings.widgetsAppearance),
+          ListTile(
+            leading: const Icon(Icons.contrast_rounded),
+            title: const Text('Tema'),
+            trailing: DropdownButton<WidgetTheme>(
+              value: WidgetTheme.values[settings.widgetTheme],
+              underline: const SizedBox.shrink(),
+              items: const [
+                DropdownMenuItem(
+                  value: WidgetTheme.light,
+                  child: Text('Claro'),
                 ),
-              ),
+                DropdownMenuItem(
+                  value: WidgetTheme.dark,
+                  child: Text('Oscuro'),
+                ),
+                DropdownMenuItem(
+                  value: WidgetTheme.system,
+                  child: Text('Según el estilo'),
+                ),
+              ],
+              onChanged: (value) => value == null
+                  ? null
+                  : _save(
+                      ref,
+                      AppSettingsCompanion(widgetTheme: Value(value.index)),
+                    ),
             ),
-            const _Note(
-              'Es una preferencia: manda el tamaño que le des al widget al '
-              'colocarlo, y NuvTune ajusta lo que muestra a lo que quepa.',
-            ),
+          ),
+          _AccentRow(selected: settings.widgetAccentColor),
+          _OpacitySlider(value: settings.widgetOpacity),
 
-            SectionLabel(AppStrings.widgetsAppearance),
-            ListTile(
-              leading: const Icon(Icons.contrast_rounded),
-              title: const Text('Tema'),
-              trailing: DropdownButton<WidgetTheme>(
-                value: WidgetTheme.values[settings.widgetTheme],
-                underline: const SizedBox.shrink(),
-                items: const [
-                  DropdownMenuItem(
-                    value: WidgetTheme.light,
-                    child: Text('Claro'),
-                  ),
-                  DropdownMenuItem(
-                    value: WidgetTheme.dark,
-                    child: Text('Oscuro'),
-                  ),
-                  DropdownMenuItem(
-                    value: WidgetTheme.system,
-                    child: Text('Según el estilo'),
-                  ),
-                ],
-                onChanged: (value) => value == null
-                    ? null
-                    : _save(
-                        ref,
-                        AppSettingsCompanion(widgetTheme: Value(value.index)),
-                      ),
-              ),
+          SectionLabel(AppStrings.widgetsContent),
+          _Toggle(
+            icon: Icons.image_outlined,
+            label: 'Portada del álbum',
+            value: settings.widgetShowCover,
+            onChanged: (value) =>
+                _save(ref, AppSettingsCompanion(widgetShowCover: Value(value))),
+          ),
+          _Toggle(
+            icon: Icons.music_note_rounded,
+            label: 'Título de la canción',
+            value: settings.widgetShowTitle,
+            onChanged: (value) =>
+                _save(ref, AppSettingsCompanion(widgetShowTitle: Value(value))),
+          ),
+          _Toggle(
+            icon: Icons.person_outline_rounded,
+            label: 'Artista',
+            value: settings.widgetShowArtist,
+            onChanged: (value) => _save(
+              ref,
+              AppSettingsCompanion(widgetShowArtist: Value(value)),
             ),
-            _AccentRow(selected: settings.widgetAccentColor),
-            _OpacitySlider(value: settings.widgetOpacity),
+          ),
+          _Toggle(
+            icon: Icons.skip_next_rounded,
+            label: 'Controles de reproducción',
+            detail: 'Anterior, reproducir o pausar, siguiente',
+            value: settings.widgetShowControls,
+            onChanged: (value) => _save(
+              ref,
+              AppSettingsCompanion(widgetShowControls: Value(value)),
+            ),
+          ),
+          _Toggle(
+            icon: Icons.linear_scale_rounded,
+            label: 'Barra de progreso',
+            detail: 'No cabe en el tamaño 4x1',
+            value: settings.widgetShowProgress,
+            onChanged: (value) => _save(
+              ref,
+              AppSettingsCompanion(widgetShowProgress: Value(value)),
+            ),
+          ),
+          _Toggle(
+            icon: Icons.timer_outlined,
+            label: 'Duración y tiempo transcurrido',
+            value: settings.widgetShowDuration,
+            onChanged: (value) => _save(
+              ref,
+              AppSettingsCompanion(widgetShowDuration: Value(value)),
+            ),
+          ),
+          _Toggle(
+            icon: Icons.queue_music_rounded,
+            label: 'Siguiente en la cola',
+            value: settings.widgetShowNextInQueue,
+            onChanged: (value) => _save(
+              ref,
+              AppSettingsCompanion(widgetShowNextInQueue: Value(value)),
+            ),
+          ),
 
-            SectionLabel(AppStrings.widgetsContent),
-            _Toggle(
-              icon: Icons.image_outlined,
-              label: 'Portada del álbum',
-              value: settings.widgetShowCover,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetShowCover: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.music_note_rounded,
-              label: 'Título de la canción',
-              value: settings.widgetShowTitle,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetShowTitle: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.person_outline_rounded,
-              label: 'Artista',
-              value: settings.widgetShowArtist,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetShowArtist: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.skip_next_rounded,
-              label: 'Controles de reproducción',
-              detail: 'Anterior, reproducir o pausar, siguiente',
-              value: settings.widgetShowControls,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetShowControls: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.linear_scale_rounded,
-              label: 'Barra de progreso',
-              detail: 'No cabe en el tamaño 4x1',
-              value: settings.widgetShowProgress,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetShowProgress: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.timer_outlined,
-              label: 'Duración y tiempo transcurrido',
-              value: settings.widgetShowDuration,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetShowDuration: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.queue_music_rounded,
-              label: 'Siguiente en la cola',
-              value: settings.widgetShowNextInQueue,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetShowNextInQueue: Value(value)),
-              ),
-            ),
-
-            SectionLabel(AppStrings.widgetsBehaviour),
-            _Toggle(
-              icon: Icons.open_in_new_rounded,
-              label: 'Abrir el reproductor al tocar el widget',
-              value: settings.widgetOpenOnTap,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetOpenOnTap: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.headset_off_outlined,
-              label: 'Pausar al desconectar los audífonos',
-              value: settings.widgetPauseOnDisconnect,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetPauseOnDisconnect: Value(value)),
-              ),
-            ),
-            _Toggle(
-              icon: Icons.headset_rounded,
-              label: 'Reanudar al volver a conectarlos',
-              detail: 'Solo si la pausa la provocó la desconexión, nunca si '
-                  'pausaste a mano.',
-              value: settings.widgetResumeOnConnect,
-              onChanged: (value) => _save(
-                ref,
-                AppSettingsCompanion(widgetResumeOnConnect: Value(value)),
-              ),
-            ),
-
-            SectionLabel(AppStrings.widgetsHowTo),
-            const _Note(
-              '1. Mantén pulsada la pantalla de inicio.\n'
-              '2. Toca en «Widgets».\n'
-              '3. Busca NuvTune.\n'
-              '4. Arrastra el widget y ajústalo al tamaño que prefieras.\n\n'
-              'Puedes colocar varios widgets de tamaños distintos: todos usan '
-              'esta misma configuración.',
-            ),
-          ],
+          SectionLabel(AppStrings.widgetsBehaviour),
+          _Toggle(
+            icon: Icons.open_in_new_rounded,
+            label: 'Abrir el reproductor al tocar el widget',
+            value: settings.widgetOpenOnTap,
+            onChanged: (value) =>
+                _save(ref, AppSettingsCompanion(widgetOpenOnTap: Value(value))),
+          ),
+          SectionLabel(AppStrings.widgetsHowTo),
+          const _Note(
+            '1. Mantén pulsada la pantalla de inicio.\n'
+            '2. Toca en «Widgets».\n'
+            '3. Busca NuvTune.\n'
+            '4. Arrastra el widget y ajústalo al tamaño que prefieras.\n\n'
+            'Puedes colocar varios widgets de tamaños distintos: todos usan '
+            'esta misma configuración.',
+          ),
         ],
-      ),
+      ],
     );
   }
 
   /// Guarda y publica en el motor, que es quien dibuja el widget.
-  Future<void> _save(WidgetRef ref, AppSettingsCompanion companion) async {
-    await ref.read(settingsRepositoryProvider).update(companion);
-    final settings = await ref.read(settingsRepositoryProvider).settings();
-    ref.read(engineProvider).api.setWidgetConfig(widgetConfigOf(settings));
-  }
+  Future<void> _save(WidgetRef ref, AppSettingsCompanion companion) => ref
+      .read(settingsMutationProvider.notifier)
+      .save(companion, sync: const {SettingsSyncTarget.widget});
 }
-
-/// Traduce los ajustes guardados al objeto que espera el motor.
-WidgetConfig widgetConfigOf(AppSetting settings) => WidgetConfig(
-      enabled: settings.widgetEnabled,
-      style: WidgetStyle.values[settings.widgetStyle],
-      theme: WidgetTheme.values[settings.widgetTheme],
-      preferredSize: WidgetSize.values[settings.widgetSize],
-      accentColor: settings.widgetAccentColor,
-      backgroundOpacity: settings.widgetOpacity,
-      showCover: settings.widgetShowCover,
-      showTitle: settings.widgetShowTitle,
-      showArtist: settings.widgetShowArtist,
-      showControls: settings.widgetShowControls,
-      showProgress: settings.widgetShowProgress,
-      showDuration: settings.widgetShowDuration,
-      showNextInQueue: settings.widgetShowNextInQueue,
-      openPlayerOnTap: settings.widgetOpenOnTap,
-      pauseOnHeadphonesDisconnect: settings.widgetPauseOnDisconnect,
-      resumeOnHeadphonesConnect: settings.widgetResumeOnConnect,
-    );
 
 class _Note extends StatelessWidget {
   const _Note(this.text);
@@ -294,19 +249,19 @@ class _Note extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(
-          Tokens.gutter,
-          Tokens.space2,
-          Tokens.gutter,
-          0,
-        ),
-        child: Text(
-          text,
-          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(
+      Tokens.gutter,
+      Tokens.space2,
+      Tokens.gutter,
+      0,
+    ),
+    child: Text(
+      text,
+      style: Theme.of(context).textTheme.bodySmall?.copyWith(
+        color: Theme.of(context).colorScheme.onSurfaceVariant,
+      ),
+    ),
+  );
 }
 
 class _Toggle extends StatelessWidget {
@@ -326,12 +281,12 @@ class _Toggle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => SwitchListTile(
-        secondary: Icon(icon),
-        title: Text(label),
-        subtitle: detail == null ? null : Text(detail!),
-        value: value,
-        onChanged: onChanged,
-      );
+    secondary: Icon(icon),
+    title: Text(label),
+    subtitle: detail == null ? null : Text(detail!),
+    value: value,
+    onChanged: onChanged,
+  );
 }
 
 /// Reproduce en Flutter lo que el proveedor dibuja con RemoteViews, para poder
@@ -356,11 +311,14 @@ class _WidgetPreview extends StatelessWidget {
     };
 
     final accent = Color(settings.widgetAccentColor);
-    final background = (light ? const Color(0xFFF3EFFA) : const Color(0xFF12101A))
-        .withValues(alpha: settings.widgetOpacity);
+    final background =
+        (light ? const Color(0xFFF3EFFA) : const Color(0xFF12101A)).withValues(
+          alpha: settings.widgetOpacity,
+        );
     final primaryText = light ? Colors.black : Colors.white;
-    final secondaryText =
-        light ? const Color(0xFF5A5566) : const Color(0xFFB3AEC0);
+    final secondaryText = light
+        ? const Color(0xFF5A5566)
+        : const Color(0xFFB3AEC0);
 
     final compact = size == WidgetSize.compact;
     final showProgress = settings.widgetShowProgress && !compact;
@@ -505,10 +463,12 @@ class _Controls extends StatelessWidget {
       mainAxisSize: compact ? MainAxisSize.min : MainAxisSize.max,
       mainAxisAlignment: MainAxisAlignment.center,
       children: [
-        if (large)
-          Icon(Icons.shuffle_rounded, size: 20, color: foreground),
-        Icon(Icons.skip_previous_rounded, size: compact ? 24 : 28,
-            color: foreground),
+        if (large) Icon(Icons.shuffle_rounded, size: 20, color: foreground),
+        Icon(
+          Icons.skip_previous_rounded,
+          size: compact ? 24 : 28,
+          color: foreground,
+        ),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Tokens.space2),
           child: Icon(
@@ -517,10 +477,12 @@ class _Controls extends StatelessWidget {
             color: accent,
           ),
         ),
-        Icon(Icons.skip_next_rounded, size: compact ? 24 : 28,
-            color: foreground),
-        if (large)
-          Icon(Icons.repeat_rounded, size: 20, color: foreground),
+        Icon(
+          Icons.skip_next_rounded,
+          size: compact ? 24 : 28,
+          color: foreground,
+        ),
+        if (large) Icon(Icons.repeat_rounded, size: 20, color: foreground),
       ],
     );
   }
@@ -578,16 +540,16 @@ class _StyleCard extends StatelessWidget {
             Text(
               light ? 'Tarjeta clara' : 'Tarjeta oscura',
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
             Text(
               light ? 'Simple y minimalista' : 'Más información a la vista',
               textAlign: TextAlign.center,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontSize: 11,
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                fontSize: 11,
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),
@@ -661,13 +623,12 @@ class _AccentRow extends ConsumerWidget {
     );
   }
 
-  Future<void> _save(WidgetRef ref, Color color) async {
-    await ref.read(settingsRepositoryProvider).update(
-          AppSettingsCompanion(widgetAccentColor: Value(color.toARGB32())),
-        );
-    final settings = await ref.read(settingsRepositoryProvider).settings();
-    ref.read(engineProvider).api.setWidgetConfig(widgetConfigOf(settings));
-  }
+  Future<void> _save(WidgetRef ref, Color color) => ref
+      .read(settingsMutationProvider.notifier)
+      .save(
+        AppSettingsCompanion(widgetAccentColor: Value(color.toARGB32())),
+        sync: const {SettingsSyncTarget.widget},
+      );
 }
 
 class _OpacitySlider extends ConsumerStatefulWidget {
@@ -712,16 +673,14 @@ class _OpacitySliderState extends ConsumerState<_OpacitySlider> {
             min: 0.2,
             max: 1,
             onChanged: (next) => setState(() => _dragValue = next),
-            onChangeEnd: (next) async {
+            onChangeEnd: (next) {
               setState(() => _dragValue = null);
-              final repository = ref.read(settingsRepositoryProvider);
-              await repository.update(
-                AppSettingsCompanion(widgetOpacity: Value(next)),
-              );
               ref
-                  .read(engineProvider)
-                  .api
-                  .setWidgetConfig(widgetConfigOf(await repository.settings()));
+                  .read(settingsMutationProvider.notifier)
+                  .save(
+                    AppSettingsCompanion(widgetOpacity: Value(next)),
+                    sync: const {SettingsSyncTarget.widget},
+                  );
             },
           ),
         ],

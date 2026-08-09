@@ -26,11 +26,12 @@ import 'package:nuvtune/features/equalizer/equalizer_screen.dart';
 import 'package:nuvtune/features/lyrics/lrc_parser.dart';
 import 'package:nuvtune/features/lyrics/lyrics_view.dart';
 import 'package:nuvtune/features/player/audio_visualizer.dart';
+import 'package:nuvtune/features/player/customizable_player_controls.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
-import 'package:nuvtune/features/player/sleep_timer_sheet.dart';
 import 'package:nuvtune/features/queue/queue_list.dart';
+import 'package:nuvtune/features/settings/player_control_layout.dart';
 import 'package:nuvtune/features/video_background/music_video_background.dart';
 import 'package:nuvtune/features/video_background/video_background_controller.dart';
 import 'package:nuvtune/shared/widgets/cover_art.dart';
@@ -649,8 +650,10 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
   }
 
   void _handleVerticalDragStart(DragStartDetails details) {
+    final settings = ref.read(settingsProvider).valueOrNull;
     _verticalDragDistance = 0;
     _verticalControlsVolume =
+        (settings?.playerGestureSwipeVolume ?? true) &&
         details.localPosition.dx >= MediaQuery.sizeOf(context).width * 0.62;
     if (_verticalControlsVolume && _systemVolume == null) {
       unawaited(_readSystemVolume());
@@ -683,7 +686,10 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
     final velocity = details.primaryVelocity ?? 0;
     final draggedDown = _verticalDragDistance > _swipeDistanceThreshold;
     final flickedDown = velocity > _swipeVelocityThreshold;
-    if (draggedDown || flickedDown) {
+    final dismissEnabled =
+        ref.read(settingsProvider).valueOrNull?.playerGestureSwipeDismiss ??
+        true;
+    if (dismissEnabled && (draggedDown || flickedDown)) {
       Navigator.of(context).maybePop();
     }
   }
@@ -942,6 +948,12 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
       playbackProvider.select((s) => s.currentSong),
     );
     final isPlaying = ref.watch(playbackProvider.select((s) => s.isPlaying));
+    final controlSettings = ref.watch(settingsProvider).valueOrNull;
+    final doubleTapEnabled = controlSettings?.playerGestureDoubleTap ?? true;
+    final swipeTrackEnabled = controlSettings?.playerGestureSwipeTrack ?? true;
+    final verticalGestureEnabled =
+        (controlSettings?.playerGestureSwipeVolume ?? true) ||
+        (controlSettings?.playerGestureSwipeDismiss ?? true);
     final song = currentSong ?? widget.initialSong;
     if (_lyricsScrollSongId != song.id) {
       _lyricsScrollSongId = song.id;
@@ -977,27 +989,32 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
         onIncrease: () => _skipSong(next: true),
         onDecrease: () => _skipSong(next: false),
         customSemanticsActions: {
-          CustomSemanticsAction(
-            label: isPlaying ? 'Pausar' : 'Reproducir',
-          ): _togglePlayback,
+          CustomSemanticsAction(label: isPlaying ? 'Pausar' : 'Reproducir'):
+              _togglePlayback,
         },
         child: GestureDetector(
           behavior: HitTestBehavior.opaque,
           onTap: _toggleChrome,
-          onDoubleTap: _togglePlayback,
-          onHorizontalDragStart: (_) => _horizontalDragDistance = 0,
-          onHorizontalDragUpdate: (details) =>
-              _horizontalDragDistance += details.primaryDelta ?? 0,
-          onHorizontalDragEnd: _handleHorizontalDragEnd,
+          onDoubleTap: doubleTapEnabled ? _togglePlayback : null,
+          onHorizontalDragStart: swipeTrackEnabled
+              ? (_) => _horizontalDragDistance = 0
+              : null,
+          onHorizontalDragUpdate: swipeTrackEnabled
+              ? (details) =>
+                    _horizontalDragDistance += details.primaryDelta ?? 0
+              : null,
+          onHorizontalDragEnd: swipeTrackEnabled
+              ? _handleHorizontalDragEnd
+              : null,
           // Solo una letra no sincronizada necesita el eje vertical. Las
           // sincronizadas cambian de línea solas y conservan volumen/salir.
-          onVerticalDragStart: lyricsAreScrollable
+          onVerticalDragStart: lyricsAreScrollable || !verticalGestureEnabled
               ? null
               : _handleVerticalDragStart,
-          onVerticalDragUpdate: lyricsAreScrollable
+          onVerticalDragUpdate: lyricsAreScrollable || !verticalGestureEnabled
               ? null
               : _handleVerticalDragUpdate,
-          onVerticalDragEnd: lyricsAreScrollable
+          onVerticalDragEnd: lyricsAreScrollable || !verticalGestureEnabled
               ? null
               : _handleVerticalDragEnd,
           child: Column(
@@ -1020,9 +1037,7 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
                                     Tokens.radiusLarge,
                                   ),
                                   border: Border.all(
-                                    color: Colors.white.withValues(
-                                      alpha: 0.12,
-                                    ),
+                                    color: Colors.white.withValues(alpha: 0.12),
                                   ),
                                   boxShadow: [
                                     BoxShadow(
@@ -1054,22 +1069,18 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
                       child: AnimatedSwitcher(
                         duration: Tokens.durationFast,
                         reverseDuration: Tokens.durationFast,
-                        transitionBuilder: (child, animation) =>
-                            FadeTransition(
-                              opacity: animation,
-                              child: ScaleTransition(
-                                scale: Tween<double>(
-                                  begin: 0.88,
-                                  end: 1,
-                                ).animate(
-                                  CurvedAnimation(
-                                    parent: animation,
-                                    curve: Curves.easeOutBack,
-                                  ),
-                                ),
-                                child: child,
+                        transitionBuilder: (child, animation) => FadeTransition(
+                          opacity: animation,
+                          child: ScaleTransition(
+                            scale: Tween<double>(begin: 0.88, end: 1).animate(
+                              CurvedAnimation(
+                                parent: animation,
+                                curve: Curves.easeOutBack,
                               ),
                             ),
+                            child: child,
+                          ),
+                        ),
                         child: _gestureFeedbackIcon == null
                             ? const SizedBox(
                                 key: ValueKey('gesture-feedback-empty'),
@@ -1078,9 +1089,7 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
                                 key: ValueKey(_gestureFeedbackLabel),
                                 child: DecoratedBox(
                                   decoration: BoxDecoration(
-                                    color: Colors.black.withValues(
-                                      alpha: 0.54,
-                                    ),
+                                    color: Colors.black.withValues(alpha: 0.54),
                                     borderRadius: BorderRadius.circular(999),
                                     border: Border.all(
                                       color: Colors.white.withValues(
@@ -1397,9 +1406,7 @@ class _ImmersivePlayerBackgroundState
                     ),
                   ),
               ColoredBox(
-                color: Colors.black.withValues(
-                  alpha: showVideo ? 0.24 : 0.38,
-                ),
+                color: Colors.black.withValues(alpha: showVideo ? 0.24 : 0.38),
               ),
             ],
           );
@@ -1417,12 +1424,7 @@ class _PlayerAppBar extends ConsumerWidget {
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
-    final timerRemaining = ref.watch(
-      playbackProvider.select((s) => s.snapshot.sleepTimerRemainingMs),
-    );
-    final outputName = ref.watch(
-      playbackProvider.select((s) => s.outputName),
-    );
+    final outputName = ref.watch(playbackProvider.select((s) => s.outputName));
     final queue = ref.watch(playbackProvider.select((s) => s.queue));
     final settings = ref.watch(settingsProvider).valueOrNull;
     final visualScene = PlayerVisualScene.fromIndex(
@@ -1520,18 +1522,6 @@ class _PlayerAppBar extends ConsumerWidget {
                 ),
               ),
             ],
-          ),
-          IconButton(
-            tooltip: AppStrings.sleepTimer,
-            icon: Icon(
-              timerRemaining == null
-                  ? Icons.bedtime_outlined
-                  : Icons.bedtime_rounded,
-              color: timerRemaining == null
-                  ? null
-                  : Theme.of(context).colorScheme.primary,
-            ),
-            onPressed: () => showSleepTimerSheet(context),
           ),
           IconButton(
             tooltip: 'Más opciones',
@@ -1906,6 +1896,19 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     final scheme = Theme.of(context).colorScheme;
     final favorites = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
     final isFavorite = favorites.contains(displaySong.id);
+    final appSettings = ref.watch(settingsProvider).valueOrNull;
+    final controlPreset = PlayerControlPreset.byId(
+      appSettings?.playerControlPreset ?? PlayerControlPreset.complete.id,
+    );
+    final controlLayout = controlPreset == PlayerControlPreset.custom
+        ? PlayerControlLayout.fromJsonString(
+            appSettings?.playerControlLayoutJson ??
+                PlayerControlLayout.complete.toJsonString(),
+          )
+        : PlayerControlLayout.forPreset(controlPreset);
+    final controlHandedness = ControlHandedness.byId(
+      appSettings?.playerControlHandedness ?? ControlHandedness.right.id,
+    );
     final customCovers =
         ref.watch(customCoversProvider).valueOrNull ?? const <String, String>{};
     final showCleanVideo =
@@ -2180,17 +2183,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                       ],
                     ),
                   ),
-                  IconButton(
-                    iconSize: 28,
-                    tooltip: AppStrings.favorite,
-                    onPressed: () => controller.toggleFavorite(displaySong.id),
-                    icon: Icon(
-                      isFavorite
-                          ? Icons.favorite_rounded
-                          : Icons.favorite_border_rounded,
-                      color: isFavorite ? scheme.primary : null,
-                    ),
-                  ),
                 ],
               ),
 
@@ -2198,75 +2190,23 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
               const _ProgressBar(),
               const SizedBox(height: 16),
 
-              Row(
-                mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                children: [
-                  IconButton(
-                    iconSize: 24,
-                    tooltip: state.snapshot.shuffleEnabled
-                        ? 'Aleatorio activado'
-                        : AppStrings.shuffle,
-                    onPressed: controller.toggleShuffle,
-                    icon: Icon(
-                      Icons.shuffle_rounded,
-                      color: state.snapshot.shuffleEnabled
-                          ? scheme.primary
-                          : scheme.onSurfaceVariant,
-                    ),
-                  ),
-                  IconButton(
-                    iconSize: 38,
-                    tooltip: 'Anterior',
-                    onPressed: controller.skipPrevious,
-                    icon: const Icon(Icons.skip_previous_rounded),
-                  ),
-                  _PlayPauseButton(isPlaying: state.isPlaying),
-                  IconButton(
-                    iconSize: 38,
-                    tooltip: 'Siguiente',
-                    onPressed: controller.skipNext,
-                    icon: const Icon(Icons.skip_next_rounded),
-                  ),
-                  IconButton(
-                    iconSize: 24,
-                    tooltip: switch (state.snapshot.repeatMode) {
-                      RepeatMode.off => AppStrings.repeatOff,
-                      RepeatMode.all => AppStrings.repeatAll,
-                      RepeatMode.one => AppStrings.repeatOne,
-                    },
-                    onPressed: controller.cycleRepeatMode,
-                    icon: Icon(
-                      state.snapshot.repeatMode == RepeatMode.one
-                          ? Icons.repeat_one_rounded
-                          : Icons.repeat_rounded,
-                      color: state.snapshot.repeatMode == RepeatMode.off
-                          ? scheme.onSurfaceVariant
-                          : scheme.primary,
-                    ),
-                  ),
-                ],
+              CustomizablePlayerControls(
+                layout: controlLayout,
+                preset: controlPreset,
+                handedness: controlHandedness,
+                state: state,
+                controller: controller,
+                song: displaySong,
+                isFavorite: isFavorite,
+                onOpenQueue: () => context.push('/queue'),
               ),
 
-              const SizedBox(height: 8),
-
-              Row(
-                mainAxisAlignment: MainAxisAlignment.center,
-                children: [
-                  TextButton.icon(
-                    onPressed: () => controller.seekRelative(-10000),
-                    icon: const Icon(Icons.replay_10_rounded, size: 20),
-                    label: const Text('10 s'),
-                  ),
-                  const SizedBox(width: 12),
-                  TextButton.icon(
-                    onPressed: () => controller.seekRelative(30000),
-                    icon: const Icon(Icons.forward_30_rounded, size: 20),
-                    label: const Text('30 s'),
-                  ),
-                ],
-              ),
-
-              if (engineIndex >= 0 && engineIndex + 1 < state.queue.length)
+              if ((controlLayout.primary.contains(PlayerControlId.queue) ||
+                      controlLayout.secondary.contains(
+                        PlayerControlId.queue,
+                      )) &&
+                  engineIndex >= 0 &&
+                  engineIndex + 1 < state.queue.length)
                 Padding(
                   padding: const EdgeInsets.only(top: Tokens.space2),
                   child: TextButton.icon(
@@ -2712,29 +2652,6 @@ class _PlayerLyricsSceneStageState
       ],
     ),
   );
-}
-
-class _PlayPauseButton extends ConsumerWidget {
-  const _PlayPauseButton({required this.isPlaying});
-
-  final bool isPlaying;
-
-  @override
-  Widget build(BuildContext context, WidgetRef ref) {
-    return Semantics(
-      button: true,
-      label: isPlaying ? 'Pausar' : 'Reproducir',
-      child: GradientPlayButton(
-        isPlaying: isPlaying,
-        onPressed: () {
-          // Respuesta hactica: en un reproductor muchas acciones se hacen sin
-          // mirar la pantalla.
-          HapticFeedback.lightImpact();
-          ref.read(playbackProvider.notifier).togglePlayPause();
-        },
-      ),
-    );
-  }
 }
 
 class _ProgressBar extends ConsumerStatefulWidget {
