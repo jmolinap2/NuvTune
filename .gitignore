@@ -50,3 +50,6 @@ Thumbs.db
 # Capturas de revision movidas fuera de la raiz: siguen siendo locales, no se
 # versionan desde ninguna ubicacion.
 /dev/
+
+# Herramientas locales y archivos temporales ajenos al proyecto
+/.tools/

@@ -17,19 +17,23 @@ class PlaylistRepository {
 
   final NuvTuneDatabase _database;
 
-  Stream<List<Playlist>> watchPlaylists() => (_database.select(_database.playlists)
-        ..orderBy([
-          (table) => OrderingTerm(expression: table.name.lower()),
-        ]))
-      .watch();
+  Stream<List<Playlist>> watchPlaylists() =>
+      (_database.select(
+            _database.playlists,
+          )..orderBy([(table) => OrderingTerm(expression: table.name.lower())]))
+          .watch();
 
-  Future<List<Playlist>> playlists() => (_database.select(_database.playlists)
-        ..orderBy([(table) => OrderingTerm(expression: table.name.lower())]))
-      .get();
+  Future<List<Playlist>> playlists() => (_database.select(
+    _database.playlists,
+  )..orderBy([(table) => OrderingTerm(expression: table.name.lower())])).get();
 
-  Future<Playlist?> playlistById(int id) =>
-      (_database.select(_database.playlists)..where((t) => t.id.equals(id)))
-          .getSingleOrNull();
+  Future<Playlist?> playlistById(int id) => (_database.select(
+    _database.playlists,
+  )..where((t) => t.id.equals(id))).getSingleOrNull();
+
+  Future<Playlist?> playlistByGiftId(String giftId) => (_database.select(
+    _database.playlists,
+  )..where((table) => table.giftId.equals(giftId))).getSingleOrNull();
 
   Stream<List<int>> watchSongIds(int playlistId) =>
       (_database.select(_database.playlistEntries)
@@ -39,10 +43,11 @@ class PlaylistRepository {
           .map((rows) => rows.map((row) => row.songId).toList());
 
   Future<List<int>> songIds(int playlistId) async {
-    final rows = await (_database.select(_database.playlistEntries)
-          ..where((table) => table.playlistId.equals(playlistId))
-          ..orderBy([(table) => OrderingTerm(expression: table.position)]))
-        .get();
+    final rows =
+        await (_database.select(_database.playlistEntries)
+              ..where((table) => table.playlistId.equals(playlistId))
+              ..orderBy([(table) => OrderingTerm(expression: table.position)]))
+            .get();
     return rows.map((row) => row.songId).toList();
   }
 
@@ -70,9 +75,9 @@ class PlaylistRepository {
   }
 
   Future<int> create(String name, {List<int> songIds = const []}) async {
-    final id = await _database.into(_database.playlists).insert(
-          PlaylistsCompanion.insert(name: name),
-        );
+    final id = await _database
+        .into(_database.playlists)
+        .insert(PlaylistsCompanion.insert(name: name));
     if (songIds.isNotEmpty) {
       await addSongs(id, songIds);
     }
@@ -80,16 +85,16 @@ class PlaylistRepository {
   }
 
   Future<void> rename(int playlistId, String name) =>
-      (_database.update(_database.playlists)
-            ..where((table) => table.id.equals(playlistId)))
-          .write(
+      (_database.update(
+        _database.playlists,
+      )..where((table) => table.id.equals(playlistId))).write(
         PlaylistsCompanion(name: Value(name), updatedAt: Value(DateTime.now())),
       );
 
   Future<void> setCover(int playlistId, String? coverPath) =>
-      (_database.update(_database.playlists)
-            ..where((table) => table.id.equals(playlistId)))
-          .write(
+      (_database.update(
+        _database.playlists,
+      )..where((table) => table.id.equals(playlistId))).write(
         PlaylistsCompanion(
           coverPath: Value(coverPath),
           updatedAt: Value(DateTime.now()),
@@ -97,10 +102,9 @@ class PlaylistRepository {
       );
 
   /// Elimina la lista sin borrar las canciones (requerimiento 4.4).
-  Future<void> delete(int playlistId) =>
-      (_database.delete(_database.playlists)
-            ..where((table) => table.id.equals(playlistId)))
-          .go();
+  Future<void> delete(int playlistId) => (_database.delete(
+    _database.playlists,
+  )..where((table) => table.id.equals(playlistId))).go();
 
   Future<int> duplicate(int playlistId) async {
     final source = await playlistById(playlistId);
@@ -157,9 +161,9 @@ class PlaylistRepository {
   /// transaccion.
   Future<void> replaceSongs(int playlistId, List<int> songIds) async {
     await _database.transaction(() async {
-      await (_database.delete(_database.playlistEntries)
-            ..where((table) => table.playlistId.equals(playlistId)))
-          .go();
+      await (_database.delete(
+        _database.playlistEntries,
+      )..where((table) => table.playlistId.equals(playlistId))).go();
       await _database.batch((batch) {
         for (var index = 0; index < songIds.length; index++) {
           batch.insert(
@@ -197,16 +201,18 @@ class PlaylistRepository {
     String? giftFrom,
     String? giftTo,
     String? giftAccentId,
+    Value<String?> giftId = const Value.absent(),
   }) =>
-      (_database.update(_database.playlists)
-            ..where((table) => table.id.equals(playlistId)))
-          .write(
+      (_database.update(
+        _database.playlists,
+      )..where((table) => table.id.equals(playlistId))).write(
         PlaylistsCompanion(
           giftMode: Value(giftMode),
           dedication: Value(dedication),
           giftFrom: Value(giftFrom),
           giftTo: Value(giftTo),
           giftAccentId: Value(giftAccentId),
+          giftId: giftId,
           updatedAt: Value(DateTime.now()),
         ),
       );

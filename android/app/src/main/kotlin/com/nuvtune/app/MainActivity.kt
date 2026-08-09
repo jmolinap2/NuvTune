@@ -1,12 +1,15 @@
 package com.nuvtune.app
 
+import android.content.ClipData
 import android.content.Intent
 import android.media.AudioManager
+import androidx.core.content.FileProvider
 import com.nuvtune.engine.FlutterMusicPlugin
 import com.nuvtune.engine.downloader.DownloadEnginePlugin
 import io.flutter.embedding.android.FlutterActivity
 import io.flutter.embedding.engine.FlutterEngine
 import io.flutter.plugin.common.MethodChannel
+import java.io.File
 import kotlin.math.roundToInt
 
 /**
@@ -68,14 +71,33 @@ class MainActivity : FlutterActivity() {
             GIFT_INTENT_CHANNEL,
         ).also { channel ->
             channel.setMethodCallHandler { call, result ->
-                if (call.method == "takePendingGift") {
-                    result.success(pendingGiftUri)
-                    // Se consume una sola vez: un hot restart o una segunda
-                    // consulta no deben reabrir el mismo regalo como si
-                    // acabara de llegar.
-                    pendingGiftUri = null
-                } else {
-                    result.notImplemented()
+                when (call.method) {
+                    "takePendingGift" -> {
+                        result.success(pendingGiftUri)
+                        // Se consume una sola vez: un hot restart o una segunda
+                        // consulta no deben reabrir el mismo regalo como si
+                        // acabara de llegar.
+                        pendingGiftUri = null
+                    }
+                    "shareGift" -> {
+                        try {
+                            shareGift(
+                                path = call.argument<String>("path")
+                                    ?: error("Falta el archivo del regalo"),
+                                channel = call.argument<String>("channel") ?: "email",
+                                subject = call.argument<String>("subject").orEmpty(),
+                                text = call.argument<String>("text").orEmpty(),
+                            )
+                            result.success(null)
+                        } catch (error: Throwable) {
+                            result.error(
+                                "gift_share_failed",
+                                error.message ?: "No se pudo compartir el regalo",
+                                null,
+                            )
+                        }
+                    }
+                    else -> result.notImplemented()
                 }
             }
         }
@@ -120,6 +142,64 @@ class MainActivity : FlutterActivity() {
                     else -> result.notImplemented()
                 }
             }
+        }
+    }
+
+    /**
+     * Comparte solo archivos creados dentro de cache/gifts. FileProvider da a
+     * la aplicacion elegida un URI temporal de lectura; no hay rutas file://,
+     * permisos de escritura ni acceso al resto del almacenamiento privado.
+     */
+    private fun shareGift(
+        path: String,
+        channel: String,
+        subject: String,
+        text: String,
+    ) {
+        val giftDirectory = File(cacheDir, "gifts").canonicalFile
+        val giftFile = File(path).canonicalFile
+        require(giftFile.parentFile == giftDirectory) {
+            "El archivo no pertenece al area segura de regalos"
+        }
+        require(giftFile.isFile && giftFile.name.endsWith(".nuvtune-gift")) {
+            "El archivo del regalo no existe"
+        }
+
+        val uri = FileProvider.getUriForFile(
+            this,
+            "$packageName.gift.files",
+            giftFile,
+        )
+        val send = Intent(Intent.ACTION_SEND).apply {
+            type = "application/octet-stream"
+            putExtra(Intent.EXTRA_STREAM, uri)
+            putExtra(Intent.EXTRA_SUBJECT, subject)
+            putExtra(Intent.EXTRA_TEXT, text)
+            clipData = ClipData.newRawUri("Regalo de NuvTune", uri)
+            addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
+        }
+
+        if (channel == "whatsApp") {
+            val whatsAppPackage = listOf("com.whatsapp", "com.whatsapp.w4b")
+                .firstOrNull { candidate ->
+                    @Suppress("DEPRECATION")
+                    runCatching { packageManager.getPackageInfo(candidate, 0) }.isSuccess
+                }
+            if (whatsAppPackage != null) send.setPackage(whatsAppPackage)
+        }
+
+        try {
+            startActivity(
+                Intent.createChooser(
+                    send,
+                    if (channel == "whatsApp") "Enviar por WhatsApp" else "Enviar por correo",
+                ),
+            )
+        } catch (missingTarget: android.content.ActivityNotFoundException) {
+            // WhatsApp pudo desinstalarse entre la consulta y el lanzamiento.
+            // El panel general conserva el mismo URI temporal y permisos.
+            send.setPackage(null)
+            startActivity(Intent.createChooser(send, "Compartir regalo"))
         }
     }
 

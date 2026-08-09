@@ -40,8 +40,9 @@ final downloadEngineProvider = Provider<DownloadEngineBridge>((ref) {
   return engine;
 });
 
-final permissionServiceProvider =
-    Provider<PermissionService>((ref) => const PermissionService());
+final permissionServiceProvider = Provider<PermissionService>(
+  (ref) => const PermissionService(),
+);
 
 final libraryRepositoryProvider = Provider<LibraryRepository>(
   (ref) => LibraryRepository(ref.watch(engineProvider)),
@@ -92,8 +93,9 @@ final pipedClientProvider = Provider<PipedClient>((ref) {
   return client;
 });
 
-final connectivityServiceProvider =
-    Provider<ConnectivityService>((ref) => const ConnectivityService());
+final connectivityServiceProvider = Provider<ConnectivityService>(
+  (ref) => const ConnectivityService(),
+);
 
 /// Ultimo estado de Wi-Fi conocido, compartido por todo lo que dependa de red
 /// solo-Wi-Fi.
@@ -102,7 +104,11 @@ final connectivityIsOnWifiProvider = StreamProvider<bool>(
 );
 
 final videoRepositoryProvider = Provider<VideoRepository>(
-  (ref) => VideoRepository(ref.watch(databaseProvider), ref.watch(pipedClientProvider)),
+  (ref) => VideoRepository(
+    ref.watch(databaseProvider),
+    ref.watch(pipedClientProvider),
+    ref.watch(downloadEngineProvider),
+  ),
 );
 
 // -- Flujos derivados de la base de datos ------------------------------------

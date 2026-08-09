@@ -8,6 +8,7 @@ import android.content.IntentSender
 import android.net.Uri
 import android.os.Handler
 import android.os.Looper
+import android.util.Log
 import androidx.annotation.OptIn
 import androidx.media3.common.PlaybackParameters
 import androidx.media3.common.Player
@@ -111,7 +112,11 @@ internal class FlutterMusicPlugin(
     ) {
         scope.launch {
             val songs = components.library.scan(excludedFolderPaths, forceFullRescan)
-            flutterApi.libraryChanged(songs.size.toLong()) {}
+            // El resultado de este escaneo ya vuelve por el callback y Flutter
+            // relee la lista inmediatamente. `libraryChanged` queda reservado
+            // para cambios de MediaStore observados fuera de este comando; si
+            // se emitiera aqui, el receptor programaria otro escaneo y formaria
+            // un bucle cada tres segundos.
             callback(Result.success(songs.size.toLong()))
         }
     }
@@ -770,6 +775,45 @@ internal class FlutterMusicPlugin(
 
     override fun deleteSongFile(songId: Long, callback: (Result<WriteResult>) -> Unit) {
         scope.launch {
+            val directDelete = runCatching {
+                withContext(Dispatchers.IO) {
+                    components.shareHelper.tryDeleteDirectly(songId)
+                }
+            }
+            directDelete.exceptionOrNull()?.let { error ->
+                Log.w("NuvTuneStorage", "Fallo el borrado directo de $songId", error)
+                callback(Result.failure(error))
+                return@launch
+            }
+            when (directDelete.getOrNull()) {
+                true -> {
+                    callback(
+                        Result.success(
+                            WriteResult(
+                                outcome = WriteOutcome.SUCCESS,
+                                songId = songId,
+                                permissionGranted = true,
+                            ),
+                        ),
+                    )
+                    return@launch
+                }
+                false -> {
+                    callback(
+                        Result.success(
+                            WriteResult(
+                                outcome = WriteOutcome.UNSUPPORTED_FORMAT,
+                                songId = songId,
+                                message = "La canción ya no existe en el dispositivo",
+                                permissionGranted = true,
+                            ),
+                        ),
+                    )
+                    return@launch
+                }
+                null -> Unit // Android exige el cuadro de consentimiento.
+            }
+
             val intentSender = components.shareHelper.deleteRequest(listOf(songId))
             if (intentSender == null) {
                 callback(
@@ -784,15 +828,21 @@ internal class FlutterMusicPlugin(
                 )
                 return@launch
             }
-            val outcome = awaitActivityResult(REQUEST_DELETE_FILE) { host ->
-                host.startIntentSenderForResult(
-                    intentSender,
-                    REQUEST_DELETE_FILE,
-                    null,
-                    0,
-                    0,
-                    0,
-                )
+            val outcome = runCatching {
+                awaitActivityResult(REQUEST_DELETE_FILE) { host ->
+                    host.startIntentSenderForResult(
+                        intentSender,
+                        REQUEST_DELETE_FILE,
+                        null,
+                        0,
+                        0,
+                        0,
+                    )
+                }
+            }.getOrElse { error ->
+                Log.w("NuvTuneStorage", "No se pudo solicitar borrar $songId", error)
+                callback(Result.failure(error))
+                return@launch
             }
             val accepted = outcome?.first == Activity.RESULT_OK
             callback(

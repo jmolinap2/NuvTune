@@ -19,17 +19,16 @@ Future<void> showSongActions(
   List<Song>? contextSongs,
   VoidCallback? onRemoveFromContext,
   String? removeFromContextLabel,
-}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _SongActionsSheet(
-        song: song,
-        contextSongs: contextSongs,
-        onRemoveFromContext: onRemoveFromContext,
-        removeFromContextLabel: removeFromContextLabel,
-      ),
-    );
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (context) => _SongActionsSheet(
+    song: song,
+    contextSongs: contextSongs,
+    onRemoveFromContext: onRemoveFromContext,
+    removeFromContextLabel: removeFromContextLabel,
+  ),
+);
 
 class _SongActionsSheet extends ConsumerWidget {
   const _SongActionsSheet({
@@ -58,7 +57,11 @@ class _SongActionsSheet extends ConsumerWidget {
           children: [
             ListTile(
               leading: CoverArt(song: song, size: 52),
-              title: Text(song.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+              title: Text(
+                song.title,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
               subtitle: Text(
                 '${song.displayArtist} · ${Formatters.duration(song.durationMs)}',
                 maxLines: 1,
@@ -214,9 +217,19 @@ class _SongActionsSheet extends ConsumerWidget {
         content: SelectableText(song.filePath),
         actions: [
           TextButton(
-            onPressed: () {
+            onPressed: () async {
               Navigator.of(context).pop();
-              ref.read(engineProvider).api.revealFile(song.id);
+              try {
+                await ref.read(engineProvider).api.revealFile(song.id);
+              } on Object catch (error) {
+                debugPrint('No se pudo abrir ${song.folderPath}: $error');
+                if (!context.mounted) return;
+                ScaffoldMessenger.of(context).showSnackBar(
+                  const SnackBar(
+                    content: Text('No se pudo abrir el explorador de archivos'),
+                  ),
+                );
+              }
             },
             child: const Text('Abrir en el explorador'),
           ),
@@ -278,24 +291,44 @@ class _SongActionsSheet extends ConsumerWidget {
             ),
             onPressed: () async {
               Navigator.of(dialogContext).pop();
-              final result =
-                  await ref.read(engineProvider).api.deleteSongFile(song.id);
-              switch (result.outcome) {
-                case WriteOutcome.success:
-                  await ref.read(libraryProvider.notifier).scan();
-                case WriteOutcome.deniedByUser:
-                  // El usuario cancelo el dialogo del sistema: no es un error.
-                  break;
-                case WriteOutcome.needsUserConsent:
-                case WriteOutcome.unsupportedFormat:
-                case WriteOutcome.integrityCheckFailed:
-                  messenger.showSnackBar(
-                    SnackBar(
-                      content: Text(
-                        result.message ?? 'No se pudo eliminar el archivo',
+              try {
+                final result = await ref
+                    .read(engineProvider)
+                    .api
+                    .deleteSongFile(song.id);
+                switch (result.outcome) {
+                  case WriteOutcome.success:
+                    await ref
+                        .read(playbackProvider.notifier)
+                        .removeSongById(song.id);
+                    await ref.read(libraryProvider.notifier).scan();
+                    messenger.showSnackBar(
+                      const SnackBar(
+                        content: Text('Canción eliminada del dispositivo'),
                       ),
-                    ),
-                  );
+                    );
+                  case WriteOutcome.deniedByUser:
+                    messenger.showSnackBar(
+                      const SnackBar(content: Text('Eliminación cancelada')),
+                    );
+                  case WriteOutcome.needsUserConsent:
+                  case WriteOutcome.unsupportedFormat:
+                  case WriteOutcome.integrityCheckFailed:
+                    messenger.showSnackBar(
+                      SnackBar(
+                        content: Text(
+                          result.message ?? 'No se pudo eliminar el archivo',
+                        ),
+                      ),
+                    );
+                }
+              } on Object catch (error) {
+                debugPrint('No se pudo eliminar ${song.filePath}: $error');
+                messenger.showSnackBar(
+                  const SnackBar(
+                    content: Text('No se pudo eliminar el archivo'),
+                  ),
+                );
               }
             },
             child: const Text(AppStrings.delete),
@@ -368,7 +401,10 @@ class _TechnicalInfoSheet extends ConsumerWidget {
             ('Tipo MIME', info.mimeType),
             ('Duración', Formatters.duration(info.durationMs)),
             ('Bitrate', Formatters.bitrate(info.bitrateBps)),
-            ('Frecuencia de muestreo', Formatters.sampleRate(info.sampleRateHz)),
+            (
+              'Frecuencia de muestreo',
+              Formatters.sampleRate(info.sampleRateHz),
+            ),
             ('Profundidad de bits', Formatters.bitDepth(info.bitsPerSample)),
             ('Canales', Formatters.channels(info.channels)),
             ('Tamaño del archivo', Formatters.fileSize(info.sizeBytes)),
@@ -404,7 +440,9 @@ class _TechnicalInfoSheet extends ConsumerWidget {
                           child: Text(
                             label,
                             style: TextStyle(
-                              color: Theme.of(context).colorScheme.onSurfaceVariant,
+                              color: Theme.of(
+                                context,
+                              ).colorScheme.onSurfaceVariant,
                             ),
                           ),
                         ),
@@ -425,4 +463,3 @@ class _TechnicalInfoSheet extends ConsumerWidget {
     );
   }
 }
-

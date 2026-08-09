@@ -38,6 +38,18 @@
         android:roundIcon="@mipmap/ic_launcher"
         android:enableOnBackInvokedCallback="true">
 
+        <!-- El archivo de regalo sale como content:// temporal y de solo
+             lectura. Nunca se expone la ruta privada del cache. -->
+        <provider
+            android:name="androidx.core.content.FileProvider"
+            android:authorities="${applicationId}.gift.files"
+            android:exported="false"
+            android:grantUriPermissions="true">
+            <meta-data
+                android:name="android.support.FILE_PROVIDER_PATHS"
+                android:resource="@xml/gift_file_paths" />
+        </provider>
+
         <activity
             android:name=".MainActivity"
             android:exported="true"
@@ -50,6 +62,12 @@
             <meta-data
                 android:name="io.flutter.embedding.android.NormalTheme"
                 android:resource="@style/NormalTheme" />
+            <!-- Los content:// de WhatsApp los procesa GiftIntentService. Si
+                 Flutter intenta interpretarlos tambien como deep links,
+                 GoRouter muestra primero "Page Not Found". -->
+            <meta-data
+                android:name="flutter_deeplinking_enabled"
+                android:value="false" />
             <intent-filter>
                 <action android:name="android.intent.action.MAIN" />
                 <category android:name="android.intent.category.LAUNCHER" />
@@ -184,6 +202,8 @@
     </application>
 
     <queries>
+        <package android:name="com.whatsapp" />
+        <package android:name="com.whatsapp.w4b" />
         <intent>
             <action android:name="android.intent.action.PROCESS_TEXT" />
             <data android:mimeType="text/plain" />

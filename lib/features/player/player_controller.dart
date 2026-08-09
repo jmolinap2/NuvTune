@@ -348,6 +348,20 @@ class PlaybackController extends Notifier<PlaybackState> {
 
   void removeFromQueue(int index) => _api.removeQueueItem(index);
 
+  /// Quita todas las apariciones de una cancion de la cola. Se recorre desde
+  /// el final para que cada eliminacion conserve validos los indices que aun
+  /// faltan. Si es la pista activa, Media3 libera el elemento y avanza a la
+  /// siguiente (o se detiene cuando era la unica).
+  Future<void> removeSongById(int songId) async {
+    final indices = <int>[
+      for (var index = 0; index < state.queue.length; index++)
+        if (state.queue[index].id == songId) index,
+    ];
+    for (final index in indices.reversed) {
+      await _api.removeQueueItem(index);
+    }
+  }
+
   void moveInQueue(int fromIndex, int toIndex) =>
       _api.moveQueueItem(fromIndex, toIndex);
 

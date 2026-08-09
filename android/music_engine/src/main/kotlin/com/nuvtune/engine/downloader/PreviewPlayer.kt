@@ -7,8 +7,17 @@ import androidx.annotation.OptIn
 import androidx.media3.common.AudioAttributes
 import androidx.media3.common.C
 import androidx.media3.common.MediaItem
+import androidx.media3.common.PlaybackException
+import androidx.media3.common.Player
 import androidx.media3.common.util.UnstableApi
+import androidx.media3.datasource.DefaultHttpDataSource
 import androidx.media3.exoplayer.ExoPlayer
+import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.suspendCancellableCoroutine
+import kotlinx.coroutines.withContext
+import kotlin.coroutines.resume
+import kotlin.coroutines.resumeWithException
 
 /**
  * Reproduce la vista previa de un resultado de busqueda antes de descargarlo.
@@ -28,11 +37,24 @@ internal class PreviewPlayer(private val context: Context) {
 
     private val mainHandler = Handler(Looper.getMainLooper())
     private var player: ExoPlayer? = null
+    private val autoStop = Runnable { releasePlayer() }
 
-    /** Debe llamarse desde el hilo principal: ExoPlayer lo exige. */
-    fun play(streamUrl: String) {
-        mainHandler.post {
+    /**
+     * No retorna hasta que Media3 realmente puede reproducir. Antes el canal
+     * respondia apenas publicaba una tarea al hilo principal: la interfaz
+     * cambiaba a "detener" aunque el stream hubiera fallado en silencio.
+     */
+    suspend fun play(streamUrl: String) = withContext(Dispatchers.Main.immediate) {
+        suspendCancellableCoroutine { continuation ->
+            mainHandler.removeCallbacks(autoStop)
             val active = player ?: ExoPlayer.Builder(context)
+                .setMediaSourceFactory(
+                    DefaultMediaSourceFactory(context).setDataSourceFactory(
+                        DefaultHttpDataSource.Factory()
+                            .setAllowCrossProtocolRedirects(true)
+                            .setUserAgent(BROWSER_USER_AGENT),
+                    ),
+                )
                 .build()
                 .also { created ->
                     created.setAudioAttributes(
@@ -44,16 +66,49 @@ internal class PreviewPlayer(private val context: Context) {
                     )
                     player = created
                 }
+            val listener = object : Player.Listener {
+                override fun onPlaybackStateChanged(playbackState: Int) {
+                    if (playbackState != Player.STATE_READY || !continuation.isActive) return
+                    active.removeListener(this)
+                    mainHandler.postDelayed(autoStop, PREVIEW_LIMIT_MS)
+                    continuation.resume(Unit)
+                }
+
+                override fun onPlayerError(error: PlaybackException) {
+                    if (!continuation.isActive) return
+                    active.removeListener(this)
+                    releasePlayer()
+                    continuation.resumeWithException(error)
+                }
+            }
+            active.addListener(listener)
+            continuation.invokeOnCancellation {
+                mainHandler.post {
+                    active.removeListener(listener)
+                    releasePlayer()
+                }
+            }
             active.setMediaItem(MediaItem.fromUri(streamUrl))
             active.prepare()
-            active.play()
+            active.playWhenReady = true
         }
     }
 
     fun stop() {
         mainHandler.post {
-            player?.release()
-            player = null
+            releasePlayer()
         }
+    }
+
+    private fun releasePlayer() {
+        mainHandler.removeCallbacks(autoStop)
+        player?.release()
+        player = null
+    }
+
+    companion object {
+        private const val PREVIEW_LIMIT_MS = 45_000L
+        private const val BROWSER_USER_AGENT =
+            "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
     }
 }

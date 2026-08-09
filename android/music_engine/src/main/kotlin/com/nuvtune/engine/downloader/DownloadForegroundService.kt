@@ -131,7 +131,9 @@ class DownloadForegroundService : Service() {
                 updateNotification(item.suggestedFileName, percent.toInt(), indeterminate = false)
             }
 
-            val producedFile = outputDir.listFiles { file -> file.name.startsWith("${item.downloadId}.") }?.firstOrNull()
+            val producedFile = outputDir.listFiles { file ->
+                file.name == "${item.downloadId}.mp3"
+            }?.firstOrNull()
                 ?: error("yt-dlp no genero un archivo de salida")
 
             val savedUri = MediaStoreWriter.saveAudio(

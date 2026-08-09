@@ -64,18 +64,69 @@ void main() {
       );
     });
 
-    test('las entradas sin titulo se descartan en vez de romper el regalo', () {
-      final payload = GiftPayload.decode(
-        '{"name":"R","songs":[{"artist":"X"},{"title":"Vale","artist":"Y"}]}',
+    test('una entrada sin titulo invalida todo el regalo', () {
+      expect(
+        () => GiftPayload.decode(
+          '{"name":"R","songs":[{"artist":"X"},{"title":"Vale","artist":"Y"}]}',
+        ),
+        throwsA(isA<FormatException>()),
       );
-
-      expect(payload.songs, hasLength(1));
-      expect(payload.songs.single.title, 'Vale');
     });
 
     test('un regalo sin nombre recibe uno por defecto', () {
-      final payload = GiftPayload.decode('{"songs":[]}');
+      final payload = GiftPayload.decode(
+        '{"songs":[{"title":"Vale","artist":"Y"}]}',
+      );
       expect(payload.name, 'Regalo');
+    });
+
+    test('un regalo sin canciones se rechaza', () {
+      expect(
+        () => GiftPayload.decode('{"songs":[]}'),
+        throwsA(isA<FormatException>()),
+      );
+    });
+
+    test('la version nueva conserva un identificador unico y su fecha', () {
+      final original = GiftPayload.create(
+        name: 'Regalo firmado',
+        from: 'Ale',
+        songs: const [GiftSong(title: 'Aquí', artist: 'Allison')],
+      );
+
+      final restored = GiftPayload.decode(original.encode());
+
+      expect(restored.giftId, original.giftId);
+      expect(restored.giftId, matches(RegExp(r'^[A-Za-z0-9_-]{16,64}$')));
+      expect(restored.createdAt, original.createdAt);
+    });
+
+    test('interpreta el estado de firma añadido por el motor nativo', () {
+      final payload = GiftPayload.decode('''
+        {
+          "name":"Seguro",
+          "songs":[{"title":"Aquí","artist":"Allison"}],
+          "_nuvtuneSecurity":{
+            "status":"signed_known",
+            "fingerprint":"A1:B2:C3",
+            "formatVersion":2
+          }
+        }
+      ''');
+
+      expect(payload.security.isSigned, isTrue);
+      expect(payload.security.isKnown, isTrue);
+      expect(payload.security.fingerprint, 'A1:B2:C3');
+      expect(payload.security.formatVersion, 2);
+    });
+
+    test('rechaza un id de video que no tenga formato de YouTube', () {
+      expect(
+        () => GiftPayload.decode(
+          '{"songs":[{"title":"Aquí","artist":"Allison","sourceVideoId":"https://engaño"}]}',
+        ),
+        throwsA(isA<FormatException>()),
+      );
     });
   });
 
@@ -86,10 +137,9 @@ void main() {
     ];
 
     test('empareja ignorando mayusculas y espacios sobrantes', () {
-      final match = matchGiftSongs(
-        const [GiftSong(title: '  aquí ', artist: 'ALLISON')],
-        library,
-      );
+      final match = matchGiftSongs(const [
+        GiftSong(title: '  aquí ', artist: 'ALLISON'),
+      ], library);
 
       expect(match.resolved[0], 10);
       expect(match.missing, isEmpty);
@@ -97,13 +147,10 @@ void main() {
     });
 
     test('lo que no esta en la biblioteca se reporta como faltante', () {
-      final match = matchGiftSongs(
-        const [
-          GiftSong(title: 'Aquí', artist: 'Allison'),
-          GiftSong(title: 'Desconocida', artist: 'Nadie'),
-        ],
-        library,
-      );
+      final match = matchGiftSongs(const [
+        GiftSong(title: 'Aquí', artist: 'Allison'),
+        GiftSong(title: 'Desconocida', artist: 'Nadie'),
+      ], library);
 
       expect(match.foundCount, 1);
       expect(match.missing, [1]);
@@ -113,10 +160,9 @@ void main() {
     test('mismo titulo con otro artista no se empareja', () {
       // Preferimos descargar de mas antes que meter en el regalo una cancion
       // que el emisor no eligio.
-      final match = matchGiftSongs(
-        const [GiftSong(title: 'Aquí', artist: 'Otro Artista')],
-        library,
-      );
+      final match = matchGiftSongs(const [
+        GiftSong(title: 'Aquí', artist: 'Otro Artista'),
+      ], library);
 
       expect(match.missing, [0]);
     });

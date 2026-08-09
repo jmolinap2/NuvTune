@@ -34,6 +34,11 @@ class Playlists extends Table {
 
   /// Identidad cromatica elegida para el regalo (uno de AccentIdentity.id).
   TextColumn get giftAccentId => text().nullable()();
+
+  /// Identificador estable del paquete recibido. Evita importar dos veces el
+  /// mismo regalo aunque Android entregue otra URI o el archivo cambie de
+  /// nombre al compartirlo.
+  TextColumn get giftId => text().nullable()();
 }
 
 /// Orden de las canciones dentro de cada lista (requerimiento 4.4).
@@ -428,7 +433,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 11;
+  int get schemaVersion => 12;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -447,6 +452,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   ///   directamente en MediaStore.Audio, asi que una descarga se vuelve una
   ///   cancion normal de la biblioteca sin necesitar esta tabla aparte.
   /// - Version 11: diseño y gestos personalizables del reproductor.
+  /// - Version 12: identificador estable de regalos para importacion idempotente.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -551,6 +557,9 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
           appSettings,
           appSettings.playerGestureSwipeDismiss,
         );
+      }
+      if (from < 12) {
+        await migrator.addColumn(playlists, playlists.giftId);
       }
     },
   );

@@ -31,6 +31,12 @@
 -keep class com.nuvtune.engine.RemoteEntry { *; }
 -keep enum com.nuvtune.engine.** { *; }
 
+# youtubedl-android convierte el JSON de yt-dlp a sus modelos `mapper` con
+# Jackson. En release R8 los estaba renombrando y `getInfo()` terminaba en
+# "Unable to parse video information", bloqueando detalles y descargas.
+-keep class com.yausername.youtubedl_android.mapper.** { *; }
+-keepattributes Signature,*Annotation*
+
 # smbj resuelve dialectos, tipos de mensaje y factorias por reflexion sobre sus
 # propios enums, de modo que renombrarlos rompe la conexion en tiempo de
 # ejecucion y no en compilacion.

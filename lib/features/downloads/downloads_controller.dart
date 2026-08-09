@@ -1,7 +1,10 @@
+import 'dart:async';
+
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/platform/download_engine.g.dart';
 import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/providers.dart';
+import 'package:nuvtune/features/library/library_controller.dart';
 
 /// Progreso (0-100) de las descargas en curso, por `sourceUrl` del resultado
 /// de busqueda. La descarga en si corre en el servicio nativo en primer
@@ -13,22 +16,75 @@ import 'package:nuvtune/core/providers.dart';
 /// normal en cuanto el escaneo incremental (ya disparado por el observador de
 /// MediaStore) las recoge.
 final downloadsControllerProvider =
-    NotifierProvider<DownloadsController, Map<String, int>>(
-  DownloadsController.new,
-);
+    NotifierProvider<DownloadsController, Map<String, DownloadTask>>(
+      DownloadsController.new,
+    );
 
-class DownloadsController extends Notifier<Map<String, int>> {
+class DownloadTask {
+  const DownloadTask({
+    required this.downloadId,
+    required this.sourceUrl,
+    required this.title,
+    required this.author,
+    this.percent = 0,
+    this.downloadedBytes = 0,
+    this.totalBytes,
+    this.etaSeconds,
+  });
+
+  final String downloadId;
+  final String sourceUrl;
+  final String title;
+  final String? author;
+  final int percent;
+  final int downloadedBytes;
+  final int? totalBytes;
+  final int? etaSeconds;
+
+  DownloadTask copyWith({
+    int? percent,
+    int? downloadedBytes,
+    int? totalBytes,
+    int? etaSeconds,
+  }) => DownloadTask(
+    downloadId: downloadId,
+    sourceUrl: sourceUrl,
+    title: title,
+    author: author,
+    percent: percent ?? this.percent,
+    downloadedBytes: downloadedBytes ?? this.downloadedBytes,
+    totalBytes: totalBytes ?? this.totalBytes,
+    etaSeconds: etaSeconds ?? this.etaSeconds,
+  );
+}
+
+class DownloadsController extends Notifier<Map<String, DownloadTask>> {
   final _urlByDownloadId = <String, String>{};
 
   @override
-  Map<String, int> build() {
+  Map<String, DownloadTask> build() {
     final bridge = ref.watch(downloadEngineProvider);
     final progressSub = bridge.progress.listen((event) {
       final url = _urlByDownloadId[event.downloadId];
       if (url == null || !state.containsKey(url)) return;
-      state = {...state, url: event.percent.round().clamp(0, 100)};
+      final current = state[url]!;
+      state = {
+        ...state,
+        url: current.copyWith(
+          percent: event.percent.round().clamp(0, 100),
+          downloadedBytes: event.downloadedBytes,
+          totalBytes: event.totalBytes,
+          etaSeconds: event.etaSeconds,
+        ),
+      };
     });
-    final completedSub = bridge.completed.listen((event) => _clear(event.downloadId));
+    final completedSub = bridge.completed.listen((event) {
+      _clear(event.downloadId);
+      // No se depende solo del observador de MediaStore: al terminar, la
+      // canción debe aparecer enseguida aunque el fabricante retrase ese
+      // evento o la pantalla de descargas ya no esté visible.
+      unawaited(ref.read(libraryProvider.notifier).scan());
+    });
     final failedSub = bridge.failed.listen((event) => _clear(event.downloadId));
     ref.onDispose(() {
       progressSub.cancel();
@@ -44,17 +100,23 @@ class DownloadsController extends Notifier<Map<String, int>> {
   /// descarga de audio. Devuelve un mensaje de error si algo no dejo
   /// encolar la descarga; `null` significa que quedo en curso (el resultado
   /// final llega por los streams de [DownloadEngineBridge]).
-  Future<String?> download(SearchResultItem result) async {
+  Future<String?> download(
+    SearchResultItem result, {
+    VideoAnalysis? analysis,
+    VideoFormatOption? selectedFormat,
+  }) async {
     if (isDownloading(result.sourceUrl)) return null;
-    state = {...state, result.sourceUrl: 0};
 
     try {
       final engine = ref.read(downloadEngineProvider);
       await engine.initialize();
-      final analysis = await engine.api.analyzeUrl(result.sourceUrl);
-      final video = analysis.video;
+      final resolved = analysis == null
+          ? await engine.api.analyzeUrl(result.sourceUrl)
+          : null;
+      final video = analysis ?? resolved?.video;
       if (video == null) {
-        return analysis.errorCode?.userMessage ?? 'No se pudo analizar la canción.';
+        return resolved?.errorCode?.userMessage ??
+            'No se pudo analizar la canción.';
       }
       if (video.audioFormats.isEmpty) {
         return 'No hay audio disponible para descargar.';
@@ -62,9 +124,22 @@ class DownloadsController extends Notifier<Map<String, int>> {
 
       // Primera opcion = mejor bitrate (YtDlpEngine.toAudioFormatOptions las
       // entrega ordenadas 192/128/64 kbps).
-      final format = video.audioFormats.first;
+      final format = selectedFormat ?? video.audioFormats.first;
+      if (!video.audioFormats.any((item) => item.formatId == format.formatId)) {
+        return 'La calidad seleccionada ya no está disponible.';
+      }
       final downloadId = DateTime.now().microsecondsSinceEpoch.toString();
       _urlByDownloadId[downloadId] = result.sourceUrl;
+      state = {
+        ...state,
+        result.sourceUrl: DownloadTask(
+          downloadId: downloadId,
+          sourceUrl: result.sourceUrl,
+          title: result.title,
+          author: result.author,
+          totalBytes: format.approxSizeBytes,
+        ),
+      };
 
       await engine.api.startDownload(
         DownloadRequest(
@@ -91,6 +166,14 @@ class DownloadsController extends Notifier<Map<String, int>> {
         _clearByUrl(result.sourceUrl);
       }
     }
+  }
+
+  Future<void> cancel(String sourceUrl) async {
+    final task = state[sourceUrl];
+    if (task == null) return;
+    await ref.read(downloadEngineProvider).api.cancelDownload(task.downloadId);
+    _urlByDownloadId.remove(task.downloadId);
+    _clearByUrl(sourceUrl);
   }
 
   void _clear(String downloadId) {

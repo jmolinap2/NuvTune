@@ -109,6 +109,16 @@ object YtDlpEngine {
         return YoutubeDL.getInstance().getInfo(request)
     }
 
+    /** Reintenta una sola vez tras actualizar yt-dlp si cambió el extractor. */
+    fun analyzeWithRecovery(context: Context, url: String): VideoInfo =
+        try {
+            analyze(url)
+        } catch (first: Exception) {
+            if (classifyError(first) != DownloadErrorCode.EXTRACTOR_OUTDATED) throw first
+            updateExtractor(context)
+            analyze(url)
+        }
+
     /**
      * URL directa del stream de audio, sin descargar nada. `-g`
      * (`--get-url`) hace que yt-dlp resuelva el formato y escriba la URL en
@@ -130,6 +140,15 @@ object YtDlpEngine {
             .map { it.trim() }
             .firstOrNull { it.startsWith("http", ignoreCase = true) }
     }
+
+    fun audioStreamUrlWithRecovery(context: Context, sourceUrl: String): String? =
+        try {
+            audioStreamUrl(sourceUrl)
+        } catch (first: Exception) {
+            if (classifyError(first) != DownloadErrorCode.EXTRACTOR_OUTDATED) throw first
+            updateExtractor(context)
+            audioStreamUrl(sourceUrl)
+        }
 
     /**
      * A diferencia de un desglose por resolucion (NuvClip, que tambien
@@ -163,6 +182,12 @@ object YtDlpEngine {
         request.addOption("-x")
         request.addOption("--audio-format", "mp3")
         request.addOption("--audio-quality", "${kbps}K")
+        // Conserva la ficha musical dentro del archivo. ffmpeg convierte la
+        // miniatura cuando YouTube la entrega como WebP y la incrusta como
+        // portada del MP3; MediaStore recibe ademas titulo/artista explicitos.
+        request.addOption("--add-metadata")
+        request.addOption("--embed-thumbnail")
+        request.addOption("--convert-thumbnails", "jpg")
         request.addOption("-o", outputPath)
         return request
     }

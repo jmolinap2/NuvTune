@@ -9,6 +9,7 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.cancel
 import kotlinx.coroutines.launch
+import kotlinx.coroutines.withTimeout
 
 /**
  * Punto de entrada del plugin: implementa el HostApi generado por Pigeon,
@@ -84,7 +85,7 @@ class DownloadEnginePlugin :
                 return@launch
             }
             val result = try {
-                val info = YtDlpEngine.analyze(url)
+                val info = YtDlpEngine.analyzeWithRecovery(requireContext(), url)
                 val analysis = VideoAnalysis(
                     sourceUrl = url,
                     platform = platform,
@@ -109,10 +110,13 @@ class DownloadEnginePlugin :
     override fun startPreview(sourceUrl: String, callback: (Result<Unit>) -> Unit) {
         scope.launch {
             val result = runCatching {
-                val streamUrl = YtDlpEngine.audioStreamUrl(sourceUrl)
+                val streamUrl = YtDlpEngine.audioStreamUrlWithRecovery(
+                    requireContext(),
+                    sourceUrl,
+                )
                     ?: error("yt-dlp no devolvio una URL de audio para $sourceUrl")
                 val active = previewPlayer ?: PreviewPlayer(requireContext()).also { previewPlayer = it }
-                active.play(streamUrl)
+                withTimeout(PREVIEW_READY_TIMEOUT_MS) { active.play(streamUrl) }
             }.onFailure { error -> Log.w(TAG, "startPreview fallo para $sourceUrl", error) }
             callback(result)
         }
@@ -172,5 +176,6 @@ class DownloadEnginePlugin :
 
     companion object {
         private const val TAG = "NuvTune"
+        private const val PREVIEW_READY_TIMEOUT_MS = 25_000L
     }
 }

@@ -1,3 +1,5 @@
+import 'package:drift/drift.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/library/library_controller.dart';
@@ -33,6 +35,7 @@ class GiftImportState {
     this.sizeBytes = 0,
     this.addedCount = 0,
     this.playlistId,
+    this.existingPlaylistId,
     this.error,
   });
 
@@ -51,6 +54,7 @@ class GiftImportState {
   final int addedCount;
 
   final int? playlistId;
+  final int? existingPlaylistId;
   final String? error;
 
   int get totalSongs => payload?.songs.length ?? 0;
@@ -69,24 +73,25 @@ class GiftImportState {
     int? sizeBytes,
     int? addedCount,
     int? playlistId,
+    int? existingPlaylistId,
     String? error,
-  }) =>
-      GiftImportState(
-        stage: stage ?? this.stage,
-        payload: payload ?? this.payload,
-        match: match ?? this.match,
-        embeddedAudioCount: embeddedAudioCount ?? this.embeddedAudioCount,
-        sizeBytes: sizeBytes ?? this.sizeBytes,
-        addedCount: addedCount ?? this.addedCount,
-        playlistId: playlistId ?? this.playlistId,
-        error: error ?? this.error,
-      );
+  }) => GiftImportState(
+    stage: stage ?? this.stage,
+    payload: payload ?? this.payload,
+    match: match ?? this.match,
+    embeddedAudioCount: embeddedAudioCount ?? this.embeddedAudioCount,
+    sizeBytes: sizeBytes ?? this.sizeBytes,
+    addedCount: addedCount ?? this.addedCount,
+    playlistId: playlistId ?? this.playlistId,
+    existingPlaylistId: existingPlaylistId ?? this.existingPlaylistId,
+    error: error ?? this.error,
+  );
 }
 
 final giftImportProvider =
     NotifierProvider<GiftImportController, GiftImportState>(
-  GiftImportController.new,
-);
+      GiftImportController.new,
+    );
 
 /// Orquesta la recepcion de un regalo: leer el archivo, mostrar que trae,
 /// copiar su audio a la biblioteca y crear la lista.
@@ -94,7 +99,10 @@ class GiftImportController extends Notifier<GiftImportState> {
   @override
   GiftImportState build() => const GiftImportState();
 
-  void reset() => state = const GiftImportState();
+  void reset() {
+    _pendingUri = null;
+    state = const GiftImportState();
+  }
 
   /// Lee el archivo sin importar nada todavia.
   Future<void> loadFromUri(String uri) async {
@@ -102,6 +110,11 @@ class GiftImportController extends Notifier<GiftImportState> {
     try {
       final package = await ref.read(engineProvider).api.readGiftPackage(uri);
       final payload = GiftPayload.decode(package.metadataJson);
+      final existing = payload.giftId == null
+          ? null
+          : await ref
+                .read(playlistRepositoryProvider)
+                .playlistByGiftId(payload.giftId!);
       state = GiftImportState(
         stage: GiftImportStage.reviewing,
         payload: payload,
@@ -111,12 +124,18 @@ class GiftImportController extends Notifier<GiftImportState> {
         ),
         embeddedAudioCount: package.embeddedAudioCount,
         sizeBytes: package.sizeBytes,
+        existingPlaylistId: existing?.id,
       );
       _pendingUri = uri;
     } on FormatException catch (error) {
       state = GiftImportState(
         stage: GiftImportStage.failed,
         error: error.message,
+      );
+    } on PlatformException catch (error) {
+      state = GiftImportState(
+        stage: GiftImportStage.failed,
+        error: error.message ?? 'La validación de seguridad falló',
       );
     } catch (_) {
       state = const GiftImportState(
@@ -138,8 +157,9 @@ class GiftImportController extends Notifier<GiftImportState> {
     // lo que no este en la lista declarada. Aqui es preferible dejar elegir
     // cualquier archivo y rechazarlo despues con un mensaje claro, a que el
     // usuario vea su regalo en gris y no pueda tocarlo.
-    final document =
-        await ref.read(engineProvider).api.pickDocument(const ['*/*']);
+    final document = await ref.read(engineProvider).api.pickDocument(const [
+      '*/*',
+    ]);
     if (document == null) return false;
     await loadFromUri(document.uri);
     return true;
@@ -150,6 +170,14 @@ class GiftImportController extends Notifier<GiftImportState> {
     final payload = state.payload;
     final uri = _pendingUri;
     if (payload == null || uri == null) return;
+
+    if (state.existingPlaylistId case final playlistId?) {
+      state = state.copyWith(
+        stage: GiftImportStage.done,
+        playlistId: playlistId,
+      );
+      return;
+    }
 
     var added = 0;
     if (state.hasEmbeddedAudio) {
@@ -165,34 +193,57 @@ class GiftImportController extends Notifier<GiftImportState> {
       }
       // El audio se escribio en MediaStore: recien tras releer la biblioteca
       // existen como canciones con id propio y se pueden meter en la lista.
-      await ref.read(libraryProvider.notifier).scan();
+      if (added > 0) {
+        await ref.read(libraryProvider.notifier).scan();
+      }
     }
 
-    final finalMatch = matchGiftSongs(
-      payload.songs,
-      ref.read(libraryRepositoryProvider).songs,
-    );
-    final songIds = [
-      for (var index = 0; index < payload.songs.length; index++)
-        if (finalMatch.resolved[index] != null) finalMatch.resolved[index]!,
-    ];
+    try {
+      final finalMatch = matchGiftSongs(
+        payload.songs,
+        ref.read(libraryRepositoryProvider).songs,
+      );
+      final songIds = [
+        for (var index = 0; index < payload.songs.length; index++)
+          if (finalMatch.resolved[index] != null) finalMatch.resolved[index]!,
+      ];
 
-    final playlists = ref.read(playlistRepositoryProvider);
-    final playlistId = await playlists.create(payload.name, songIds: songIds);
-    await playlists.setGift(
-      playlistId,
-      giftMode: true,
-      dedication: payload.dedication,
-      giftFrom: payload.from,
-      giftTo: payload.to,
-      giftAccentId: payload.accentId,
-    );
+      final playlists = ref.read(playlistRepositoryProvider);
+      if (payload.giftId case final giftId?) {
+        final existing = await playlists.playlistByGiftId(giftId);
+        if (existing != null) {
+          state = state.copyWith(
+            stage: GiftImportStage.done,
+            match: finalMatch,
+            addedCount: added,
+            playlistId: existing.id,
+            existingPlaylistId: existing.id,
+          );
+          return;
+        }
+      }
+      final playlistId = await playlists.create(payload.name, songIds: songIds);
+      await playlists.setGift(
+        playlistId,
+        giftMode: true,
+        dedication: payload.dedication,
+        giftFrom: payload.from,
+        giftTo: payload.to,
+        giftAccentId: payload.accentId,
+        giftId: Value(payload.giftId),
+      );
 
-    state = state.copyWith(
-      stage: GiftImportStage.done,
-      match: finalMatch,
-      addedCount: added,
-      playlistId: playlistId,
-    );
+      state = state.copyWith(
+        stage: GiftImportStage.done,
+        match: finalMatch,
+        addedCount: added,
+        playlistId: playlistId,
+      );
+    } catch (_) {
+      state = state.copyWith(
+        stage: GiftImportStage.failed,
+        error: 'La música se validó, pero no se pudo crear la lista',
+      );
+    }
   }
 }

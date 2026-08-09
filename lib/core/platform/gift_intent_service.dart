@@ -1,5 +1,7 @@
 import 'package:flutter/services.dart';
 
+enum GiftShareChannel { whatsApp, email }
+
 /// Archivo de regalo con el que se abrio la aplicacion desde fuera (WhatsApp,
 /// Drive, un gestor de archivos).
 ///
@@ -21,5 +23,23 @@ class GiftIntentService {
       // la respuesta correcta, no un error.
       return null;
     }
+  }
+
+  /// Entrega el archivo usando un URI temporal de solo lectura. En WhatsApp
+  /// intenta abrir el chat directamente; si no esta instalado, Android abre
+  /// el panel general. Correo siempre usa el selector para que el usuario
+  /// elija su aplicacion de confianza.
+  Future<void> shareGift({
+    required String path,
+    required GiftShareChannel channel,
+    required String subject,
+    required String text,
+  }) async {
+    await _channel.invokeMethod<void>('shareGift', {
+      'path': path,
+      'channel': channel.name,
+      'subject': subject,
+      'text': text,
+    });
   }
 }

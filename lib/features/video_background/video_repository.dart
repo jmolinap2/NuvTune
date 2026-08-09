@@ -1,5 +1,6 @@
 import 'package:drift/drift.dart';
 import 'package:nuvtune/core/network/piped_client.dart';
+import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/video_background/music_video_matcher.dart';
@@ -12,16 +13,18 @@ import 'package:nuvtune/features/video_background/music_video_matcher.dart';
 class VideoRepository {
   VideoRepository(
     this._database,
-    this._piped, {
+    this._piped,
+    this._downloadEngine, {
     this._matcher = const MusicVideoMatcher(),
   });
 
   final NuvTuneDatabase _database;
   final PipedClient _piped;
+  final DownloadEngineBridge _downloadEngine;
   final MusicVideoMatcher _matcher;
 
   static const _negativeCacheTtl = Duration(minutes: 2);
-  static const _cacheSourcePrefix = 'music_match_v1';
+  static const _cacheSourcePrefix = 'music_match_v2';
   final Map<String, Set<String>> _rejectedIds = {};
 
   /// Incluye album y duracion para no mezclar, por ejemplo, la version de
@@ -84,6 +87,17 @@ class VideoRepository {
       match = _select(song, candidates, rejected);
     }
 
+    // Las instancias publicas de Piped y la pagina web de YouTube pueden no
+    // devolver resultados, aunque la cancion si exista. El extractor nativo
+    // ya incluido para las descargas ofrece una tercera fuente y una lista mas
+    // amplia. Sus resultados pasan por exactamente el mismo matcher: nunca se
+    // elige de forma arbitraria el primero.
+    if (match == null) {
+      final extracted = await _extractorCandidates(_expandedQuery(song));
+      candidates = _mergeCandidates([...candidates, ...extracted]);
+      match = _select(song, candidates, rejected);
+    }
+
     final found = match?.videoId;
     final source = match == null
         ? '$_cacheSourcePrefix:no_match'
@@ -101,6 +115,48 @@ class VideoRepository {
         );
     return found;
   }
+
+  Future<List<PipedSearchResult>> _extractorCandidates(String query) async {
+    try {
+      await _downloadEngine.initialize();
+      final results = await _downloadEngine.api.search(query, 25);
+      return [
+        for (var index = 0; index < results.length; index++)
+          if (_youtubeVideoId(results[index].sourceUrl) case final id?)
+            PipedSearchResult(
+              videoId: id,
+              title: results[index].title,
+              uploaderName: results[index].author ?? '',
+              durationSeconds: results[index].durationSeconds,
+              searchRank: index,
+            ),
+      ];
+    } on Object {
+      // Es un respaldo: una falla del extractor no debe romper el reproductor.
+      return const [];
+    }
+  }
+
+  static String? _youtubeVideoId(String sourceUrl) {
+    final uri = Uri.tryParse(sourceUrl);
+    if (uri == null) return null;
+    final queryId = uri.queryParameters['v'];
+    if (queryId != null && _isVideoId(queryId)) return queryId;
+    if (uri.host.toLowerCase() == 'youtu.be' && uri.pathSegments.isNotEmpty) {
+      final id = uri.pathSegments.first;
+      if (_isVideoId(id)) return id;
+    }
+    final segments = uri.pathSegments;
+    if (segments.length >= 2 &&
+        const {'embed', 'shorts', 'live'}.contains(segments.first)) {
+      final id = segments[1];
+      if (_isVideoId(id)) return id;
+    }
+    return null;
+  }
+
+  static bool _isVideoId(String value) =>
+      RegExp(r'^[A-Za-z0-9_-]{11}$').hasMatch(value);
 
   MusicVideoMatch? _select(
     Song song,

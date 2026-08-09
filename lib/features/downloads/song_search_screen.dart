@@ -8,6 +8,7 @@ import 'package:nuvtune/core/platform/download_engine.g.dart';
 import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/core/utils/formatters.dart';
+import 'package:nuvtune/features/downloads/download_details_sheet.dart';
 import 'package:nuvtune/features/downloads/downloads_controller.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
 
@@ -35,9 +36,9 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
   bool _loading = false;
   bool _searched = false;
 
-  /// URL cuya vista previa esta sonando (o cargando, ver [_preparingPreview]).
+  /// URL cuya vista previa está sonando y otra separada mientras se prepara.
   String? _previewUrl;
-  bool _preparingPreview = false;
+  String? _preparingPreviewUrl;
 
   StreamSubscription<DownloadCompletedEvent>? _completedSub;
   StreamSubscription<DownloadFailedEvent>? _failedSub;
@@ -51,18 +52,15 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
           content: Text('Descargada: ${event.fileName}'),
-          action: SnackBarAction(
-            label: 'Ver',
-            onPressed: _openDownloadsFolder,
-          ),
+          action: SnackBarAction(label: 'Ver', onPressed: _openDownloadsFolder),
         ),
       );
     });
     _failedSub = bridge.failed.listen((event) {
       if (!mounted) return;
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(event.errorCode.userMessage)),
-      );
+      ScaffoldMessenger.of(
+        context,
+      ).showSnackBar(SnackBar(content: Text(event.errorCode.userMessage)));
     });
   }
 
@@ -96,7 +94,11 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
     } catch (_) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('No se pudo buscar. Revisa tu conexión e inténtalo de nuevo.')),
+        const SnackBar(
+          content: Text(
+            'No se pudo buscar. Revisa tu conexión e inténtalo de nuevo.',
+          ),
+        ),
       );
     } finally {
       if (mounted) setState(() => _loading = false);
@@ -106,20 +108,24 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
   Future<void> _togglePreview(SearchResultItem result) async {
     final api = ref.read(downloadEngineProvider).api;
 
+    if (_preparingPreviewUrl == result.sourceUrl) return;
     if (_previewUrl == result.sourceUrl) {
       await api.stopPreview();
       if (mounted) setState(() => _previewUrl = null);
       return;
     }
 
+    if (_previewUrl != null) await api.stopPreview();
     setState(() {
-      _previewUrl = result.sourceUrl;
-      _preparingPreview = true;
+      _previewUrl = null;
+      _preparingPreviewUrl = result.sourceUrl;
     });
     try {
       // Resolver la URL del stream tarda unos segundos; el estado de carga
-      // evita que parezca que el boton no hizo nada.
+      // evita que parezca que el boton no hizo nada. El método nativo ahora
+      // retorna solo cuando Media3 confirma que el audio está listo.
       await api.startPreview(result.sourceUrl);
+      if (mounted) setState(() => _previewUrl = result.sourceUrl);
     } catch (_) {
       if (!mounted) return;
       setState(() => _previewUrl = null);
@@ -127,15 +133,38 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
         const SnackBar(content: Text('No se pudo reproducir la vista previa.')),
       );
     } finally {
-      if (mounted) setState(() => _preparingPreview = false);
+      if (mounted) setState(() => _preparingPreviewUrl = null);
     }
   }
 
-  Future<void> _download(SearchResultItem result) async {
+  Future<void> _openDetails(SearchResultItem result) async {
+    await ref.read(downloadEngineProvider).api.stopPreview();
+    if (mounted) {
+      setState(() {
+        _previewUrl = null;
+        _preparingPreviewUrl = null;
+      });
+    }
+    if (!mounted) return;
+    final choice = await showDownloadDetails(context, result);
+    if (choice == null || !mounted) return;
+
     final messenger = ScaffoldMessenger.of(context);
-    final error = await ref.read(downloadsControllerProvider.notifier).download(result);
-    if (!mounted || error == null) return;
-    messenger.showSnackBar(SnackBar(content: Text(error)));
+    final error = await ref
+        .read(downloadsControllerProvider.notifier)
+        .download(
+          result,
+          analysis: choice.analysis,
+          selectedFormat: choice.format,
+        );
+    if (!mounted) return;
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text(
+          error ?? 'Descarga iniciada. Puedes seguir usando NuvTune.',
+        ),
+      ),
+    );
   }
 
   /// Lleva a la carpeta donde caen las descargas. No se navega por una ruta
@@ -164,11 +193,11 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final progress = ref.watch(downloadsControllerProvider);
+    final downloads = ref.watch(downloadsControllerProvider);
 
     return Scaffold(
       appBar: AppBar(
-        title: const Text('Buscar canciones'),
+        title: const Text('Descargar música'),
         actions: [
           IconButton(
             tooltip: 'Ver mis descargas',
@@ -179,10 +208,11 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
       ),
       body: Column(
         children: [
+          const _DownloadHero(),
           Padding(
             padding: const EdgeInsets.fromLTRB(
               Tokens.gutter,
-              Tokens.space4,
+              Tokens.space2,
               Tokens.gutter,
               Tokens.space2,
             ),
@@ -192,26 +222,28 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
               decoration: InputDecoration(
                 hintText: 'Artista o canción',
                 prefixIcon: const Icon(Icons.search_rounded),
+                suffixIcon: IconButton(
+                  tooltip: 'Buscar',
+                  onPressed: _loading ? null : _search,
+                  icon: const Icon(Icons.arrow_forward_rounded),
+                ),
+                filled: true,
                 border: OutlineInputBorder(
                   borderRadius: BorderRadius.circular(Tokens.radiusPill),
+                  borderSide: BorderSide.none,
                 ),
               ),
               onSubmitted: (_) => _search(),
             ),
           ),
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-            child: Text(
-              'Toca ▶ para escuchar antes de descargar. Úsalo solo para '
-              'contenido de dominio público o de uso personal permitido en tu '
-              'jurisdicción.',
-              style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
-            ),
-          ),
-          const SizedBox(height: Tokens.space2),
           if (_loading) const LinearProgressIndicator(),
+          if (downloads.isNotEmpty)
+            _ActiveDownloads(
+              tasks: downloads.values.toList(growable: false),
+              onCancel: (sourceUrl) => ref
+                  .read(downloadsControllerProvider.notifier)
+                  .cancel(sourceUrl),
+            ),
           Expanded(
             child: !_searched
                 ? const EmptyState(
@@ -220,27 +252,33 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
                     message: 'Escribe un artista o título y pulsa buscar.',
                   )
                 : _results.isEmpty
-                    ? const EmptyState(
-                        icon: Icons.search_off_rounded,
-                        title: 'Sin resultados',
-                        message: 'Prueba con otro término de búsqueda.',
-                      )
-                    : ListView.builder(
-                        padding: const EdgeInsets.only(bottom: Tokens.space5),
-                        itemCount: _results.length,
-                        itemBuilder: (context, index) {
-                          final result = _results[index];
-                          return _SearchResultTile(
-                            result: result,
-                            downloadPercent: progress[result.sourceUrl],
-                            isPreviewing: _previewUrl == result.sourceUrl,
-                            isPreparingPreview: _preparingPreview &&
-                                _previewUrl == result.sourceUrl,
-                            onPreview: () => _togglePreview(result),
-                            onDownload: () => _download(result),
-                          );
-                        },
-                      ),
+                ? const EmptyState(
+                    icon: Icons.search_off_rounded,
+                    title: 'Sin resultados',
+                    message: 'Prueba con otro término de búsqueda.',
+                  )
+                : ListView.builder(
+                    padding: const EdgeInsets.fromLTRB(
+                      Tokens.gutter,
+                      Tokens.space2,
+                      Tokens.gutter,
+                      Tokens.space5,
+                    ),
+                    itemCount: _results.length,
+                    itemBuilder: (context, index) {
+                      final result = _results[index];
+                      return _SearchResultTile(
+                        result: result,
+                        downloadTask: downloads[result.sourceUrl],
+                        isPreviewing: _previewUrl == result.sourceUrl,
+                        isPreparingPreview:
+                            _preparingPreviewUrl == result.sourceUrl,
+                        onPreview: () => _togglePreview(result),
+                        onDetails: () => _openDetails(result),
+                        onDownload: () => _openDetails(result),
+                      );
+                    },
+                  ),
           ),
         ],
       ),
@@ -251,18 +289,20 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
 class _SearchResultTile extends StatelessWidget {
   const _SearchResultTile({
     required this.result,
-    required this.downloadPercent,
+    required this.downloadTask,
     required this.isPreviewing,
     required this.isPreparingPreview,
     required this.onPreview,
+    required this.onDetails,
     required this.onDownload,
   });
 
   final SearchResultItem result;
-  final int? downloadPercent;
+  final DownloadTask? downloadTask;
   final bool isPreviewing;
   final bool isPreparingPreview;
   final VoidCallback onPreview;
+  final VoidCallback onDetails;
   final VoidCallback onDownload;
 
   @override
@@ -273,55 +313,231 @@ class _SearchResultTile extends StatelessWidget {
         : null;
     final author = result.author ?? 'Autor desconocido';
 
-    return ListTile(
-      leading: _Thumbnail(url: result.thumbnailUrl),
-      title: Text(
-        result.title,
-        maxLines: 2,
-        overflow: TextOverflow.ellipsis,
-      ),
-      subtitle: Text(
-        duration == null ? author : '$author · $duration',
-        maxLines: 1,
-        overflow: TextOverflow.ellipsis,
-      ),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          IconButton(
-            tooltip: isPreviewing ? 'Detener vista previa' : 'Escuchar antes de descargar',
-            onPressed: onPreview,
-            icon: isPreparingPreview
-                ? const SizedBox(
-                    width: 20,
-                    height: 20,
-                    child: CircularProgressIndicator(strokeWidth: 2),
-                  )
-                : Icon(
-                    isPreviewing
-                        ? Icons.stop_circle_rounded
-                        : Icons.play_circle_outline_rounded,
-                    color: isPreviewing ? scheme.primary : null,
+    return Card(
+      margin: const EdgeInsets.only(bottom: Tokens.space3),
+      clipBehavior: Clip.antiAlias,
+      child: InkWell(
+        onTap: onDetails,
+        child: Padding(
+          padding: const EdgeInsets.all(Tokens.space3),
+          child: Column(
+            children: [
+              Row(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  _Thumbnail(url: result.thumbnailUrl, size: 72),
+                  const SizedBox(width: Tokens.space3),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          result.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.titleMedium,
+                        ),
+                        const SizedBox(height: Tokens.space1),
+                        Text(
+                          duration == null ? author : '$author · $duration',
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                            color: scheme.onSurfaceVariant,
+                          ),
+                        ),
+                      ],
+                    ),
                   ),
-          ),
-          if (downloadPercent != null)
-            SizedBox(
-              width: 28,
-              height: 28,
-              child: CircularProgressIndicator(
-                value: downloadPercent! / 100,
-                strokeWidth: 3,
+                ],
               ),
-            )
-          else
-            IconButton(
-              tooltip: 'Descargar',
-              icon: const Icon(Icons.download_rounded),
-              onPressed: onDownload,
+              const SizedBox(height: Tokens.space2),
+              Row(
+                children: [
+                  IconButton(
+                    tooltip: 'Ver formato, portada y calidad',
+                    onPressed: onDetails,
+                    icon: const Icon(Icons.info_outline_rounded),
+                  ),
+                  const Spacer(),
+                  IconButton.filledTonal(
+                    tooltip: isPreviewing
+                        ? 'Detener vista previa'
+                        : 'Escuchar antes de descargar',
+                    onPressed: onPreview,
+                    icon: isPreparingPreview
+                        ? const SizedBox.square(
+                            dimension: 19,
+                            child: CircularProgressIndicator(strokeWidth: 2),
+                          )
+                        : Icon(
+                            isPreviewing
+                                ? Icons.stop_rounded
+                                : Icons.play_arrow_rounded,
+                          ),
+                  ),
+                  const SizedBox(width: Tokens.space2),
+                  if (downloadTask == null)
+                    FilledButton.icon(
+                      onPressed: onDownload,
+                      icon: const Icon(Icons.download_rounded, size: 19),
+                      label: const Text('Descargar'),
+                    )
+                  else
+                    SizedBox.square(
+                      dimension: 42,
+                      child: CircularProgressIndicator(
+                        value: downloadTask!.percent / 100,
+                        strokeWidth: 4,
+                      ),
+                    ),
+                ],
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DownloadHero extends StatelessWidget {
+  const _DownloadHero();
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        Tokens.gutter,
+        Tokens.space2,
+        Tokens.gutter,
+        Tokens.space2,
+      ),
+      padding: const EdgeInsets.fromLTRB(
+        Tokens.space4,
+        Tokens.space3,
+        Tokens.space2,
+        Tokens.space3,
+      ),
+      decoration: BoxDecoration(
+        gradient: LinearGradient(
+          colors: [
+            scheme.primaryContainer.withValues(alpha: 0.72),
+            scheme.surfaceContainerHigh,
+          ],
+        ),
+        borderRadius: BorderRadius.circular(Tokens.radiusLarge),
+        border: Border.all(color: scheme.primary.withValues(alpha: 0.18)),
+      ),
+      child: Row(
+        children: [
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'Escucha antes de guardar',
+                  style: Theme.of(context).textTheme.titleMedium,
+                ),
+                const SizedBox(height: Tokens.space1),
+                Text(
+                  'Auris te muestra portada, formato, calidad y tamaño antes de descargar.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: scheme.onSurfaceVariant,
+                  ),
+                ),
+              ],
             ),
+          ),
+          const SizedBox(width: Tokens.space2),
+          Image.asset(
+            'assets/images/auris.png',
+            width: 76,
+            height: 76,
+            fit: BoxFit.contain,
+            semanticLabel: 'Auris, mascota de NuvTune',
+          ),
         ],
       ),
     );
+  }
+}
+
+class _ActiveDownloads extends StatelessWidget {
+  const _ActiveDownloads({required this.tasks, required this.onCancel});
+
+  final List<DownloadTask> tasks;
+  final ValueChanged<String> onCancel;
+
+  @override
+  Widget build(BuildContext context) {
+    final task = tasks.first;
+    final scheme = Theme.of(context).colorScheme;
+    final downloaded = task.downloadedBytes > 0
+        ? Formatters.fileSize(task.downloadedBytes)
+        : null;
+    final total = task.totalBytes == null
+        ? null
+        : Formatters.fileSize(task.totalBytes!);
+    final detail = [
+      '${task.percent}%',
+      if (downloaded != null && total != null) '$downloaded de $total',
+      if (task.etaSeconds case final eta?) 'faltan ${_etaLabel(eta)}',
+    ].join(' · ');
+
+    return Container(
+      margin: const EdgeInsets.fromLTRB(
+        Tokens.gutter,
+        Tokens.space2,
+        Tokens.gutter,
+        Tokens.space1,
+      ),
+      padding: const EdgeInsets.all(Tokens.space3),
+      decoration: BoxDecoration(
+        color: scheme.surfaceContainerHigh,
+        borderRadius: BorderRadius.circular(Tokens.radiusMedium),
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(Icons.downloading_rounded, color: scheme.primary),
+              const SizedBox(width: Tokens.space2),
+              Expanded(
+                child: Text(
+                  tasks.length == 1
+                      ? 'Descargando ahora'
+                      : 'Descargando ahora · ${tasks.length} en cola',
+                  style: Theme.of(context).textTheme.labelLarge,
+                ),
+              ),
+              IconButton(
+                tooltip: 'Cancelar descarga',
+                onPressed: () => onCancel(task.sourceUrl),
+                icon: const Icon(Icons.close_rounded),
+              ),
+            ],
+          ),
+          Text(task.title, maxLines: 1, overflow: TextOverflow.ellipsis),
+          const SizedBox(height: Tokens.space2),
+          LinearProgressIndicator(value: task.percent / 100),
+          const SizedBox(height: Tokens.space1),
+          Text(
+            detail,
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  static String _etaLabel(int seconds) {
+    if (seconds < 60) return '$seconds s';
+    return '${(seconds / 60).ceil()} min';
   }
 }
 
@@ -329,9 +545,10 @@ class _SearchResultTile extends StatelessWidget {
 /// modo que el fallo se resuelve aqui mismo: sin conexion (o si YouTube
 /// cambia la URL) se cae al icono generico en vez de dejar un hueco.
 class _Thumbnail extends StatelessWidget {
-  const _Thumbnail({required this.url});
+  const _Thumbnail({required this.url, this.size = 56});
 
   final String? url;
+  final double size;
 
   @override
   Widget build(BuildContext context) {
@@ -343,8 +560,8 @@ class _Thumbnail extends StatelessWidget {
     return ClipRRect(
       borderRadius: BorderRadius.circular(Tokens.radiusSmall),
       child: SizedBox(
-        width: 56,
-        height: 56,
+        width: size,
+        height: size,
         child: url == null
             ? placeholder
             : Image.network(

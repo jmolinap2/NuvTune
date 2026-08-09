@@ -319,6 +319,15 @@ class $PlaylistsTable extends Playlists
     type: DriftSqlType.string,
     requiredDuringInsert: false,
   );
+  static const VerificationMeta _giftIdMeta = const VerificationMeta('giftId');
+  @override
+  late final GeneratedColumn<String> giftId = GeneratedColumn<String>(
+    'gift_id',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -331,6 +340,7 @@ class $PlaylistsTable extends Playlists
     giftFrom,
     giftTo,
     giftAccentId,
+    giftId,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -406,6 +416,12 @@ class $PlaylistsTable extends Playlists
         ),
       );
     }
+    if (data.containsKey('gift_id')) {
+      context.handle(
+        _giftIdMeta,
+        giftId.isAcceptableOrUnknown(data['gift_id']!, _giftIdMeta),
+      );
+    }
     return context;
   }
 
@@ -455,6 +471,10 @@ class $PlaylistsTable extends Playlists
         DriftSqlType.string,
         data['${effectivePrefix}gift_accent_id'],
       ),
+      giftId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}gift_id'],
+      ),
     );
   }
 
@@ -485,6 +505,11 @@ class Playlist extends DataClass implements Insertable<Playlist> {
 
   /// Identidad cromatica elegida para el regalo (uno de AccentIdentity.id).
   final String? giftAccentId;
+
+  /// Identificador estable del paquete recibido. Evita importar dos veces el
+  /// mismo regalo aunque Android entregue otra URI o el archivo cambie de
+  /// nombre al compartirlo.
+  final String? giftId;
   const Playlist({
     required this.id,
     required this.name,
@@ -496,6 +521,7 @@ class Playlist extends DataClass implements Insertable<Playlist> {
     this.giftFrom,
     this.giftTo,
     this.giftAccentId,
+    this.giftId,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -519,6 +545,9 @@ class Playlist extends DataClass implements Insertable<Playlist> {
     }
     if (!nullToAbsent || giftAccentId != null) {
       map['gift_accent_id'] = Variable<String>(giftAccentId);
+    }
+    if (!nullToAbsent || giftId != null) {
+      map['gift_id'] = Variable<String>(giftId);
     }
     return map;
   }
@@ -545,6 +574,9 @@ class Playlist extends DataClass implements Insertable<Playlist> {
       giftAccentId: giftAccentId == null && nullToAbsent
           ? const Value.absent()
           : Value(giftAccentId),
+      giftId: giftId == null && nullToAbsent
+          ? const Value.absent()
+          : Value(giftId),
     );
   }
 
@@ -564,6 +596,7 @@ class Playlist extends DataClass implements Insertable<Playlist> {
       giftFrom: serializer.fromJson<String?>(json['giftFrom']),
       giftTo: serializer.fromJson<String?>(json['giftTo']),
       giftAccentId: serializer.fromJson<String?>(json['giftAccentId']),
+      giftId: serializer.fromJson<String?>(json['giftId']),
     );
   }
   @override
@@ -580,6 +613,7 @@ class Playlist extends DataClass implements Insertable<Playlist> {
       'giftFrom': serializer.toJson<String?>(giftFrom),
       'giftTo': serializer.toJson<String?>(giftTo),
       'giftAccentId': serializer.toJson<String?>(giftAccentId),
+      'giftId': serializer.toJson<String?>(giftId),
     };
   }
 
@@ -594,6 +628,7 @@ class Playlist extends DataClass implements Insertable<Playlist> {
     Value<String?> giftFrom = const Value.absent(),
     Value<String?> giftTo = const Value.absent(),
     Value<String?> giftAccentId = const Value.absent(),
+    Value<String?> giftId = const Value.absent(),
   }) => Playlist(
     id: id ?? this.id,
     name: name ?? this.name,
@@ -605,6 +640,7 @@ class Playlist extends DataClass implements Insertable<Playlist> {
     giftFrom: giftFrom.present ? giftFrom.value : this.giftFrom,
     giftTo: giftTo.present ? giftTo.value : this.giftTo,
     giftAccentId: giftAccentId.present ? giftAccentId.value : this.giftAccentId,
+    giftId: giftId.present ? giftId.value : this.giftId,
   );
   Playlist copyWithCompanion(PlaylistsCompanion data) {
     return Playlist(
@@ -622,6 +658,7 @@ class Playlist extends DataClass implements Insertable<Playlist> {
       giftAccentId: data.giftAccentId.present
           ? data.giftAccentId.value
           : this.giftAccentId,
+      giftId: data.giftId.present ? data.giftId.value : this.giftId,
     );
   }
 
@@ -637,7 +674,8 @@ class Playlist extends DataClass implements Insertable<Playlist> {
           ..write('dedication: $dedication, ')
           ..write('giftFrom: $giftFrom, ')
           ..write('giftTo: $giftTo, ')
-          ..write('giftAccentId: $giftAccentId')
+          ..write('giftAccentId: $giftAccentId, ')
+          ..write('giftId: $giftId')
           ..write(')'))
         .toString();
   }
@@ -654,6 +692,7 @@ class Playlist extends DataClass implements Insertable<Playlist> {
     giftFrom,
     giftTo,
     giftAccentId,
+    giftId,
   );
   @override
   bool operator ==(Object other) =>
@@ -668,7 +707,8 @@ class Playlist extends DataClass implements Insertable<Playlist> {
           other.dedication == this.dedication &&
           other.giftFrom == this.giftFrom &&
           other.giftTo == this.giftTo &&
-          other.giftAccentId == this.giftAccentId);
+          other.giftAccentId == this.giftAccentId &&
+          other.giftId == this.giftId);
 }
 
 class PlaylistsCompanion extends UpdateCompanion<Playlist> {
@@ -682,6 +722,7 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
   final Value<String?> giftFrom;
   final Value<String?> giftTo;
   final Value<String?> giftAccentId;
+  final Value<String?> giftId;
   const PlaylistsCompanion({
     this.id = const Value.absent(),
     this.name = const Value.absent(),
@@ -693,6 +734,7 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     this.giftFrom = const Value.absent(),
     this.giftTo = const Value.absent(),
     this.giftAccentId = const Value.absent(),
+    this.giftId = const Value.absent(),
   });
   PlaylistsCompanion.insert({
     this.id = const Value.absent(),
@@ -705,6 +747,7 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     this.giftFrom = const Value.absent(),
     this.giftTo = const Value.absent(),
     this.giftAccentId = const Value.absent(),
+    this.giftId = const Value.absent(),
   }) : name = Value(name);
   static Insertable<Playlist> custom({
     Expression<int>? id,
@@ -717,6 +760,7 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     Expression<String>? giftFrom,
     Expression<String>? giftTo,
     Expression<String>? giftAccentId,
+    Expression<String>? giftId,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -729,6 +773,7 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
       if (giftFrom != null) 'gift_from': giftFrom,
       if (giftTo != null) 'gift_to': giftTo,
       if (giftAccentId != null) 'gift_accent_id': giftAccentId,
+      if (giftId != null) 'gift_id': giftId,
     });
   }
 
@@ -743,6 +788,7 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     Value<String?>? giftFrom,
     Value<String?>? giftTo,
     Value<String?>? giftAccentId,
+    Value<String?>? giftId,
   }) {
     return PlaylistsCompanion(
       id: id ?? this.id,
@@ -755,6 +801,7 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
       giftFrom: giftFrom ?? this.giftFrom,
       giftTo: giftTo ?? this.giftTo,
       giftAccentId: giftAccentId ?? this.giftAccentId,
+      giftId: giftId ?? this.giftId,
     );
   }
 
@@ -791,6 +838,9 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
     if (giftAccentId.present) {
       map['gift_accent_id'] = Variable<String>(giftAccentId.value);
     }
+    if (giftId.present) {
+      map['gift_id'] = Variable<String>(giftId.value);
+    }
     return map;
   }
 
@@ -806,7 +856,8 @@ class PlaylistsCompanion extends UpdateCompanion<Playlist> {
           ..write('dedication: $dedication, ')
           ..write('giftFrom: $giftFrom, ')
           ..write('giftTo: $giftTo, ')
-          ..write('giftAccentId: $giftAccentId')
+          ..write('giftAccentId: $giftAccentId, ')
+          ..write('giftId: $giftId')
           ..write(')'))
         .toString();
   }
@@ -8995,6 +9046,7 @@ typedef $$PlaylistsTableCreateCompanionBuilder =
       Value<String?> giftFrom,
       Value<String?> giftTo,
       Value<String?> giftAccentId,
+      Value<String?> giftId,
     });
 typedef $$PlaylistsTableUpdateCompanionBuilder =
     PlaylistsCompanion Function({
@@ -9008,6 +9060,7 @@ typedef $$PlaylistsTableUpdateCompanionBuilder =
       Value<String?> giftFrom,
       Value<String?> giftTo,
       Value<String?> giftAccentId,
+      Value<String?> giftId,
     });
 
 final class $$PlaylistsTableReferences
@@ -9095,6 +9148,11 @@ class $$PlaylistsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get giftId => $composableBuilder(
+    column: $table.giftId,
+    builder: (column) => ColumnFilters(column),
+  );
+
   Expression<bool> playlistEntriesRefs(
     Expression<bool> Function($$PlaylistEntriesTableFilterComposer f) f,
   ) {
@@ -9179,6 +9237,11 @@ class $$PlaylistsTableOrderingComposer
     column: $table.giftAccentId,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<String> get giftId => $composableBuilder(
+    column: $table.giftId,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$PlaylistsTableAnnotationComposer
@@ -9223,6 +9286,9 @@ class $$PlaylistsTableAnnotationComposer
     column: $table.giftAccentId,
     builder: (column) => column,
   );
+
+  GeneratedColumn<String> get giftId =>
+      $composableBuilder(column: $table.giftId, builder: (column) => column);
 
   Expression<T> playlistEntriesRefs<T extends Object>(
     Expression<T> Function($$PlaylistEntriesTableAnnotationComposer a) f,
@@ -9288,6 +9354,7 @@ class $$PlaylistsTableTableManager
                 Value<String?> giftFrom = const Value.absent(),
                 Value<String?> giftTo = const Value.absent(),
                 Value<String?> giftAccentId = const Value.absent(),
+                Value<String?> giftId = const Value.absent(),
               }) => PlaylistsCompanion(
                 id: id,
                 name: name,
@@ -9299,6 +9366,7 @@ class $$PlaylistsTableTableManager
                 giftFrom: giftFrom,
                 giftTo: giftTo,
                 giftAccentId: giftAccentId,
+                giftId: giftId,
               ),
           createCompanionCallback:
               ({
@@ -9312,6 +9380,7 @@ class $$PlaylistsTableTableManager
                 Value<String?> giftFrom = const Value.absent(),
                 Value<String?> giftTo = const Value.absent(),
                 Value<String?> giftAccentId = const Value.absent(),
+                Value<String?> giftId = const Value.absent(),
               }) => PlaylistsCompanion.insert(
                 id: id,
                 name: name,
@@ -9323,6 +9392,7 @@ class $$PlaylistsTableTableManager
                 giftFrom: giftFrom,
                 giftTo: giftTo,
                 giftAccentId: giftAccentId,
+                giftId: giftId,
               ),
           withReferenceMapper: (p0) => p0
               .map(

@@ -3,37 +3,61 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nuvtune/data/db/database.dart';
 
 void main() {
-  test('migración 10 a 11 conserva ajustes y añade controles', () async {
-    final executor = NativeDatabase.memory(
-      setup: (raw) {
-        raw.execute(_appSettingsV10);
-        raw.execute('''
+  test(
+    'migración 10 a 12 conserva ajustes y añade controles y regalos',
+    () async {
+      final executor = NativeDatabase.memory(
+        setup: (raw) {
+          raw.execute(_appSettingsV10);
+          raw.execute(_playlistsV10);
+          raw.execute('''
           INSERT INTO app_settings (
             id, accent_id, background_depth, gapless_enabled,
             widget_pause_on_disconnect, widget_resume_on_connect
           ) VALUES (0, 'solar', 'black', 0, 0, 1)
         ''');
-        raw.execute('PRAGMA user_version = 10');
-      },
-    );
-    final database = NuvTuneDatabase.forTesting(executor);
-    addTearDown(database.close);
+          raw.execute('PRAGMA user_version = 10');
+        },
+      );
+      final database = NuvTuneDatabase.forTesting(executor);
+      addTearDown(database.close);
 
-    final settings = await database.select(database.appSettings).getSingle();
+      final settings = await database.select(database.appSettings).getSingle();
 
-    expect(settings.accentId, 'solar');
-    expect(settings.backgroundDepth, 'black');
-    expect(settings.gaplessEnabled, isFalse);
-    expect(settings.widgetPauseOnDisconnect, isFalse);
-    expect(settings.widgetResumeOnConnect, isTrue);
-    expect(settings.playerControlPreset, 'complete');
-    expect(settings.playerControlHandedness, 'right');
-    expect(settings.playerGestureDoubleTap, isTrue);
-    expect(settings.playerGestureSwipeTrack, isTrue);
-    expect(settings.playerGestureSwipeVolume, isTrue);
-    expect(settings.playerGestureSwipeDismiss, isTrue);
-  });
+      expect(settings.accentId, 'solar');
+      expect(settings.backgroundDepth, 'black');
+      expect(settings.gaplessEnabled, isFalse);
+      expect(settings.widgetPauseOnDisconnect, isFalse);
+      expect(settings.widgetResumeOnConnect, isTrue);
+      expect(settings.playerControlPreset, 'complete');
+      expect(settings.playerControlHandedness, 'right');
+      expect(settings.playerGestureDoubleTap, isTrue);
+      expect(settings.playerGestureSwipeTrack, isTrue);
+      expect(settings.playerGestureSwipeVolume, isTrue);
+      expect(settings.playerGestureSwipeDismiss, isTrue);
+      final playlist = await database.select(database.playlists).getSingle();
+      expect(playlist.name, 'Sin perder');
+      expect(playlist.giftId, isNull);
+    },
+  );
 }
+
+const _playlistsV10 = '''
+CREATE TABLE playlists (
+  id INTEGER NOT NULL PRIMARY KEY AUTOINCREMENT,
+  name TEXT NOT NULL,
+  cover_path TEXT NULL,
+  created_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  updated_at INTEGER NOT NULL DEFAULT (strftime('%s', CURRENT_TIMESTAMP)),
+  gift_mode INTEGER NOT NULL DEFAULT 0,
+  dedication TEXT NULL,
+  gift_from TEXT NULL,
+  gift_to TEXT NULL,
+  gift_accent_id TEXT NULL
+);
+INSERT INTO playlists (name, gift_mode, dedication)
+VALUES ('Sin perder', 1, 'Con cariño');
+''';
 
 const _appSettingsV10 = '''
 CREATE TABLE app_settings (
