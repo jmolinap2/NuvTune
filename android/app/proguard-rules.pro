@@ -53,3 +53,13 @@
 
 # slf4j sin backend: smbj lo usa para registrar y en Android no hay enlace.
 -dontwarn org.slf4j.**
+
+# youtubedl-android desempaqueta sus binarios (python/yt-dlp) con
+# commons-compress al iniciar. ExtraFieldUtils instancia AsiExtraField y el
+# resto de los ZipExtraField por reflexion (Class.forName().newInstance())
+# segun el ID de cabecera del zip; sin conservar sus constructores, R8 rompe
+# esa instanciacion con "class X is not a concrete class" y
+# DownloadEngineHostApi.initialize falla, dejando la busqueda de descargas sin
+# resultados.
+-keep class org.apache.commons.compress.archivers.zip.** { *; }
+-dontwarn org.apache.commons.compress.**

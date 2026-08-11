@@ -50,6 +50,17 @@ class _SongActionsSheet extends ConsumerWidget {
     final isFavorite = favorites.contains(song.id);
     final playback = ref.read(playbackProvider.notifier);
 
+    // Varias acciones cierran esta hoja y siguen trabajando despues: abren un
+    // dialogo, esperan al motor y muestran el resultado. Tanto `ref` como
+    // `context` pertenecen a la hoja y dejan de ser validos en cuanto se
+    // cierra, de modo que todo lo que haga falta mas tarde se resuelve aqui,
+    // mientras el widget sigue montado. Los notificadores, el puente y el
+    // mensajero viven fuera del widget, asi que sobreviven a su cierre.
+    final engine = ref.read(engineProvider);
+    final library = ref.read(libraryProvider.notifier);
+    final messenger = ScaffoldMessenger.of(context);
+    final rootContext = Navigator.of(context, rootNavigator: true).context;
+
     return SafeArea(
       child: SingleChildScrollView(
         child: Column(
@@ -163,7 +174,7 @@ class _SongActionsSheet extends ConsumerWidget {
               label: AppStrings.share,
               onTap: () {
                 Navigator.of(context).pop();
-                ref.read(engineProvider).api.shareSongs([song.id]);
+                engine.api.shareSongs([song.id]);
               },
             ),
             _Action(
@@ -171,7 +182,7 @@ class _SongActionsSheet extends ConsumerWidget {
               label: AppStrings.showFileLocation,
               onTap: () {
                 Navigator.of(context).pop();
-                _showFileLocation(context, ref);
+                _showFileLocation(rootContext, engine, messenger);
               },
             ),
             _Action(
@@ -179,7 +190,7 @@ class _SongActionsSheet extends ConsumerWidget {
               label: AppStrings.excludeFolder,
               onTap: () {
                 Navigator.of(context).pop();
-                _confirmExcludeFolder(context, ref);
+                _confirmExcludeFolder(rootContext, library);
               },
             ),
 
@@ -199,7 +210,13 @@ class _SongActionsSheet extends ConsumerWidget {
               destructive: true,
               onTap: () {
                 Navigator.of(context).pop();
-                _confirmDelete(context, ref);
+                _confirmDelete(
+                  rootContext,
+                  engine,
+                  playback,
+                  library,
+                  messenger,
+                );
               },
             ),
             const SizedBox(height: 8),
@@ -209,22 +226,25 @@ class _SongActionsSheet extends ConsumerWidget {
     );
   }
 
-  void _showFileLocation(BuildContext context, WidgetRef ref) {
+  void _showFileLocation(
+    BuildContext context,
+    EngineBridge engine,
+    ScaffoldMessengerState messenger,
+  ) {
     showDialog<void>(
       context: context,
-      builder: (context) => AlertDialog(
+      builder: (dialogContext) => AlertDialog(
         title: const Text(AppStrings.showFileLocation),
         content: SelectableText(song.filePath),
         actions: [
           TextButton(
             onPressed: () async {
-              Navigator.of(context).pop();
+              Navigator.of(dialogContext).pop();
               try {
-                await ref.read(engineProvider).api.revealFile(song.id);
+                await engine.api.revealFile(song.id);
               } on Object catch (error) {
                 debugPrint('No se pudo abrir ${song.folderPath}: $error');
-                if (!context.mounted) return;
-                ScaffoldMessenger.of(context).showSnackBar(
+                messenger.showSnackBar(
                   const SnackBar(
                     content: Text('No se pudo abrir el explorador de archivos'),
                   ),
@@ -234,7 +254,7 @@ class _SongActionsSheet extends ConsumerWidget {
             child: const Text('Abrir en el explorador'),
           ),
           TextButton(
-            onPressed: () => Navigator.of(context).pop(),
+            onPressed: () => Navigator.of(dialogContext).pop(),
             child: const Text(AppStrings.close),
           ),
         ],
@@ -242,7 +262,7 @@ class _SongActionsSheet extends ConsumerWidget {
     );
   }
 
-  void _confirmExcludeFolder(BuildContext context, WidgetRef ref) {
+  void _confirmExcludeFolder(BuildContext context, LibraryController library) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -259,7 +279,7 @@ class _SongActionsSheet extends ConsumerWidget {
           FilledButton(
             onPressed: () {
               Navigator.of(dialogContext).pop();
-              ref.read(libraryProvider.notifier).excludeFolder(song.folderPath);
+              library.excludeFolder(song.folderPath);
             },
             child: const Text('Excluir'),
           ),
@@ -270,8 +290,13 @@ class _SongActionsSheet extends ConsumerWidget {
 
   /// El requerimiento seccion 16 exige diferenciar quitar de la biblioteca de
   /// eliminar del dispositivo; esta accion borra el archivo y lo advierte.
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
-    final messenger = ScaffoldMessenger.of(context);
+  void _confirmDelete(
+    BuildContext context,
+    EngineBridge engine,
+    PlaybackController playback,
+    LibraryController library,
+    ScaffoldMessengerState messenger,
+  ) {
     showDialog<void>(
       context: context,
       builder: (dialogContext) => AlertDialog(
@@ -292,16 +317,11 @@ class _SongActionsSheet extends ConsumerWidget {
             onPressed: () async {
               Navigator.of(dialogContext).pop();
               try {
-                final result = await ref
-                    .read(engineProvider)
-                    .api
-                    .deleteSongFile(song.id);
+                final result = await engine.api.deleteSongFile(song.id);
                 switch (result.outcome) {
                   case WriteOutcome.success:
-                    await ref
-                        .read(playbackProvider.notifier)
-                        .removeSongById(song.id);
-                    await ref.read(libraryProvider.notifier).scan();
+                    await playback.removeSongById(song.id);
+                    await library.scan();
                     messenger.showSnackBar(
                       const SnackBar(
                         content: Text('Canción eliminada del dispositivo'),

@@ -43,10 +43,17 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
   StreamSubscription<DownloadCompletedEvent>? _completedSub;
   StreamSubscription<DownloadFailedEvent>? _failedSub;
 
+  // Se lee una sola vez y se guarda: `dispose()` lo necesita para parar la
+  // vista previa, y para entonces `ref` ya no es utilizable (el widget esta
+  // desmontandose). El motor vive fuera del widget, asi que sigue siendo
+  // valido en ese momento.
+  late final DownloadEngineBridge _bridge;
+
   @override
   void initState() {
     super.initState();
-    final bridge = ref.read(downloadEngineProvider);
+    _bridge = ref.read(downloadEngineProvider);
+    final bridge = _bridge;
     _completedSub = bridge.completed.listen((event) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
@@ -68,7 +75,7 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
   void dispose() {
     // La vista previa vive en un reproductor nativo aparte: si no se para
     // aqui, seguiria sonando despues de salir de esta pantalla.
-    ref.read(downloadEngineProvider).api.stopPreview();
+    _bridge.api.stopPreview();
     _controller.dispose();
     _completedSub?.cancel();
     _failedSub?.cancel();
