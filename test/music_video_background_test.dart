@@ -44,4 +44,50 @@ void main() {
       isNot(const MusicVideoBackgroundState.ready()),
     );
   });
+
+  group('MusicVideoTimeline', () {
+    test('salta una intro cinematográfica detectada por duración', () {
+      expect(
+        MusicVideoTimeline.positionMs(
+          audioPositionMs: 0,
+          audioDurationMs: 180000,
+          videoDurationMs: 192000,
+        ),
+        12000,
+      );
+      expect(
+        MusicVideoTimeline.positionMs(
+          audioPositionMs: 90000,
+          audioDurationMs: 180000,
+          videoDurationMs: 192000,
+        ),
+        102000,
+      );
+    });
+
+    test(
+      'mantiene el tiempo directo cuando la diferencia no es significativa',
+      () {
+        expect(
+          MusicVideoTimeline.positionMs(
+            audioPositionMs: 60000,
+            audioDurationMs: 180000,
+            videoDurationMs: 182000,
+          ),
+          60667,
+        );
+      },
+    );
+
+    test('no intenta buscar fuera de la duración disponible', () {
+      expect(
+        MusicVideoTimeline.positionMs(
+          audioPositionMs: 240000,
+          audioDurationMs: 180000,
+          videoDurationMs: 180000,
+        ),
+        179750,
+      );
+    });
+  });
 }

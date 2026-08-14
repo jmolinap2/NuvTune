@@ -6311,6 +6311,18 @@ class $AppSettingsTable extends AppSettings
         requiredDuringInsert: false,
         defaultValue: const Constant('right'),
       );
+  static const VerificationMeta _playerDensityMeta = const VerificationMeta(
+    'playerDensity',
+  );
+  @override
+  late final GeneratedColumn<String> playerDensity = GeneratedColumn<String>(
+    'player_density',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('normal'),
+  );
   static const VerificationMeta _playerGestureDoubleTapMeta =
       const VerificationMeta('playerGestureDoubleTap');
   @override
@@ -6418,6 +6430,7 @@ class $AppSettingsTable extends AppSettings
     playerControlPreset,
     playerControlLayoutJson,
     playerControlHandedness,
+    playerDensity,
     playerGestureDoubleTap,
     playerGestureSwipeTrack,
     playerGestureSwipeVolume,
@@ -6825,6 +6838,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('player_density')) {
+      context.handle(
+        _playerDensityMeta,
+        playerDensity.isAcceptableOrUnknown(
+          data['player_density']!,
+          _playerDensityMeta,
+        ),
+      );
+    }
     if (data.containsKey('player_gesture_double_tap')) {
       context.handle(
         _playerGestureDoubleTapMeta,
@@ -7050,6 +7072,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.string,
         data['${effectivePrefix}player_control_handedness'],
       )!,
+      playerDensity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_density'],
+      )!,
       playerGestureDoubleTap: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
         data['${effectivePrefix}player_gesture_double_tap'],
@@ -7146,6 +7172,13 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final String playerControlPreset;
   final String playerControlLayoutJson;
   final String playerControlHandedness;
+
+  /// Cuanto aire deja el reproductor: 'compact', 'normal' o 'spacious'. Ver
+  /// [PlayerDensity]. No guarda medidas en pixeles a proposito: el reparto de
+  /// altura lo recalcula el reproductor con la pantalla real, asi que una
+  /// preferencia hecha en un telefono no puede dejar los controles fuera de
+  /// pantalla en otro.
+  final String playerDensity;
   final bool playerGestureDoubleTap;
   final bool playerGestureSwipeTrack;
   final bool playerGestureSwipeVolume;
@@ -7196,6 +7229,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.playerControlPreset,
     required this.playerControlLayoutJson,
     required this.playerControlHandedness,
+    required this.playerDensity,
     required this.playerGestureDoubleTap,
     required this.playerGestureSwipeTrack,
     required this.playerGestureSwipeVolume,
@@ -7255,6 +7289,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['player_control_handedness'] = Variable<String>(
       playerControlHandedness,
     );
+    map['player_density'] = Variable<String>(playerDensity);
     map['player_gesture_double_tap'] = Variable<bool>(playerGestureDoubleTap);
     map['player_gesture_swipe_track'] = Variable<bool>(playerGestureSwipeTrack);
     map['player_gesture_swipe_volume'] = Variable<bool>(
@@ -7315,6 +7350,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerControlPreset: Value(playerControlPreset),
       playerControlLayoutJson: Value(playerControlLayoutJson),
       playerControlHandedness: Value(playerControlHandedness),
+      playerDensity: Value(playerDensity),
       playerGestureDoubleTap: Value(playerGestureDoubleTap),
       playerGestureSwipeTrack: Value(playerGestureSwipeTrack),
       playerGestureSwipeVolume: Value(playerGestureSwipeVolume),
@@ -7397,6 +7433,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerControlHandedness: serializer.fromJson<String>(
         json['playerControlHandedness'],
       ),
+      playerDensity: serializer.fromJson<String>(json['playerDensity']),
       playerGestureDoubleTap: serializer.fromJson<bool>(
         json['playerGestureDoubleTap'],
       ),
@@ -7466,6 +7503,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'playerControlHandedness': serializer.toJson<String>(
         playerControlHandedness,
       ),
+      'playerDensity': serializer.toJson<String>(playerDensity),
       'playerGestureDoubleTap': serializer.toJson<bool>(playerGestureDoubleTap),
       'playerGestureSwipeTrack': serializer.toJson<bool>(
         playerGestureSwipeTrack,
@@ -7525,6 +7563,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? playerControlPreset,
     String? playerControlLayoutJson,
     String? playerControlHandedness,
+    String? playerDensity,
     bool? playerGestureDoubleTap,
     bool? playerGestureSwipeTrack,
     bool? playerGestureSwipeVolume,
@@ -7580,6 +7619,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         playerControlLayoutJson ?? this.playerControlLayoutJson,
     playerControlHandedness:
         playerControlHandedness ?? this.playerControlHandedness,
+    playerDensity: playerDensity ?? this.playerDensity,
     playerGestureDoubleTap:
         playerGestureDoubleTap ?? this.playerGestureDoubleTap,
     playerGestureSwipeTrack:
@@ -7722,6 +7762,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerControlHandedness: data.playerControlHandedness.present
           ? data.playerControlHandedness.value
           : this.playerControlHandedness,
+      playerDensity: data.playerDensity.present
+          ? data.playerDensity.value
+          : this.playerDensity,
       playerGestureDoubleTap: data.playerGestureDoubleTap.present
           ? data.playerGestureDoubleTap.value
           : this.playerGestureDoubleTap,
@@ -7785,6 +7828,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('playerControlPreset: $playerControlPreset, ')
           ..write('playerControlLayoutJson: $playerControlLayoutJson, ')
           ..write('playerControlHandedness: $playerControlHandedness, ')
+          ..write('playerDensity: $playerDensity, ')
           ..write('playerGestureDoubleTap: $playerGestureDoubleTap, ')
           ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
           ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
@@ -7840,6 +7884,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     playerControlPreset,
     playerControlLayoutJson,
     playerControlHandedness,
+    playerDensity,
     playerGestureDoubleTap,
     playerGestureSwipeTrack,
     playerGestureSwipeVolume,
@@ -7894,6 +7939,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.playerControlPreset == this.playerControlPreset &&
           other.playerControlLayoutJson == this.playerControlLayoutJson &&
           other.playerControlHandedness == this.playerControlHandedness &&
+          other.playerDensity == this.playerDensity &&
           other.playerGestureDoubleTap == this.playerGestureDoubleTap &&
           other.playerGestureSwipeTrack == this.playerGestureSwipeTrack &&
           other.playerGestureSwipeVolume == this.playerGestureSwipeVolume &&
@@ -7946,6 +7992,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> playerControlPreset;
   final Value<String> playerControlLayoutJson;
   final Value<String> playerControlHandedness;
+  final Value<String> playerDensity;
   final Value<bool> playerGestureDoubleTap;
   final Value<bool> playerGestureSwipeTrack;
   final Value<bool> playerGestureSwipeVolume;
@@ -7996,6 +8043,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerControlPreset = const Value.absent(),
     this.playerControlLayoutJson = const Value.absent(),
     this.playerControlHandedness = const Value.absent(),
+    this.playerDensity = const Value.absent(),
     this.playerGestureDoubleTap = const Value.absent(),
     this.playerGestureSwipeTrack = const Value.absent(),
     this.playerGestureSwipeVolume = const Value.absent(),
@@ -8047,6 +8095,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerControlPreset = const Value.absent(),
     this.playerControlLayoutJson = const Value.absent(),
     this.playerControlHandedness = const Value.absent(),
+    this.playerDensity = const Value.absent(),
     this.playerGestureDoubleTap = const Value.absent(),
     this.playerGestureSwipeTrack = const Value.absent(),
     this.playerGestureSwipeVolume = const Value.absent(),
@@ -8098,6 +8147,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? playerControlPreset,
     Expression<String>? playerControlLayoutJson,
     Expression<String>? playerControlHandedness,
+    Expression<String>? playerDensity,
     Expression<bool>? playerGestureDoubleTap,
     Expression<bool>? playerGestureSwipeTrack,
     Expression<bool>? playerGestureSwipeVolume,
@@ -8164,6 +8214,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'player_control_layout_json': playerControlLayoutJson,
       if (playerControlHandedness != null)
         'player_control_handedness': playerControlHandedness,
+      if (playerDensity != null) 'player_density': playerDensity,
       if (playerGestureDoubleTap != null)
         'player_gesture_double_tap': playerGestureDoubleTap,
       if (playerGestureSwipeTrack != null)
@@ -8221,6 +8272,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? playerControlPreset,
     Value<String>? playerControlLayoutJson,
     Value<String>? playerControlHandedness,
+    Value<String>? playerDensity,
     Value<bool>? playerGestureDoubleTap,
     Value<bool>? playerGestureSwipeTrack,
     Value<bool>? playerGestureSwipeVolume,
@@ -8281,6 +8333,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           playerControlLayoutJson ?? this.playerControlLayoutJson,
       playerControlHandedness:
           playerControlHandedness ?? this.playerControlHandedness,
+      playerDensity: playerDensity ?? this.playerDensity,
       playerGestureDoubleTap:
           playerGestureDoubleTap ?? this.playerGestureDoubleTap,
       playerGestureSwipeTrack:
@@ -8450,6 +8503,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         playerControlHandedness.value,
       );
     }
+    if (playerDensity.present) {
+      map['player_density'] = Variable<String>(playerDensity.value);
+    }
     if (playerGestureDoubleTap.present) {
       map['player_gesture_double_tap'] = Variable<bool>(
         playerGestureDoubleTap.value,
@@ -8521,6 +8577,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('playerControlPreset: $playerControlPreset, ')
           ..write('playerControlLayoutJson: $playerControlLayoutJson, ')
           ..write('playerControlHandedness: $playerControlHandedness, ')
+          ..write('playerDensity: $playerDensity, ')
           ..write('playerGestureDoubleTap: $playerGestureDoubleTap, ')
           ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
           ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
@@ -12472,6 +12529,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> playerControlPreset,
       Value<String> playerControlLayoutJson,
       Value<String> playerControlHandedness,
+      Value<String> playerDensity,
       Value<bool> playerGestureDoubleTap,
       Value<bool> playerGestureSwipeTrack,
       Value<bool> playerGestureSwipeVolume,
@@ -12524,6 +12582,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> playerControlPreset,
       Value<String> playerControlLayoutJson,
       Value<String> playerControlHandedness,
+      Value<String> playerDensity,
       Value<bool> playerGestureDoubleTap,
       Value<bool> playerGestureSwipeTrack,
       Value<bool> playerGestureSwipeVolume,
@@ -12761,6 +12820,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get playerControlHandedness => $composableBuilder(
     column: $table.playerControlHandedness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playerDensity => $composableBuilder(
+    column: $table.playerDensity,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13019,6 +13083,11 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get playerDensity => $composableBuilder(
+    column: $table.playerDensity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<bool> get playerGestureDoubleTap => $composableBuilder(
     column: $table.playerGestureDoubleTap,
     builder: (column) => ColumnOrderings(column),
@@ -13270,6 +13339,11 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get playerDensity => $composableBuilder(
+    column: $table.playerDensity,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<bool> get playerGestureDoubleTap => $composableBuilder(
     column: $table.playerGestureDoubleTap,
     builder: (column) => column,
@@ -13367,6 +13441,7 @@ class $$AppSettingsTableTableManager
                 Value<String> playerControlPreset = const Value.absent(),
                 Value<String> playerControlLayoutJson = const Value.absent(),
                 Value<String> playerControlHandedness = const Value.absent(),
+                Value<String> playerDensity = const Value.absent(),
                 Value<bool> playerGestureDoubleTap = const Value.absent(),
                 Value<bool> playerGestureSwipeTrack = const Value.absent(),
                 Value<bool> playerGestureSwipeVolume = const Value.absent(),
@@ -13417,6 +13492,7 @@ class $$AppSettingsTableTableManager
                 playerControlPreset: playerControlPreset,
                 playerControlLayoutJson: playerControlLayoutJson,
                 playerControlHandedness: playerControlHandedness,
+                playerDensity: playerDensity,
                 playerGestureDoubleTap: playerGestureDoubleTap,
                 playerGestureSwipeTrack: playerGestureSwipeTrack,
                 playerGestureSwipeVolume: playerGestureSwipeVolume,
@@ -13469,6 +13545,7 @@ class $$AppSettingsTableTableManager
                 Value<String> playerControlPreset = const Value.absent(),
                 Value<String> playerControlLayoutJson = const Value.absent(),
                 Value<String> playerControlHandedness = const Value.absent(),
+                Value<String> playerDensity = const Value.absent(),
                 Value<bool> playerGestureDoubleTap = const Value.absent(),
                 Value<bool> playerGestureSwipeTrack = const Value.absent(),
                 Value<bool> playerGestureSwipeVolume = const Value.absent(),
@@ -13519,6 +13596,7 @@ class $$AppSettingsTableTableManager
                 playerControlPreset: playerControlPreset,
                 playerControlLayoutJson: playerControlLayoutJson,
                 playerControlHandedness: playerControlHandedness,
+                playerDensity: playerDensity,
                 playerGestureDoubleTap: playerGestureDoubleTap,
                 playerGestureSwipeTrack: playerGestureSwipeTrack,
                 playerGestureSwipeVolume: playerGestureSwipeVolume,

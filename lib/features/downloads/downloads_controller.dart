@@ -20,6 +20,17 @@ final downloadsControllerProvider =
       DownloadsController.new,
     );
 
+/// true si ya existe una sesion de YouTube guardada (ver
+/// `YouTubeLoginScreen`). Sin ella, YouTube exige "confirma que no eres un
+/// robot" y bloquea el audio real de casi cualquier video a un cliente
+/// anonimo (medido en el dispositivo, con el yt-dlp mas reciente disponible).
+/// `autoDispose` para que el estado se releea cada vez que se entra a la
+/// pantalla de busqueda, en vez de quedar obsoleto tras iniciar o cerrar
+/// sesion en otra pantalla.
+final youtubeLoginProvider = FutureProvider.autoDispose<bool>(
+  (ref) => ref.watch(downloadEngineProvider).api.hasYouTubeLogin(),
+);
+
 class DownloadTask {
   const DownloadTask({
     required this.downloadId,

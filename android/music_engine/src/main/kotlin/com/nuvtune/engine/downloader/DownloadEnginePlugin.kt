@@ -65,7 +65,8 @@ class DownloadEnginePlugin :
             val result = runCatching {
                 YtDlpEngine.search(query, limit.toInt()).map { entry ->
                     SearchResultItem(
-                        sourceUrl = "https://www.youtube.com/watch?v=${entry.videoId}",
+                        sourceUrl = entry.sourceUrl,
+                        platform = entry.platform,
                         title = entry.title,
                         author = entry.author,
                         thumbnailUrl = entry.thumbnailUrl,
@@ -146,6 +147,20 @@ class DownloadEnginePlugin :
 
     override fun currentExtractorVersion(): String? =
         YtDlpEngine.currentVersion(requireContext())
+
+    override fun hasYouTubeLogin(): Boolean = YouTubeCookieJar.hasLogin(requireContext())
+
+    override fun saveYouTubeCookies(callback: (Result<Boolean>) -> Unit) {
+        scope.launch {
+            val result = runCatching { YouTubeCookieJar.save(requireContext()) }
+                .onFailure { error -> Log.w(TAG, "saveYouTubeCookies fallo", error) }
+            callback(result)
+        }
+    }
+
+    override fun clearYouTubeLogin() {
+        YouTubeCookieJar.clear(requireContext())
+    }
 
     // ---------------------------------------------------------------------
     // DownloadEventBus.Listener (Kotlin -> Dart). BasicMessageChannel.send

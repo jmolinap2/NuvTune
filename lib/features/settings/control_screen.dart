@@ -7,6 +7,7 @@ import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/settings/player_control_layout.dart';
+import 'package:nuvtune/features/settings/player_density.dart';
 import 'package:nuvtune/features/settings/settings_components.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 
@@ -115,7 +116,37 @@ class ControlSettingsScreen extends ConsumerWidget {
               label: const Text('Editar controles visibles y orden'),
             ),
           ),
-          const SettingsSectionLabel('Gestos de pantalla completa'),
+          const SettingsSectionLabel('Densidad'),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(
+                  'El reproductor reparte la altura disponible solo, así que '
+                  'los controles nunca quedan fuera de pantalla. Esto ajusta '
+                  'cuánto aire deja alrededor.',
+                  style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
+                ),
+                const SizedBox(height: Tokens.space3),
+                SegmentedButton<PlayerDensity>(
+                  segments: [
+                    for (final option in PlayerDensity.values)
+                      ButtonSegment(value: option, label: Text(option.label)),
+                  ],
+                  selected: {PlayerDensity.byId(settings.playerDensity)},
+                  onSelectionChanged: (selection) => mutation.save(
+                    AppSettingsCompanion(
+                      playerDensity: Value(selection.first.id),
+                    ),
+                  ),
+                ),
+              ],
+            ),
+          ),
+          const SettingsSectionLabel('Gestos del reproductor'),
           SettingsGroup(
             children: [
               SwitchListTile(
@@ -140,7 +171,10 @@ class ControlSettingsScreen extends ConsumerWidget {
               SwitchListTile(
                 secondary: const Icon(Icons.volume_up_outlined),
                 title: const Text('Deslizar para ajustar volumen'),
-                subtitle: const Text('Movimiento vertical en el lado derecho.'),
+                subtitle: const Text(
+                  'Vertical sobre la portada; en pantalla completa, sobre el '
+                  'lado derecho.',
+                ),
                 value: settings.playerGestureSwipeVolume,
                 onChanged: (value) => mutation.save(
                   AppSettingsCompanion(playerGestureSwipeVolume: Value(value)),

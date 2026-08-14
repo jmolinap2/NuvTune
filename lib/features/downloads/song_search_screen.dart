@@ -198,14 +198,65 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
     context.push('/folder?path=${Uri.encodeQueryComponent(folder.key)}');
   }
 
+  Future<void> _openYoutubeLogin() async {
+    final result = await context.push<bool>('/downloads/youtube-login');
+    if (result == true) {
+      ref.invalidate(youtubeLoginProvider);
+    }
+  }
+
+  Future<void> _confirmLogout() async {
+    final navigator = Navigator.of(context);
+    final confirmed = await showDialog<bool>(
+      context: context,
+      builder: (dialogContext) => AlertDialog(
+        title: const Text('Cerrar sesión de YouTube'),
+        content: const Text(
+          'Las próximas búsquedas de YouTube volverán a comportarse como '
+          'si no hubieras iniciado sesión.',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancelar'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Cerrar sesión'),
+          ),
+        ],
+      ),
+    );
+    if (confirmed != true) return;
+    await ref.read(downloadEngineProvider).api.clearYouTubeLogin();
+    if (!mounted) return;
+    navigator.maybePop();
+    ref.invalidate(youtubeLoginProvider);
+  }
+
   @override
   Widget build(BuildContext context) {
     final downloads = ref.watch(downloadsControllerProvider);
+    final loggedIntoYoutube = ref.watch(youtubeLoginProvider).valueOrNull ?? false;
 
     return Scaffold(
       appBar: AppBar(
         title: const Text('Descargar música'),
         actions: [
+          IconButton(
+            tooltip: loggedIntoYoutube
+                ? 'Sesión de YouTube activa'
+                : 'Iniciar sesión de YouTube',
+            icon: Icon(
+              loggedIntoYoutube
+                  ? Icons.account_circle_rounded
+                  : Icons.account_circle_outlined,
+              color: loggedIntoYoutube
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+            ),
+            onPressed: loggedIntoYoutube ? _confirmLogout : _openYoutubeLogin,
+          ),
           IconButton(
             tooltip: 'Ver mis descargas',
             icon: const Icon(Icons.library_music_rounded),
@@ -338,11 +389,19 @@ class _SearchResultTile extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: [
-                        Text(
-                          result.title,
-                          maxLines: 2,
-                          overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.titleMedium,
+                        Row(
+                          children: [
+                            _PlatformBadge(platform: result.platform),
+                            const SizedBox(width: Tokens.space2),
+                            Expanded(
+                              child: Text(
+                                result.title,
+                                maxLines: 2,
+                                overflow: TextOverflow.ellipsis,
+                                style: Theme.of(context).textTheme.titleMedium,
+                              ),
+                            ),
+                          ],
                         ),
                         const SizedBox(height: Tokens.space1),
                         Text(
@@ -403,6 +462,41 @@ class _SearchResultTile extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Insignia de origen: YouTube tiene mejor catálogo pero puede pedir sesión
+/// iniciada; SoundCloud nunca la pide, a cambio de un catálogo más volcado a
+/// subidas de usuarios y covers que a la pista oficial.
+class _PlatformBadge extends StatelessWidget {
+  const _PlatformBadge({required this.platform});
+
+  final SourcePlatform platform;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    final (label, color) = switch (platform) {
+      SourcePlatform.youtube => ('YouTube', Colors.red),
+      SourcePlatform.soundcloud => ('SoundCloud', Colors.deepOrange),
+      SourcePlatform.tiktok => ('TikTok', Colors.black),
+      SourcePlatform.instagram => ('Instagram', Colors.purple),
+      SourcePlatform.facebook => ('Facebook', Colors.blue),
+      SourcePlatform.unknown => ('Desconocido', scheme.outline),
+    };
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(Tokens.radiusPill),
+        color: color.withValues(alpha: 0.16),
+      ),
+      child: Text(
+        label,
+        style: Theme.of(
+          context,
+        ).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
       ),
     );
   }

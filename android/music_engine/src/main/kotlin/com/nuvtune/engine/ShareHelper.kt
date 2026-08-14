@@ -52,25 +52,33 @@ internal class ShareHelper(
         launch(Intent.createChooser(intent, subject))
     }
 
-    /** Abre la ubicacion del archivo en un explorador del sistema. */
+    /**
+     * Abre la ubicacion del archivo en el explorador del sistema, posicionado
+     * en su carpeta.
+     *
+     * Antes se intentaba primero un `ACTION_VIEW` sobre el URI de documento de
+     * la carpeta y solo se recurria al selector si aquel fallaba. Medido en el
+     * dispositivo, ese primer intento es lo que rompia la funcion: el intent
+     * SI resuelve y DocumentsUI SI arranca -por eso [launch] devolvia true y el
+     * segundo camino no llegaba a ejecutarse nunca-, pero la actividad se
+     * destruye sola en el mismo instante porque nadie concedio permiso sobre
+     * ese URI, de modo que el usuario solo veia un parpadeo:
+     *
+     *     SmartPower: com.google.android.documentsui background->idle R(become invisible)
+     *     SurfaceFlinger: onHandleDestroyed: ... FilesActivity
+     *
+     * Queda un unico camino, el que se comprobo que se sostiene abierto. El
+     * URI inicial tiene que ser de arbol ([DocumentsContract.buildTreeDocumentUri]):
+     * `EXTRA_INITIAL_URI` ignora un URI de documento suelto y el selector abre
+     * en la raiz en vez de en la carpeta de la cancion.
+     */
     fun revealFile(songId: Long) {
         val song = library.songById(songId) ?: return
 
-        // ACTION_VIEW sobre el URI de audio abre un reproductor, no la carpeta.
-        // Los exploradores de Android entienden en cambio el URI de documento
-        // del directorio. Si el fabricante no ofrece esa accion, abrimos el
-        // selector del sistema ya posicionado en la carpeta como alternativa.
-        val folderUri = documentUriForFolder(song.folderPath)
-        val viewFolder = folderUri?.let { uri ->
-            Intent(Intent.ACTION_VIEW).apply {
-                setDataAndType(uri, DocumentsContract.Document.MIME_TYPE_DIR)
-                addFlags(Intent.FLAG_GRANT_READ_URI_PERMISSION)
-            }
-        }
-        if (viewFolder != null && launch(viewFolder)) return
-
         val browseFolder = Intent(Intent.ACTION_OPEN_DOCUMENT_TREE).apply {
-            folderUri?.let { putExtra(DocumentsContract.EXTRA_INITIAL_URI, it) }
+            treeUriForFolder(song.folderPath)?.let {
+                putExtra(DocumentsContract.EXTRA_INITIAL_URI, it)
+            }
         }
         if (!launch(browseFolder)) {
             PlaybackStateHolder.publishError(
@@ -105,7 +113,7 @@ internal class ShareHelper(
         return MediaStore.createDeleteRequest(context.contentResolver, uris).intentSender
     }
 
-    private fun documentUriForFolder(folderPath: String): Uri? {
+    private fun treeUriForFolder(folderPath: String): Uri? {
         val normalized = File(folderPath).absolutePath.replace('\\', '/')
         val externalPrefix = "/storage/emulated/0/"
         val documentId = when {
@@ -120,7 +128,7 @@ internal class ShareHelper(
             }
             else -> return null
         }.trimEnd('/')
-        return DocumentsContract.buildDocumentUri(
+        return DocumentsContract.buildTreeDocumentUri(
             "com.android.externalstorage.documents",
             documentId,
         )

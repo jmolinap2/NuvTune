@@ -391,6 +391,14 @@ class AppSettings extends Table {
   )();
   TextColumn get playerControlHandedness =>
       text().withDefault(const Constant('right'))();
+
+  /// Cuanto aire deja el reproductor: 'compact', 'normal' o 'spacious'. Ver
+  /// [PlayerDensity]. No guarda medidas en pixeles a proposito: el reparto de
+  /// altura lo recalcula el reproductor con la pantalla real, asi que una
+  /// preferencia hecha en un telefono no puede dejar los controles fuera de
+  /// pantalla en otro.
+  TextColumn get playerDensity =>
+      text().withDefault(const Constant('normal'))();
   BoolColumn get playerGestureDoubleTap =>
       boolean().withDefault(const Constant(true))();
   BoolColumn get playerGestureSwipeTrack =>
@@ -433,7 +441,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 12;
+  int get schemaVersion => 13;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -560,6 +568,9 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
       }
       if (from < 12) {
         await migrator.addColumn(playlists, playlists.giftId);
+      }
+      if (from < 13) {
+        await migrator.addColumn(appSettings, appSettings.playerDensity);
       }
     },
   );

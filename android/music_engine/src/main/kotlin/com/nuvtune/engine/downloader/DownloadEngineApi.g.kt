@@ -200,7 +200,8 @@ enum class SourcePlatform(val raw: Int) {
   INSTAGRAM(1),
   FACEBOOK(2),
   YOUTUBE(3),
-  UNKNOWN(4);
+  SOUNDCLOUD(4),
+  UNKNOWN(5);
 
   companion object {
     fun ofRaw(raw: Int): SourcePlatform? {
@@ -426,6 +427,11 @@ data class AnalysisResult (
  */
 data class SearchResultItem (
   val sourceUrl: String,
+  /**
+   * De donde viene este resultado, para que la interfaz muestre una
+   * insignia y el usuario sepa si hara falta iniciar sesion de YouTube.
+   */
+  val platform: SourcePlatform,
   val title: String,
   val author: String? = null,
   val thumbnailUrl: String? = null,
@@ -435,16 +441,18 @@ data class SearchResultItem (
   companion object {
     fun fromList(pigeonVar_list: List<Any?>): SearchResultItem {
       val sourceUrl = pigeonVar_list[0] as String
-      val title = pigeonVar_list[1] as String
-      val author = pigeonVar_list[2] as String?
-      val thumbnailUrl = pigeonVar_list[3] as String?
-      val durationSeconds = pigeonVar_list[4] as Long
-      return SearchResultItem(sourceUrl, title, author, thumbnailUrl, durationSeconds)
+      val platform = pigeonVar_list[1] as SourcePlatform
+      val title = pigeonVar_list[2] as String
+      val author = pigeonVar_list[3] as String?
+      val thumbnailUrl = pigeonVar_list[4] as String?
+      val durationSeconds = pigeonVar_list[5] as Long
+      return SearchResultItem(sourceUrl, platform, title, author, thumbnailUrl, durationSeconds)
     }
   }
   fun toList(): List<Any?> {
     return listOf(
       sourceUrl,
+      platform,
       title,
       author,
       thumbnailUrl,
@@ -459,12 +467,13 @@ data class SearchResultItem (
       return true
     }
     val other = other as SearchResultItem
-    return DownloadEngineApiPigeonUtils.deepEquals(this.sourceUrl, other.sourceUrl) && DownloadEngineApiPigeonUtils.deepEquals(this.title, other.title) && DownloadEngineApiPigeonUtils.deepEquals(this.author, other.author) && DownloadEngineApiPigeonUtils.deepEquals(this.thumbnailUrl, other.thumbnailUrl) && DownloadEngineApiPigeonUtils.deepEquals(this.durationSeconds, other.durationSeconds)
+    return DownloadEngineApiPigeonUtils.deepEquals(this.sourceUrl, other.sourceUrl) && DownloadEngineApiPigeonUtils.deepEquals(this.platform, other.platform) && DownloadEngineApiPigeonUtils.deepEquals(this.title, other.title) && DownloadEngineApiPigeonUtils.deepEquals(this.author, other.author) && DownloadEngineApiPigeonUtils.deepEquals(this.thumbnailUrl, other.thumbnailUrl) && DownloadEngineApiPigeonUtils.deepEquals(this.durationSeconds, other.durationSeconds)
   }
 
   override fun hashCode(): Int {
     var result = javaClass.hashCode()
     result = 31 * result + DownloadEngineApiPigeonUtils.deepHash(this.sourceUrl)
+    result = 31 * result + DownloadEngineApiPigeonUtils.deepHash(this.platform)
     result = 31 * result + DownloadEngineApiPigeonUtils.deepHash(this.title)
     result = 31 * result + DownloadEngineApiPigeonUtils.deepHash(this.author)
     result = 31 * result + DownloadEngineApiPigeonUtils.deepHash(this.thumbnailUrl)
@@ -472,7 +481,7 @@ data class SearchResultItem (
     return result
   }
   override fun toString(): String {
-    return "SearchResultItem(sourceUrl=$sourceUrl, title=$title, author=$author, thumbnailUrl=$thumbnailUrl, durationSeconds=$durationSeconds)"
+    return "SearchResultItem(sourceUrl=$sourceUrl, platform=$platform, title=$title, author=$author, thumbnailUrl=$thumbnailUrl, durationSeconds=$durationSeconds)"
   }
 }
 
@@ -732,6 +741,25 @@ interface DownloadEngineHostApi {
   fun cancelDownload(downloadId: String)
   fun updateExtractor(callback: (Result<ExtractorUpdateResult>) -> Unit)
   fun currentExtractorVersion(): String?
+  /**
+   * true si ya existe una sesion de YouTube guardada (requerimiento: sin
+   * ella, YouTube exige "confirma que no eres un robot" y bloquea el audio
+   * real de casi todos los videos, medido en el dispositivo).
+   */
+  fun hasYouTubeLogin(): Boolean
+  /**
+   * Lee las cookies de la sesion activa en el WebView de inicio de sesion
+   * (android.webkit.CookieManager, compartido por toda la app) y las guarda
+   * en almacenamiento interno para que yt-dlp las use con `--cookies`.
+   * Devuelve true solo si encontro cookies de autenticacion reales (no basta
+   * con que el usuario haya abierto la pagina).
+   */
+  fun saveYouTubeCookies(callback: (Result<Boolean>) -> Unit)
+  /**
+   * Borra la sesion guardada y las cookies del WebView, para que un
+   * siguiente inicio de sesion vuelva a pedir usuario y contrasena.
+   */
+  fun clearYouTubeLogin()
 
   companion object {
     /** The codec used by DownloadEngineHostApi. */
@@ -895,6 +923,55 @@ interface DownloadEngineHostApi {
           channel.setMessageHandler { _, reply ->
             val wrapped: List<Any?> = try {
               listOf(api.currentExtractorVersion())
+            } catch (exception: Throwable) {
+              DownloadEngineApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.hasYouTubeLogin$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              listOf(api.hasYouTubeLogin())
+            } catch (exception: Throwable) {
+              DownloadEngineApiPigeonUtils.wrapError(exception)
+            }
+            reply.reply(wrapped)
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.saveYouTubeCookies$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            api.saveYouTubeCookies{ result: Result<Boolean> ->
+              val error = result.exceptionOrNull()
+              if (error != null) {
+                reply.reply(DownloadEngineApiPigeonUtils.wrapError(error))
+              } else {
+                val data = result.getOrNull()
+                reply.reply(DownloadEngineApiPigeonUtils.wrapResult(data))
+              }
+            }
+          }
+        } else {
+          channel.setMessageHandler(null)
+        }
+      }
+      run {
+        val channel = BasicMessageChannel<Any?>(binaryMessenger, "dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.clearYouTubeLogin$separatedMessageChannelSuffix", codec)
+        if (api != null) {
+          channel.setMessageHandler { _, reply ->
+            val wrapped: List<Any?> = try {
+              api.clearYouTubeLogin()
+              listOf(null)
             } catch (exception: Throwable) {
               DownloadEngineApiPigeonUtils.wrapError(exception)
             }

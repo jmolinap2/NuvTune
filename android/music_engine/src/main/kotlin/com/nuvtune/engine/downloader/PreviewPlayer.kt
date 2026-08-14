@@ -52,7 +52,19 @@ internal class PreviewPlayer(private val context: Context) {
                     DefaultMediaSourceFactory(context).setDataSourceFactory(
                         DefaultHttpDataSource.Factory()
                             .setAllowCrossProtocolRedirects(true)
-                            .setUserAgent(BROWSER_USER_AGENT),
+                            .setConnectTimeoutMs(PREVIEW_HTTP_TIMEOUT_MS)
+                            .setReadTimeoutMs(PREVIEW_HTTP_TIMEOUT_MS)
+                            .setUserAgent(BROWSER_USER_AGENT)
+                            // yt-dlp entrega una URL de Googlevideo de corta
+                            // vida. Ese CDN puede exigir el mismo origen de
+                            // YouTube que usó el extractor; HttpURLConnection
+                            // no lo añade por sí solo.
+                            .setDefaultRequestProperties(
+                                mapOf(
+                                    "Referer" to "https://www.youtube.com/",
+                                    "Origin" to "https://www.youtube.com/",
+                                ),
+                            ),
                     ),
                 )
                 .build()
@@ -108,6 +120,7 @@ internal class PreviewPlayer(private val context: Context) {
 
     companion object {
         private const val PREVIEW_LIMIT_MS = 45_000L
+        private const val PREVIEW_HTTP_TIMEOUT_MS = 10_000
         private const val BROWSER_USER_AGENT =
             "Mozilla/5.0 (Linux; Android 13) AppleWebKit/537.36 Chrome/120 Mobile Safari/537.36"
     }

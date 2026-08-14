@@ -21,6 +21,9 @@ object UrlValidator {
     private val youtubeHosts = setOf(
         "youtube.com", "www.youtube.com", "m.youtube.com", "music.youtube.com", "youtu.be",
     )
+    private val soundcloudHosts = setOf(
+        "soundcloud.com", "www.soundcloud.com", "m.soundcloud.com", "on.soundcloud.com",
+    )
 
     fun platformFor(url: String): SourcePlatform {
         val host = hostOf(url) ?: return SourcePlatform.UNKNOWN
@@ -29,6 +32,7 @@ object UrlValidator {
             instagramHosts.contains(host) -> SourcePlatform.INSTAGRAM
             facebookHosts.contains(host) -> SourcePlatform.FACEBOOK
             youtubeHosts.contains(host) -> SourcePlatform.YOUTUBE
+            soundcloudHosts.contains(host) -> SourcePlatform.SOUNDCLOUD
             else -> SourcePlatform.UNKNOWN
         }
     }

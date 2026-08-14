@@ -4,7 +4,7 @@ import 'package:nuvtune/data/db/database.dart';
 
 void main() {
   test(
-    'migración 10 a 12 conserva ajustes y añade controles y regalos',
+    'migración 10 a 13 conserva ajustes y añade controles, regalos y densidad',
     () async {
       final executor = NativeDatabase.memory(
         setup: (raw) {
@@ -35,6 +35,10 @@ void main() {
       expect(settings.playerGestureSwipeTrack, isTrue);
       expect(settings.playerGestureSwipeVolume, isTrue);
       expect(settings.playerGestureSwipeDismiss, isTrue);
+      // La densidad llega con la migración 13. Un reproductor sin este valor
+      // no sabría repartir la altura, así que el defecto tiene que existir
+      // para una base de datos que nunca lo vio.
+      expect(settings.playerDensity, 'normal');
       final playlist = await database.select(database.playlists).getSingle();
       expect(playlist.name, 'Sin perder');
       expect(playlist.giftId, isNull);

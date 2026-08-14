@@ -77,6 +77,7 @@ $Adb = Resolve-Tool -Name 'adb' -Candidates @(
 
 $Flutter = Resolve-Tool -Name 'flutter' -Candidates @(
     'C:\Users\USER\flutter\bin\flutter.bat',
+    'C:\Users\USER\fvm\versions\3.41.9\bin\flutter.bat',
     'C:\flutter\bin\flutter.bat',
     'C:\src\flutter\bin\flutter.bat'
 )

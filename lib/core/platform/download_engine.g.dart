@@ -112,6 +112,7 @@ enum SourcePlatform {
   instagram,
   facebook,
   youtube,
+  soundcloud,
   unknown,
 }
 
@@ -349,6 +350,7 @@ class AnalysisResult {
 class SearchResultItem {
   SearchResultItem({
     required this.sourceUrl,
+    required this.platform,
     required this.title,
     this.author,
     this.thumbnailUrl,
@@ -356,6 +358,10 @@ class SearchResultItem {
   });
 
   String sourceUrl;
+
+  /// De donde viene este resultado, para que la interfaz muestre una
+  /// insignia y el usuario sepa si hara falta iniciar sesion de YouTube.
+  SourcePlatform platform;
 
   String title;
 
@@ -368,6 +374,7 @@ class SearchResultItem {
   List<Object?> _toList() {
     return <Object?>[
       sourceUrl,
+      platform,
       title,
       author,
       thumbnailUrl,
@@ -382,10 +389,11 @@ class SearchResultItem {
     result as List<Object?>;
     return SearchResultItem(
       sourceUrl: result[0]! as String,
-      title: result[1]! as String,
-      author: result[2] as String?,
-      thumbnailUrl: result[3] as String?,
-      durationSeconds: result[4]! as int,
+      platform: result[1]! as SourcePlatform,
+      title: result[2]! as String,
+      author: result[3] as String?,
+      thumbnailUrl: result[4] as String?,
+      durationSeconds: result[5]! as int,
     );
   }
 
@@ -398,7 +406,7 @@ class SearchResultItem {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUrl, other.sourceUrl) && _deepEquals(title, other.title) && _deepEquals(author, other.author) && _deepEquals(thumbnailUrl, other.thumbnailUrl) && _deepEquals(durationSeconds, other.durationSeconds);
+    return _deepEquals(sourceUrl, other.sourceUrl) && _deepEquals(platform, other.platform) && _deepEquals(title, other.title) && _deepEquals(author, other.author) && _deepEquals(thumbnailUrl, other.thumbnailUrl) && _deepEquals(durationSeconds, other.durationSeconds);
   }
 
   @override
@@ -407,7 +415,7 @@ class SearchResultItem {
 
   @override
   String toString() {
-    return 'SearchResultItem(sourceUrl: $sourceUrl, title: $title, author: $author, thumbnailUrl: $thumbnailUrl, durationSeconds: $durationSeconds)';
+    return 'SearchResultItem(sourceUrl: $sourceUrl, platform: $platform, title: $title, author: $author, thumbnailUrl: $thumbnailUrl, durationSeconds: $durationSeconds)';
   }
 }
 
@@ -823,6 +831,72 @@ class DownloadEngineHostApi {
     )
     ;
     return pigeonVar_replyValue as String?;
+  }
+
+  /// true si ya existe una sesion de YouTube guardada (requerimiento: sin
+  /// ella, YouTube exige "confirma que no eres un robot" y bloquea el audio
+  /// real de casi todos los videos, medido en el dispositivo).
+  Future<bool> hasYouTubeLogin() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.hasYouTubeLogin$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
+  /// Lee las cookies de la sesion activa en el WebView de inicio de sesion
+  /// (android.webkit.CookieManager, compartido por toda la app) y las guarda
+  /// en almacenamiento interno para que yt-dlp las use con `--cookies`.
+  /// Devuelve true solo si encontro cookies de autenticacion reales (no basta
+  /// con que el usuario haya abierto la pagina).
+  Future<bool> saveYouTubeCookies() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.saveYouTubeCookies$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: false,
+    )
+    ;
+    return pigeonVar_replyValue! as bool;
+  }
+
+  /// Borra la sesion guardada y las cookies del WebView, para que un
+  /// siguiente inicio de sesion vuelva a pedir usuario y contrasena.
+  Future<void> clearYouTubeLogin() async {
+    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.clearYouTubeLogin$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channel = BasicMessageChannel<Object?>(
+      pigeonVar_channelName,
+      pigeonChannelCodec,
+      binaryMessenger: pigeonVar_binaryMessenger,
+    );
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(null);
+    final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
+
+    _extractReplyValueOrThrow(
+        pigeonVar_replyList,
+        pigeonVar_channelName,
+        isNullValid: true,
+    )
+    ;
   }
 }
 

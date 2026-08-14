@@ -4,6 +4,7 @@ import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/navigation/root_shell.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/downloads/song_search_screen.dart';
+import 'package:nuvtune/features/downloads/youtube_login_screen.dart';
 import 'package:nuvtune/features/equalizer/equalizer_screen.dart';
 import 'package:nuvtune/features/home/home_screen.dart';
 import 'package:nuvtune/features/library/library_screen.dart';
@@ -246,6 +247,11 @@ GoRouter createRouter() {
         path: '/downloads',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const SongSearchScreen(),
+      ),
+      GoRoute(
+        path: '/downloads/youtube-login',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const YouTubeLoginScreen(),
       ),
 
       GoRoute(

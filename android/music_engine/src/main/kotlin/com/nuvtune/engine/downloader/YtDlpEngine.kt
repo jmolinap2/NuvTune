@@ -6,6 +6,7 @@ import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
 import com.yausername.youtubedl_android.mapper.VideoFormat
 import com.yausername.youtubedl_android.mapper.VideoInfo
+import java.io.File
 import java.io.IOException
 import java.net.UnknownHostException
 
@@ -20,6 +21,23 @@ object YtDlpEngine {
     @Volatile
     private var initialized = false
 
+    /**
+     * Valor de `--js-runtimes`, resuelto una sola vez en [initialize].
+     *
+     * youtubedl-android empaqueta QuickJS como `libqjs.so`, pero yt-dlp solo
+     * habilita `deno` por defecto, de modo que nunca lo encontraba y trabajaba
+     * "sin runtime de JavaScript". Medido en el dispositivo: sin esto, YouTube
+     * fuerza SABR, descarta los formatos directos y `-g` termina devolviendo un
+     * manifiesto HLS (que ExoPlayer no puede leer: responde 403) o directamente
+     * "Sign in to confirm you're not a bot". Con QuickJS habilitado, el mismo
+     * video resuelve a un itag de audio directo de forma estable.
+     */
+    @Volatile
+    private var jsRuntime: String? = null
+
+    /** Guardado en [initialize]; lo necesitan las cookies de YouTube. */
+    private lateinit var appContext: Context
+
     // Bitrates fijos ofrecidos para la extraccion de audio. NuvTune solo
     // descarga audio (a diferencia de NuvClip, que tambien ofrece video), asi
     // que estos son los unicos formatos que la app realmente usa.
@@ -28,10 +46,26 @@ object YtDlpEngine {
     @Synchronized
     fun initialize(context: Context) {
         if (initialized) return
-        val appContext = context.applicationContext
+        appContext = context.applicationContext
         YoutubeDL.getInstance().init(appContext)
         FFmpeg.getInstance().init(appContext)
+        jsRuntime = resolveQuickJs(appContext)
         initialized = true
+    }
+
+    /**
+     * Android solo permite ejecutar binarios desde `nativeLibraryDir`, que es
+     * justo donde el empaquetado heredado (`useLegacyPackaging = true`) deja
+     * `libqjs.so`. Si no estuviera, el APK esta mal armado: se falla aqui en
+     * vez de seguir sin runtime y acabar en un "actualiza el motor" enganoso.
+     */
+    private fun resolveQuickJs(context: Context): String {
+        val binary = File(context.applicationInfo.nativeLibraryDir, QUICK_JS_LIB_NAME)
+        check(binary.canExecute()) {
+            "$QUICK_JS_LIB_NAME no es ejecutable en ${binary.parent}: " +
+                "el APK no incluye el runtime de JavaScript que YouTube exige"
+        }
+        return "quickjs:${binary.absolutePath}"
     }
 
     fun assertInitialized() {
@@ -44,11 +78,12 @@ object YtDlpEngine {
     /**
      * Resultado liviano de una busqueda por texto: yt-dlp no tiene un tipo
      * "resultado de busqueda", asi que esto se arma a mano leyendo el JSON
-     * crudo de `ytsearchN:` (ver [search]) en vez de la clase [VideoInfo],
+     * crudo de cada buscador (ver [search]) en vez de la clase [VideoInfo],
      * que no modela listas de resultados (no tiene campo `entries`).
      */
     data class SearchEntry(
-        val videoId: String,
+        val sourceUrl: String,
+        val platform: SourcePlatform,
         val title: String,
         val author: String?,
         val thumbnailUrl: String?,
@@ -56,20 +91,44 @@ object YtDlpEngine {
     )
 
     /**
-     * Busca en YouTube por texto libre usando el pseudo-URL `ytsearchN:` que
-     * entiende yt-dlp nativamente. Se usa `--flat-playlist` para que sea
-     * rapido (un solo listado, sin analizar cada resultado a fondo); el
-     * resultado elegido se analiza despues con [analyze] sobre su URL real.
+     * Busca en YouTube y SoundCloud a la vez y combina los resultados.
      *
-     * La clase tipada [VideoInfo] de youtubedl-android no expone un campo de
-     * entradas de lista/busqueda, asi que aqui se ejecuta el comando crudo y
-     * se lee el JSON con el `ObjectMapper` que la propia libreria expone,
-     * en vez de forzar un mapeo que la libreria no ofrece.
+     * YouTube exige ahora sesion iniciada para entregar el audio real de casi
+     * cualquier video a un cliente anonimo (SABR + PO token); sin sesion,
+     * `analyzeUrl`/`startDownload` fallan con "confirma que no eres un robot"
+     * la mayoria de las veces (medido en el dispositivo, incluso con el
+     * yt-dlp mas reciente disponible). SoundCloud no impone esa barrera, asi
+     * que sus resultados sirven de respaldo inmediato aunque el usuario no
+     * haya iniciado sesion — a cambio de un catalogo mas volcado a subidas de
+     * usuarios y covers que a la pista oficial.
+     *
+     * Cada fuente se aisla con `runCatching`: si una falla (red, formato
+     * inesperado), la otra igual entrega resultados en vez de que la
+     * busqueda entera quede en cero.
      */
     fun search(query: String, limit: Int): List<SearchEntry> {
         assertInitialized()
         val safeLimit = limit.coerceIn(1, 25)
-        val request = YoutubeDLRequest("ytsearch$safeLimit:${query.trim()}")
+        val youtubeLimit = (safeLimit + 1) / 2
+        val soundcloudLimit = safeLimit - youtubeLimit
+
+        val results = ArrayList<SearchEntry>()
+        results += runCatching { searchYoutube(query, youtubeLimit) }.getOrElse { emptyList() }
+        results += runCatching { searchSoundCloud(query, soundcloudLimit) }.getOrElse { emptyList() }
+        return results
+    }
+
+    /**
+     * `ytsearchN:` es el pseudo-URL que entiende yt-dlp nativamente. Se usa
+     * `--flat-playlist` para que sea rapido (un solo listado, sin analizar
+     * cada resultado a fondo): el `id` de cada entrada basta para reconstruir
+     * una URL publica y estable (`watch?v=`), que se resuelve de verdad
+     * despues con [analyze] cuando el usuario elige un resultado.
+     */
+    private fun searchYoutube(query: String, limit: Int): List<SearchEntry> {
+        if (limit <= 0) return emptyList()
+        val request = YoutubeDLRequest("ytsearch$limit:${query.trim()}")
+        applyCommonOptions(request)
         request.addOption("--flat-playlist")
         request.addOption("-J")
         request.addOption("--no-warnings")
@@ -83,7 +142,43 @@ object YtDlpEngine {
             val id = entry.get("id")?.asText()?.takeIf { it.isNotBlank() } ?: continue
             results.add(
                 SearchEntry(
-                    videoId = id,
+                    sourceUrl = "https://www.youtube.com/watch?v=$id",
+                    platform = SourcePlatform.YOUTUBE,
+                    title = entry.get("title")?.asText()?.takeIf { it.isNotBlank() } ?: "Sin título",
+                    author = entry.get("uploader")?.asText(),
+                    thumbnailUrl = entry.get("thumbnail")?.asText(),
+                    durationSeconds = entry.get("duration")?.asLong() ?: 0L,
+                )
+            )
+        }
+        return results
+    }
+
+    /**
+     * A diferencia de YouTube, aqui NO se usa `--flat-playlist`: sus entradas
+     * "planas" traen una URL interna (`api.soundcloud.com/tracks/...`) que
+     * falla con 401 al reutilizarla despues en `analyzeUrl`/`startPreview`
+     * (medido en el dispositivo). Se paga la resolucion completa de cada
+     * resultado para que `webpage_url` sea la URL publica reutilizable.
+     */
+    private fun searchSoundCloud(query: String, limit: Int): List<SearchEntry> {
+        if (limit <= 0) return emptyList()
+        val request = YoutubeDLRequest("scsearch$limit:${query.trim()}")
+        applyCommonOptions(request)
+        request.addOption("-J")
+        request.addOption("--no-warnings")
+
+        val response = YoutubeDL.getInstance().execute(request)
+        val root = YoutubeDL.getInstance().objectMapper.readTree(response.out)
+        val entries = root?.get("entries") ?: return emptyList()
+
+        val results = ArrayList<SearchEntry>()
+        for (entry in entries) {
+            val url = entry.get("webpage_url")?.asText()?.takeIf { it.isNotBlank() } ?: continue
+            results.add(
+                SearchEntry(
+                    sourceUrl = url,
+                    platform = SourcePlatform.SOUNDCLOUD,
                     title = entry.get("title")?.asText()?.takeIf { it.isNotBlank() } ?: "Sin título",
                     author = entry.get("uploader")?.asText(),
                     thumbnailUrl = entry.get("thumbnail")?.asText(),
@@ -102,6 +197,7 @@ object YtDlpEngine {
     fun analyze(url: String): VideoInfo {
         assertInitialized()
         val request = YoutubeDLRequest(url)
+        applyCommonOptions(request)
         // Un enlace a un perfil o a un "reel" dentro de una coleccion no debe
         // arrastrar toda la lista: el usuario eligio un video, no una cuenta.
         request.addOption("--no-playlist")
@@ -131,6 +227,7 @@ object YtDlpEngine {
     fun audioStreamUrl(sourceUrl: String): String? {
         assertInitialized()
         val request = YoutubeDLRequest(sourceUrl)
+        applyCommonOptions(request)
         request.addOption("--no-playlist")
         request.addOption("--no-warnings")
         request.addOption("-f", "bestaudio/best")
@@ -172,6 +269,7 @@ object YtDlpEngine {
 
     fun buildDownloadRequest(sourceUrl: String, formatId: String, outputPath: String): YoutubeDLRequest {
         val request = YoutubeDLRequest(sourceUrl)
+        applyCommonOptions(request)
         request.addOption("--no-playlist")
         val kbps = formatId.removePrefix("audio-").toIntOrNull() ?: audioQualityKbps.last()
         // "-f bestaudio/best" deja que yt-dlp elija la mejor fuente de audio
@@ -191,6 +289,34 @@ object YtDlpEngine {
         request.addOption("-o", outputPath)
         return request
     }
+
+    /**
+     * Opciones que necesita **toda** invocacion de yt-dlp. Viven en un unico
+     * sitio a proposito: una ruta que se quede sin el runtime de JavaScript
+     * vuelve a caer en el fallo de SABR/HLS que costo diagnosticar.
+     *
+     * Los limites de red los aplica el propio extractor (no una espera
+     * externa): si el CDN deja una conexion a medio abrir, el proceso nativo
+     * termina con su diagnostico real y se puede clasificar, en vez de quedarse
+     * colgado sin que la vista previa ni el servicio puedan responder.
+     */
+    private fun applyCommonOptions(request: YoutubeDLRequest) {
+        request.addOption("--js-runtimes", jsRuntime ?: resolveQuickJsOrFail())
+        request.addOption("--socket-timeout", SOCKET_TIMEOUT_SECONDS.toString())
+        request.addOption("--retries", NETWORK_RETRIES.toString())
+        request.addOption("--fragment-retries", NETWORK_RETRIES.toString())
+        request.addOption("--extractor-retries", NETWORK_RETRIES.toString())
+        // No se cachea junto a jsRuntime: el usuario puede iniciar sesion (o
+        // cerrarla) en cualquier momento de la sesion de la app, y cada
+        // llamada debe ver el estado actual, no el de cuando se inicializo
+        // el motor. Es un simple chequeo de archivo, no una llamada de red.
+        if (YouTubeCookieJar.hasLogin(appContext)) {
+            request.addOption("--cookies", YouTubeCookieJar.file(appContext).absolutePath)
+        }
+    }
+
+    private fun resolveQuickJsOrFail(): String =
+        error("YtDlpEngine.initialize() no se ha llamado todavia")
 
     @Synchronized
     fun updateExtractor(context: Context): Pair<Boolean, String?> {
@@ -222,11 +348,25 @@ object YtDlpEngine {
             text.contains("not available in your country") || text.contains("geo-restricted") ||
                 text.contains("blocked it in your country") -> DownloadErrorCode.REGION_RESTRICTED
             text.contains("unable to extract") || text.contains("unable to parse") ||
-                text.contains("failed to parse json") -> DownloadErrorCode.EXTRACTOR_OUTDATED
+                text.contains("failed to parse json") ||
+                text.contains("signature") -> DownloadErrorCode.EXTRACTOR_OUTDATED
+            // El anti-bot y el 429 son limitaciones temporales de YouTube, no
+            // un extractor viejo: mandarlos a EXTRACTOR_OUTDATED hacia que la
+            // app pidiera "actualizar el motor de descarga", que no arregla
+            // nada. Se busca "not a bot" y no "you're not a bot" porque yt-dlp
+            // escribe un apostrofo tipografico (U+2019), no el ASCII.
+            text.contains("not a bot") || text.contains("too many requests") ||
+                text.contains("http error 429") -> DownloadErrorCode.FETCH_FAILED
             text.contains("unable to download webpage") || text.contains("http error 404") ||
                 text.contains("http error 403") -> DownloadErrorCode.FETCH_FAILED
             text.contains("no space left") -> DownloadErrorCode.INSUFFICIENT_STORAGE
             else -> DownloadErrorCode.UNKNOWN
         }
     }
+
+    private const val SOCKET_TIMEOUT_SECONDS = 15
+    private const val NETWORK_RETRIES = 1
+
+    /** Nombre con el que youtubedl-android empaqueta el binario de QuickJS. */
+    private const val QUICK_JS_LIB_NAME = "libqjs.so"
 }

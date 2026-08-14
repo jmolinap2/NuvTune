@@ -309,6 +309,7 @@ class _DownloadDetailsSheetState extends ConsumerState<DownloadDetailsSheet> {
 
   String _platformLabel(SourcePlatform platform) => switch (platform) {
     SourcePlatform.youtube => 'YouTube',
+    SourcePlatform.soundcloud => 'SoundCloud',
     SourcePlatform.tiktok => 'TikTok',
     SourcePlatform.instagram => 'Instagram',
     SourcePlatform.facebook => 'Facebook',

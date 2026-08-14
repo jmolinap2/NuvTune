@@ -19,7 +19,7 @@ import 'package:pigeon/pigeon.dart';
     dartPackageName: 'nuvtune',
   ),
 )
-enum SourcePlatform { tiktok, instagram, facebook, youtube, unknown }
+enum SourcePlatform { tiktok, instagram, facebook, youtube, soundcloud, unknown }
 
 /// Clasificacion tecnica del fallo. El mensaje exacto que ve el usuario vive
 /// en Dart, no aqui: Kotlin solo diagnostica, no redacta copy de UI.
@@ -83,6 +83,10 @@ class AnalysisResult {
 /// enlace directamente.
 class SearchResultItem {
   late String sourceUrl;
+
+  /// De donde viene este resultado, para que la interfaz muestre una
+  /// insignia y el usuario sepa si hara falta iniciar sesion de YouTube.
+  late SourcePlatform platform;
   late String title;
   String? author;
   String? thumbnailUrl;
@@ -161,6 +165,23 @@ abstract class DownloadEngineHostApi {
   ExtractorUpdateResult updateExtractor();
 
   String? currentExtractorVersion();
+
+  /// true si ya existe una sesion de YouTube guardada (requerimiento: sin
+  /// ella, YouTube exige "confirma que no eres un robot" y bloquea el audio
+  /// real de casi todos los videos, medido en el dispositivo).
+  bool hasYouTubeLogin();
+
+  /// Lee las cookies de la sesion activa en el WebView de inicio de sesion
+  /// (android.webkit.CookieManager, compartido por toda la app) y las guarda
+  /// en almacenamiento interno para que yt-dlp las use con `--cookies`.
+  /// Devuelve true solo si encontro cookies de autenticacion reales (no basta
+  /// con que el usuario haya abierto la pagina).
+  @async
+  bool saveYouTubeCookies();
+
+  /// Borra la sesion guardada y las cookies del WebView, para que un
+  /// siguiente inicio de sesion vuelva a pedir usuario y contrasena.
+  void clearYouTubeLogin();
 }
 
 @FlutterApi()

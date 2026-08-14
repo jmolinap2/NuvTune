@@ -5,12 +5,14 @@ import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/sleep_timer_sheet.dart';
 import 'package:nuvtune/features/settings/player_control_layout.dart';
+import 'package:nuvtune/features/settings/player_density.dart';
 
 class CustomizablePlayerControls extends StatelessWidget {
   const CustomizablePlayerControls({
     required this.layout,
     required this.preset,
     required this.handedness,
+    required this.density,
     required this.state,
     required this.controller,
     required this.song,
@@ -22,6 +24,7 @@ class CustomizablePlayerControls extends StatelessWidget {
   final PlayerControlLayout layout;
   final PlayerControlPreset preset;
   final ControlHandedness handedness;
+  final PlayerDensity density;
   final PlaybackState state;
   final PlaybackController controller;
   final Song song;
@@ -53,7 +56,7 @@ class CustomizablePlayerControls extends StatelessWidget {
           ),
         ),
         if (layout.secondary.isNotEmpty) ...[
-          const SizedBox(height: Tokens.space2),
+          SizedBox(height: density.gap(Tokens.space2)),
           SizedBox(
             width: double.infinity,
             child: Wrap(
@@ -81,8 +84,8 @@ class CustomizablePlayerControls extends StatelessWidget {
         button: true,
         label: state.isPlaying ? 'Pausar' : 'Reproducir',
         child: IconButton.filled(
-          iconSize: 34,
-          padding: const EdgeInsets.all(14),
+          iconSize: _scaled(34),
+          padding: EdgeInsets.all(_scaled(14)),
           tooltip: state.isPlaying ? 'Pausar' : 'Reproducir',
           onPressed: controller.togglePlayPause,
           icon: Icon(
@@ -103,13 +106,17 @@ class CustomizablePlayerControls extends StatelessWidget {
     };
 
     return IconButton(
-      iconSize: primary ? 30 : 23,
+      iconSize: _scaled(primary ? 30 : 23),
       tooltip: _tooltip(control),
       onPressed: () => _invoke(context, control),
       color: active ? scheme.primary : null,
       icon: Icon(_icon(control)),
     );
   }
+
+  /// Tamaño de icono ya ajustado a la densidad elegida. Se redondea porque un
+  /// icono a media unidad logica se dibuja borroso.
+  double _scaled(double base) => (base * density.iconScale).roundToDouble();
 
   void _invoke(BuildContext context, PlayerControlId control) {
     switch (control) {

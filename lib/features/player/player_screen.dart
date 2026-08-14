@@ -30,8 +30,10 @@ import 'package:nuvtune/features/player/customizable_player_controls.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
+import 'package:nuvtune/features/player/system_volume.dart';
 import 'package:nuvtune/features/queue/queue_list.dart';
 import 'package:nuvtune/features/settings/player_control_layout.dart';
+import 'package:nuvtune/features/settings/player_density.dart';
 import 'package:nuvtune/features/video_background/music_video_background.dart';
 import 'package:nuvtune/features/video_background/video_background_controller.dart';
 import 'package:nuvtune/shared/widgets/cover_art.dart';
@@ -352,8 +354,13 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     // No se observa ni se ejecuta el proveedor de YouTube en Visualizador,
     // Letras o Portada. La pantalla normal tambien lo desmonta mientras la
     // experiencia inmersiva esta abierta.
-    final videoBackgroundId = visualScene.requestsVideo && _appIsVisible
+    final videoCandidate = visualScene.requestsVideo && _appIsVisible
         ? ref.watch(videoBackgroundIdProvider).valueOrNull
+        : null;
+    // El provider puede retener el resultado de la pista previa mientras
+    // resuelve la actual. Nunca se monta si no pertenece a esta canción.
+    final videoBackgroundId = videoCandidate?.songId == song.id
+        ? videoCandidate?.videoId
         : null;
     if (_videoReadinessId != videoBackgroundId) {
       _videoReadinessId = videoBackgroundId;
@@ -959,8 +966,11 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
       _lyricsScrollSongId = song.id;
       _lyricsContentScrollable = false;
     }
-    final videoId = _scene.requestsVideo && _appIsVisible
+    final videoCandidate = _scene.requestsVideo && _appIsVisible
         ? ref.watch(videoBackgroundIdProvider).valueOrNull
+        : null;
+    final videoId = videoCandidate?.songId == song.id
+        ? videoCandidate?.videoId
         : null;
     final lyricsAreScrollable = _scene.showsLyrics && _lyricsContentScrollable;
     final gestureHint = lyricsAreScrollable
@@ -1326,6 +1336,13 @@ class _ImmersivePlayerBackgroundState
 
   @override
   Widget build(BuildContext context) {
+    // Esta escucha queda en la capa del fondo: la posición llega dos veces por
+    // segundo, pero no fuerza a reconstruir toda la pantalla del reproductor.
+    final audioPositionMs =
+        ref.watch(playbackPositionProvider).valueOrNull?.positionMs ?? 0;
+    final audioDurationMs = ref.watch(
+      playbackProvider.select((state) => state.durationMs),
+    );
     final activeVideoId = widget.videoId == _failedVideoId
         ? null
         : widget.videoId;
@@ -1389,6 +1406,8 @@ class _ImmersivePlayerBackgroundState
                         key: ValueKey(activeVideoId),
                         videoId: activeVideoId,
                         isPlaying: widget.isPlaying,
+                        audioPositionMs: audioPositionMs,
+                        audioDurationMs: audioDurationMs,
                         fit: MusicVideoFit.contain,
                         onStateChanged: _handleVideoState,
                       ),
@@ -1402,6 +1421,8 @@ class _ImmersivePlayerBackgroundState
                       key: ValueKey(activeVideoId),
                       videoId: activeVideoId,
                       isPlaying: widget.isPlaying,
+                      audioPositionMs: audioPositionMs,
+                      audioDurationMs: audioDurationMs,
                       onStateChanged: _handleVideoState,
                     ),
                   ),
@@ -1629,6 +1650,13 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
 
   double _visualizerDragDx = 0;
 
+  /// Volumen del sistema mientras dura un gesto vertical. `null` fuera del
+  /// gesto: asi el valor se relee al empezar cada arrastre y no se queda
+  /// obsoleto si el usuario uso las teclas fisicas entre medias.
+  double? _volumeAtDragStart;
+  double? _volumeIndicator;
+  Timer? _volumeIndicatorTimer;
+
   @override
   void initState() {
     super.initState();
@@ -1649,8 +1677,51 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
 
   @override
   void dispose() {
+    _volumeIndicatorTimer?.cancel();
     _pageController.dispose();
     super.dispose();
+  }
+
+  // -----------------------------------------------------------------------
+  // Volumen por gesto vertical sobre la portada.
+  //
+  // Escribe el volumen de flujo del sistema ([SystemVolume]), nunca el del
+  // reproductor: ese ya tiene por escritor al fundido del motor. El indicador
+  // solo existe mientras dura el gesto, que es lo que permite que el control
+  // de volumen no cueste una fila permanente de pantalla.
+  // -----------------------------------------------------------------------
+
+  Future<void> _startVolumeDrag() async {
+    final value = await SystemVolume.read();
+    if (!mounted) return;
+    _volumeAtDragStart = value;
+    _showVolumeIndicator(value);
+  }
+
+  void _updateVolumeDrag(double dy, double stageHeight) {
+    final start = _volumeAtDragStart;
+    if (start == null) return;
+
+    // Todo el recorrido del escenario cubre el rango completo, de modo que el
+    // gesto se siente igual en una pantalla alta que en una corta.
+    final next = (start - dy / stageHeight).clamp(0.0, 1.0).toDouble();
+    _volumeAtDragStart = next;
+    _showVolumeIndicator(next);
+    unawaited(SystemVolume.write(next));
+  }
+
+  void _endVolumeDrag() {
+    _volumeAtDragStart = null;
+    unawaited(HapticFeedback.selectionClick());
+  }
+
+  void _showVolumeIndicator(double value) {
+    _volumeIndicatorTimer?.cancel();
+    setState(() => _volumeIndicator = value);
+    _volumeIndicatorTimer = Timer(const Duration(milliseconds: 900), () {
+      if (!mounted) return;
+      setState(() => _volumeIndicator = null);
+    });
   }
 
   /// Portada que se muestra. Sale de un unico campo, elegido por la autoridad
@@ -1909,6 +1980,10 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     final controlHandedness = ControlHandedness.byId(
       appSettings?.playerControlHandedness ?? ControlHandedness.right.id,
     );
+    final density = PlayerDensity.byId(
+      appSettings?.playerDensity ?? PlayerDensity.normal.id,
+    );
+    final volumeGestureEnabled = appSettings?.playerGestureSwipeVolume ?? true;
     final customCovers =
         ref.watch(customCoversProvider).valueOrNull ?? const <String, String>{};
     final showCleanVideo =
@@ -1919,35 +1994,46 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     final showSingleVisualizer =
         !showCleanVideo && !showLyrics && forceVisualizer;
 
-    return LayoutBuilder(
-      builder: (context, constraints) {
-        final stageWidth = constraints.maxWidth;
-        final coverSize = math
-            .min(stageWidth * 0.82, constraints.maxHeight * 0.46)
-            .clamp(156.0, 440.0)
-            .toDouble();
-        // Los painters reservan margen interno para el resplandor. Un lienzo
-        // mayor que la pantalla hace que la forma generativa, sin marco, sea el
-        // escenario visual y no una portada cuadrada diminuta.
-        final visualizerSize = math
-            .max(stageWidth * 1.42, coverSize * 1.5)
-            .clamp(280.0, 620.0)
-            .toDouble();
-        final stageHeight = math
-            .max(
-              coverSize + 16,
-              math.min(stageWidth * 0.98, constraints.maxHeight * 0.52),
-            )
-            .clamp(172.0, 520.0)
-            .toDouble();
+    // El bloque inferior (titulo, progreso y controles) toma la altura que
+    // necesita y el escenario se queda con lo que sobre. Es el invariante de
+    // la regla 3: se reparte de nuevo en cada fotograma con la pantalla real,
+    // en vez de guardar fracciones fijas que en un telefono corto empujaban el
+    // contenido fuera de la vista y obligaban a desplazar -que era justo lo
+    // que dejaba los controles pegados a la barra de navegacion del sistema.
+    return Padding(
+      padding: EdgeInsets.fromLTRB(
+        24,
+        density.gap(16),
+        24,
+        density.gap(20),
+      ),
+      child: Column(
+        children: [
+          Expanded(
+            child: LayoutBuilder(
+              builder: (context, constraints) {
+                final stageWidth = constraints.maxWidth;
+                final stageHeight = constraints.maxHeight;
+                final coverSize = math
+                    .min(stageWidth * density.coverFraction, stageHeight)
+                    .clamp(120.0, 460.0)
+                    .toDouble();
+                // Los painters reservan margen interno para el resplandor. Un
+                // lienzo mayor que la pantalla hace que la forma generativa,
+                // sin marco, sea el escenario visual y no una portada cuadrada
+                // diminuta.
+                final visualizerSize = math
+                    .max(stageWidth * 1.42, coverSize * 1.5)
+                    .clamp(280.0, 620.0)
+                    .toDouble();
 
-        return SingleChildScrollView(
-          padding: const EdgeInsets.fromLTRB(24, 16, 24, 28),
-          child: Column(
-            children: [
-              SizedBox(
-                height: stageHeight,
-                child: AnimatedSwitcher(
+                return _VolumeDragTarget(
+                  enabled: volumeGestureEnabled,
+                  indicator: _volumeIndicator,
+                  onStart: _startVolumeDrag,
+                  onUpdate: (dy) => _updateVolumeDrag(dy, stageHeight),
+                  onEnd: _endVolumeDrag,
+                  child: AnimatedSwitcher(
                   duration: Tokens.durationMedium,
                   switchInCurve: Curves.easeOutCubic,
                   switchOutCurve: Curves.easeInCubic,
@@ -2108,16 +2194,19 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                             ),
                           ),
                         ),
-                ),
-              ),
-              const SizedBox(height: 28),
+                  ),
+                );
+              },
+            ),
+          ),
+          SizedBox(height: density.gap(24)),
 
-              Row(
-                children: [
-                  Expanded(
-                    child: Column(
-                      crossAxisAlignment: CrossAxisAlignment.start,
-                      children: [
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
                         // Se reserva la altura de dos lineas del titulo aunque
                         // la cancion actual solo necesite una: si no, cada
                         // titulo largo o corto empuja los controles arriba y
@@ -2180,64 +2269,165 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                             ),
                           ),
                         ),
-                      ],
-                    ),
-                  ),
-                ],
-              ),
-
-              const SizedBox(height: 8),
-              const _ProgressBar(),
-              const SizedBox(height: 16),
-
-              CustomizablePlayerControls(
-                layout: controlLayout,
-                preset: controlPreset,
-                handedness: controlHandedness,
-                state: state,
-                controller: controller,
-                song: displaySong,
-                isFavorite: isFavorite,
-                onOpenQueue: () => context.push('/queue'),
-              ),
-
-              if ((controlLayout.primary.contains(PlayerControlId.queue) ||
-                      controlLayout.secondary.contains(
-                        PlayerControlId.queue,
-                      )) &&
-                  engineIndex >= 0 &&
-                  engineIndex + 1 < state.queue.length)
-                Padding(
-                  padding: const EdgeInsets.only(top: Tokens.space2),
-                  child: TextButton.icon(
-                    onPressed: () => _requestIndex(engineIndex + 1),
-                    icon: const Icon(Icons.queue_music_rounded, size: 18),
-                    label: ConstrainedBox(
-                      constraints: BoxConstraints(
-                        maxWidth: constraints.maxWidth - 96,
-                      ),
-                      child: Text(
-                        'A continuación · ${state.queue[engineIndex + 1].title}',
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                      ),
-                    ),
-                  ),
+                  ],
                 ),
-
-              if (state.snapshot.sleepTimerRemainingMs != null)
-                Padding(
-                  padding: const EdgeInsets.only(top: 8),
-                  child: Text(
-                    'La música se detendrá en '
-                    '${Formatters.duration(state.snapshot.sleepTimerRemainingMs!)}',
-                    style: TextStyle(fontSize: 12, color: scheme.primary),
-                  ),
-                ),
+              ),
             ],
           ),
-        );
-      },
+
+          SizedBox(height: density.gap(8)),
+          const _ProgressBar(),
+          SizedBox(height: density.gap(16)),
+
+          CustomizablePlayerControls(
+            layout: controlLayout,
+            preset: controlPreset,
+            handedness: controlHandedness,
+            density: density,
+            state: state,
+            controller: controller,
+            song: displaySong,
+            isFavorite: isFavorite,
+            onOpenQueue: () => context.push('/queue'),
+          ),
+
+          if ((controlLayout.primary.contains(PlayerControlId.queue) ||
+                  controlLayout.secondary.contains(PlayerControlId.queue)) &&
+              engineIndex >= 0 &&
+              engineIndex + 1 < state.queue.length)
+            Padding(
+              padding: EdgeInsets.only(top: density.gap(Tokens.space2)),
+              child: TextButton.icon(
+                onPressed: () => _requestIndex(engineIndex + 1),
+                icon: const Icon(Icons.queue_music_rounded, size: 18),
+                label: Text(
+                  'A continuación · ${state.queue[engineIndex + 1].title}',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                ),
+              ),
+            ),
+
+          if (state.snapshot.sleepTimerRemainingMs != null)
+            Padding(
+              padding: EdgeInsets.only(top: density.gap(8)),
+              child: Text(
+                'La música se detendrá en '
+                '${Formatters.duration(state.snapshot.sleepTimerRemainingMs!)}',
+                style: TextStyle(fontSize: 12, color: scheme.primary),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+/// Envoltura del escenario del reproductor que convierte un arrastre vertical
+/// en volumen del sistema y muestra el indicador flotante mientras dura.
+///
+/// El indicador vive aqui y no en una fila fija porque el volumen es una
+/// accion momentanea: reservarle sitio permanente costaria justo el espacio
+/// vertical que este rediseño recupera. El arrastre horizontal no se toca, de
+/// modo que el carrusel de portadas sigue mandando en su propio eje.
+class _VolumeDragTarget extends StatelessWidget {
+  const _VolumeDragTarget({
+    required this.enabled,
+    required this.indicator,
+    required this.onStart,
+    required this.onUpdate,
+    required this.onEnd,
+    required this.child,
+  });
+
+  final bool enabled;
+  final double? indicator;
+  final VoidCallback onStart;
+  final void Function(double dy) onUpdate;
+  final VoidCallback onEnd;
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    if (!enabled) return child;
+
+    final scheme = Theme.of(context).colorScheme;
+    final value = indicator;
+
+    return GestureDetector(
+      onVerticalDragStart: (_) => onStart(),
+      onVerticalDragUpdate: (details) => onUpdate(details.primaryDelta ?? 0),
+      onVerticalDragEnd: (_) => onEnd(),
+      child: Stack(
+        alignment: Alignment.center,
+        children: [
+          child,
+          IgnorePointer(
+            child: AnimatedOpacity(
+              opacity: value == null ? 0 : 1,
+              duration: Tokens.durationFast,
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: _VolumeIndicator(
+                  value: value ?? 0,
+                  scheme: scheme,
+                ),
+              ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _VolumeIndicator extends StatelessWidget {
+  const _VolumeIndicator({required this.value, required this.scheme});
+
+  final double value;
+  final ColorScheme scheme;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: 'Volumen ${(value * 100).round()} por ciento',
+      child: Container(
+        width: 44,
+        padding: const EdgeInsets.symmetric(vertical: Tokens.space3),
+        decoration: BoxDecoration(
+          color: scheme.surface.withValues(alpha: 0.86),
+          borderRadius: BorderRadius.circular(Tokens.radiusPill),
+        ),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(
+              value == 0 ? Icons.volume_off_rounded : Icons.volume_up_rounded,
+              size: 18,
+              color: scheme.onSurface,
+            ),
+            const SizedBox(height: Tokens.space2),
+            SizedBox(
+              height: 96,
+              width: 5,
+              child: RotatedBox(
+                quarterTurns: 3,
+                child: LinearProgressIndicator(
+                  value: value,
+                  minHeight: 5,
+                  backgroundColor: scheme.onSurface.withValues(alpha: 0.18),
+                  color: scheme.primary,
+                ),
+              ),
+            ),
+            const SizedBox(height: Tokens.space2),
+            Text(
+              '${(value * 100).round()}',
+              style: TextStyle(fontSize: 11, color: scheme.onSurfaceVariant),
+            ),
+          ],
+        ),
+      ),
     );
   }
 }
