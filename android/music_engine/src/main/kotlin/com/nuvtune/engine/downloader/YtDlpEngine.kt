@@ -1,6 +1,7 @@
 package com.nuvtune.engine.downloader
 
 import android.content.Context
+import android.util.Log
 import com.yausername.ffmpeg.FFmpeg
 import com.yausername.youtubedl_android.YoutubeDL
 import com.yausername.youtubedl_android.YoutubeDLRequest
@@ -51,6 +52,7 @@ object YtDlpEngine {
         FFmpeg.getInstance().init(appContext)
         jsRuntime = resolveQuickJs(appContext)
         initialized = true
+        refreshExtractorIfDue(appContext)
     }
 
     /**
@@ -113,8 +115,12 @@ object YtDlpEngine {
         val soundcloudLimit = safeLimit - youtubeLimit
 
         val results = ArrayList<SearchEntry>()
-        results += runCatching { searchYoutube(query, youtubeLimit) }.getOrElse { emptyList() }
-        results += runCatching { searchSoundCloud(query, soundcloudLimit) }.getOrElse { emptyList() }
+        results += runCatching { searchYoutube(query, youtubeLimit) }
+            .onFailure { Log.w(TAG, "busqueda de YouTube fallida", it) }
+            .getOrElse { emptyList() }
+        results += runCatching { searchSoundCloud(query, soundcloudLimit) }
+            .onFailure { Log.w(TAG, "busqueda de SoundCloud fallida", it) }
+            .getOrElse { emptyList() }
         return results
     }
 
@@ -128,7 +134,7 @@ object YtDlpEngine {
     private fun searchYoutube(query: String, limit: Int): List<SearchEntry> {
         if (limit <= 0) return emptyList()
         val request = YoutubeDLRequest("ytsearch$limit:${query.trim()}")
-        applyCommonOptions(request)
+        applyCommonOptions(request, includeYouTubeCookies = false)
         request.addOption("--flat-playlist")
         request.addOption("-J")
         request.addOption("--no-warnings")
@@ -164,7 +170,7 @@ object YtDlpEngine {
     private fun searchSoundCloud(query: String, limit: Int): List<SearchEntry> {
         if (limit <= 0) return emptyList()
         val request = YoutubeDLRequest("scsearch$limit:${query.trim()}")
-        applyCommonOptions(request)
+        applyCommonOptions(request, includeYouTubeCookies = false)
         request.addOption("-J")
         request.addOption("--no-warnings")
 
@@ -194,10 +200,10 @@ object YtDlpEngine {
      * llamador (DownloadEnginePlugin) es quien lo clasifica con
      * [classifyError] y arma el [AnalysisResult].
      */
-    fun analyze(url: String): VideoInfo {
+    fun analyze(url: String, includeYouTubeCookies: Boolean = true): VideoInfo {
         assertInitialized()
         val request = YoutubeDLRequest(url)
-        applyCommonOptions(request)
+        applyCommonOptions(request, includeYouTubeCookies)
         // Un enlace a un perfil o a un "reel" dentro de una coleccion no debe
         // arrastrar toda la lista: el usuario eligio un video, no una cuenta.
         request.addOption("--no-playlist")
@@ -207,12 +213,8 @@ object YtDlpEngine {
 
     /** Reintenta una sola vez tras actualizar yt-dlp si cambió el extractor. */
     fun analyzeWithRecovery(context: Context, url: String): VideoInfo =
-        try {
-            analyze(url)
-        } catch (first: Exception) {
-            if (classifyError(first) != DownloadErrorCode.EXTRACTOR_OUTDATED) throw first
-            updateExtractor(context)
-            analyze(url)
+        executeWithRecovery(context, url) { includeCookies ->
+            analyze(url, includeCookies)
         }
 
     /**
@@ -224,10 +226,13 @@ object YtDlpEngine {
      * La URL caduca (YouTube la firma por tiempo), asi que se resuelve en el
      * momento de reproducir y no se guarda.
      */
-    fun audioStreamUrl(sourceUrl: String): String? {
+    fun audioStreamUrl(
+        sourceUrl: String,
+        includeYouTubeCookies: Boolean = true,
+    ): String? {
         assertInitialized()
         val request = YoutubeDLRequest(sourceUrl)
-        applyCommonOptions(request)
+        applyCommonOptions(request, includeYouTubeCookies)
         request.addOption("--no-playlist")
         request.addOption("--no-warnings")
         request.addOption("-f", "bestaudio/best")
@@ -239,12 +244,8 @@ object YtDlpEngine {
     }
 
     fun audioStreamUrlWithRecovery(context: Context, sourceUrl: String): String? =
-        try {
-            audioStreamUrl(sourceUrl)
-        } catch (first: Exception) {
-            if (classifyError(first) != DownloadErrorCode.EXTRACTOR_OUTDATED) throw first
-            updateExtractor(context)
-            audioStreamUrl(sourceUrl)
+        executeWithRecovery(context, sourceUrl) { includeCookies ->
+            audioStreamUrl(sourceUrl, includeCookies)
         }
 
     /**
@@ -267,9 +268,15 @@ object YtDlpEngine {
         }
     }
 
-    fun buildDownloadRequest(sourceUrl: String, formatId: String, outputPath: String): YoutubeDLRequest {
+    fun buildDownloadRequest(
+        sourceUrl: String,
+        formatId: String,
+        outputPath: String,
+        includeYouTubeCookies: Boolean = true,
+        embedThumbnail: Boolean = true,
+    ): YoutubeDLRequest {
         val request = YoutubeDLRequest(sourceUrl)
-        applyCommonOptions(request)
+        applyCommonOptions(request, includeYouTubeCookies)
         request.addOption("--no-playlist")
         val kbps = formatId.removePrefix("audio-").toIntOrNull() ?: audioQualityKbps.last()
         // "-f bestaudio/best" deja que yt-dlp elija la mejor fuente de audio
@@ -284,8 +291,10 @@ object YtDlpEngine {
         // miniatura cuando YouTube la entrega como WebP y la incrusta como
         // portada del MP3; MediaStore recibe ademas titulo/artista explicitos.
         request.addOption("--add-metadata")
-        request.addOption("--embed-thumbnail")
-        request.addOption("--convert-thumbnails", "jpg")
+        if (embedThumbnail) {
+            request.addOption("--embed-thumbnail")
+            request.addOption("--convert-thumbnails", "jpg")
+        }
         request.addOption("-o", outputPath)
         return request
     }
@@ -300,8 +309,17 @@ object YtDlpEngine {
      * termina con su diagnostico real y se puede clasificar, en vez de quedarse
      * colgado sin que la vista previa ni el servicio puedan responder.
      */
-    private fun applyCommonOptions(request: YoutubeDLRequest) {
+    private fun applyCommonOptions(
+        request: YoutubeDLRequest,
+        includeYouTubeCookies: Boolean = true,
+    ) {
         request.addOption("--js-runtimes", jsRuntime ?: resolveQuickJsOrFail())
+        // El runtime por si solo ya no basta para YouTube. Desde 2025 yt-dlp
+        // separa los scripts que resuelven sus desafios JS en yt-dlp-ejs. La
+        // distribucion Python embebida por youtubedl-android no incluye ese
+        // paquete, por lo que se autoriza su descarga firmada desde el repo
+        // oficial y yt-dlp la conserva en su cache para los siguientes usos.
+        request.addOption("--remote-components", "ejs:github")
         request.addOption("--socket-timeout", SOCKET_TIMEOUT_SECONDS.toString())
         request.addOption("--retries", NETWORK_RETRIES.toString())
         request.addOption("--fragment-retries", NETWORK_RETRIES.toString())
@@ -310,9 +328,52 @@ object YtDlpEngine {
         // cerrarla) en cualquier momento de la sesion de la app, y cada
         // llamada debe ver el estado actual, no el de cuando se inicializo
         // el motor. Es un simple chequeo de archivo, no una llamada de red.
-        if (YouTubeCookieJar.hasLogin(appContext)) {
+        if (includeYouTubeCookies && YouTubeCookieJar.hasLogin(appContext)) {
             request.addOption("--cookies", YouTubeCookieJar.file(appContext).absolutePath)
         }
+    }
+
+    /**
+     * Una cookie de cuenta rotada o un cliente autenticado sin PO token puede
+     * fallar donde el cliente publico todavia funciona. Se prueba primero la
+     * sesion solicitada por el usuario y despues, solo para YouTube, una ruta
+     * anonima. Al resto de extractores nunca se les pasa el archivo de cookies.
+     */
+    fun cookieModesFor(sourceUrl: String): List<Boolean> =
+        if (
+            UrlValidator.platformFor(sourceUrl) == SourcePlatform.YOUTUBE &&
+            YouTubeCookieJar.hasLogin(appContext)
+        ) {
+            listOf(true, false)
+        } else {
+            listOf(false)
+        }
+
+    private inline fun <T> executeWithRecovery(
+        context: Context,
+        sourceUrl: String,
+        operation: (includeYouTubeCookies: Boolean) -> T,
+    ): T {
+        var lastError: Exception? = null
+        var extractorRefreshed = false
+        for (includeCookies in cookieModesFor(sourceUrl)) {
+            while (true) {
+                try {
+                    return operation(includeCookies)
+                } catch (error: Exception) {
+                    lastError = error
+                    if (
+                        !extractorRefreshed &&
+                        classifyError(error) == DownloadErrorCode.EXTRACTOR_OUTDATED
+                    ) {
+                        extractorRefreshed = true
+                        if (runCatching { updateExtractor(context) }.isSuccess) continue
+                    }
+                    break
+                }
+            }
+        }
+        throw checkNotNull(lastError)
     }
 
     private fun resolveQuickJsOrFail(): String =
@@ -323,7 +384,20 @@ object YtDlpEngine {
         assertInitialized()
         val status = YoutubeDL.getInstance().updateYoutubeDL(context.applicationContext)
         val updated = status == YoutubeDL.UpdateStatus.DONE
+        context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+            .edit()
+            .putLong(KEY_LAST_EXTRACTOR_CHECK, System.currentTimeMillis())
+            .apply()
         return updated to currentVersion(context)
+    }
+
+    /** Mantiene los extractores frescos sin hacer una consulta en cada uso. */
+    private fun refreshExtractorIfDue(context: Context) {
+        val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val lastCheck = preferences.getLong(KEY_LAST_EXTRACTOR_CHECK, 0L)
+        if (System.currentTimeMillis() - lastCheck < EXTRACTOR_CHECK_INTERVAL_MS) return
+        runCatching { updateExtractor(context) }
+            .onFailure { Log.w(TAG, "no se pudo comprobar la version de yt-dlp", it) }
     }
 
     /**
@@ -349,7 +423,12 @@ object YtDlpEngine {
                 text.contains("blocked it in your country") -> DownloadErrorCode.REGION_RESTRICTED
             text.contains("unable to extract") || text.contains("unable to parse") ||
                 text.contains("failed to parse json") ||
-                text.contains("signature") -> DownloadErrorCode.EXTRACTOR_OUTDATED
+                text.contains("signature") ||
+                text.contains("requested format is not available") ||
+                text.contains("only images are available") ||
+                text.contains("challenge solving failed") ||
+                text.contains("no supported javascript runtime") ->
+                DownloadErrorCode.EXTRACTOR_OUTDATED
             // El anti-bot y el 429 son limitaciones temporales de YouTube, no
             // un extractor viejo: mandarlos a EXTRACTOR_OUTDATED hacia que la
             // app pidiera "actualizar el motor de descarga", que no arregla
@@ -366,6 +445,10 @@ object YtDlpEngine {
 
     private const val SOCKET_TIMEOUT_SECONDS = 15
     private const val NETWORK_RETRIES = 1
+    private const val TAG = "NuvTune"
+    private const val PREFERENCES_NAME = "nuvtune_download_engine"
+    private const val KEY_LAST_EXTRACTOR_CHECK = "last_extractor_check"
+    private const val EXTRACTOR_CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
 
     /** Nombre con el que youtubedl-android empaqueta el binario de QuickJS. */
     private const val QUICK_JS_LIB_NAME = "libqjs.so"

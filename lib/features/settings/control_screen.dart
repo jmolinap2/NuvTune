@@ -296,8 +296,18 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
     }
 
     final visible = {..._layout.primary, ..._layout.secondary};
+    final favoriteVisible = visible.contains(PlayerControlId.favorite);
+    final primaryControls = _layout.primary
+        .where((control) => control != PlayerControlId.favorite)
+        .toList(growable: false);
+    final secondaryControls = _layout.secondary
+        .where((control) => control != PlayerControlId.favorite)
+        .toList(growable: false);
     final hidden = PlayerControlId.values
-        .where((control) => !visible.contains(control))
+        .where(
+          (control) =>
+              control != PlayerControlId.favorite && !visible.contains(control),
+        )
         .toList();
 
     return Scaffold(
@@ -315,27 +325,53 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
               ),
             ),
           ),
+          const SettingsSectionLabel('Acción fija'),
+          SettingsGroup(
+            children: [
+              SwitchListTile.adaptive(
+                secondary: const Icon(Icons.favorite_border_rounded),
+                title: const Text('Favorito'),
+                subtitle: const Text(
+                  'Centrado debajo de los controles de reproducción',
+                ),
+                value: favoriteVisible,
+                onChanged: _setFavoriteVisible,
+              ),
+            ],
+          ),
           const SettingsSectionLabel('Controles principales'),
           _ReorderSection(
-            controls: _layout.primary,
+            controls: primaryControls,
             destination: _ControlDestination.primary,
             onReorder: (oldIndex, newIndex) {
-              final next = [..._layout.primary];
+              final next = [...primaryControls];
               final item = next.removeAt(oldIndex);
               next.insert(newIndex, item);
-              _commit(_layout.copyWith(primary: next));
+              _commit(
+                _composeLayout(
+                  primary: next,
+                  secondary: secondaryControls,
+                  favoriteVisible: favoriteVisible,
+                ),
+              );
             },
             onAction: _handleAction,
           ),
           const SettingsSectionLabel('Controles secundarios'),
           _ReorderSection(
-            controls: _layout.secondary,
+            controls: secondaryControls,
             destination: _ControlDestination.secondary,
             onReorder: (oldIndex, newIndex) {
-              final next = [..._layout.secondary];
+              final next = [...secondaryControls];
               final item = next.removeAt(oldIndex);
               next.insert(newIndex, item);
-              _commit(_layout.copyWith(secondary: next));
+              _commit(
+                _composeLayout(
+                  primary: primaryControls,
+                  secondary: next,
+                  favoriteVisible: favoriteVisible,
+                ),
+              );
             },
             onAction: _handleAction,
           ),
@@ -361,7 +397,9 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
             icon: Icons.lock_outline_rounded,
             title: 'Reproducir o pausar siempre está visible',
             message:
-                'Los demás controles pueden ocultarse o moverse entre el bloque principal y el secundario.',
+                'Favorito puede ocultarse, pero cuando está activo permanece '
+                'centrado debajo. Los demás controles sí pueden moverse entre '
+                'los bloques principal y secundario.',
           ),
         ],
       ),
@@ -369,8 +407,18 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
   }
 
   void _handleAction(PlayerControlId control, _ControlDestination target) {
-    final primary = [..._layout.primary]..remove(control);
-    final secondary = [..._layout.secondary]..remove(control);
+    if (control == PlayerControlId.favorite) return;
+    final favoriteVisible = _hasFavorite;
+    final primary =
+        _layout.primary
+            .where((item) => item != PlayerControlId.favorite)
+            .toList()
+          ..remove(control);
+    final secondary =
+        _layout.secondary
+            .where((item) => item != PlayerControlId.favorite)
+            .toList()
+          ..remove(control);
     switch (target) {
       case _ControlDestination.primary:
         primary.add(control);
@@ -379,8 +427,41 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
       case _ControlDestination.hidden:
         if (control == PlayerControlId.playPause) return;
     }
-    _commit(PlayerControlLayout(primary: primary, secondary: secondary));
+    _commit(
+      _composeLayout(
+        primary: primary,
+        secondary: secondary,
+        favoriteVisible: favoriteVisible,
+      ),
+    );
   }
+
+  bool get _hasFavorite =>
+      _layout.primary.contains(PlayerControlId.favorite) ||
+      _layout.secondary.contains(PlayerControlId.favorite);
+
+  void _setFavoriteVisible(bool visible) {
+    _commit(
+      _composeLayout(
+        primary: _layout.primary.where(
+          (control) => control != PlayerControlId.favorite,
+        ),
+        secondary: _layout.secondary.where(
+          (control) => control != PlayerControlId.favorite,
+        ),
+        favoriteVisible: visible,
+      ),
+    );
+  }
+
+  PlayerControlLayout _composeLayout({
+    required Iterable<PlayerControlId> primary,
+    required Iterable<PlayerControlId> secondary,
+    required bool favoriteVisible,
+  }) => PlayerControlLayout(
+    primary: primary,
+    secondary: [if (favoriteVisible) PlayerControlId.favorite, ...secondary],
+  );
 
   void _commit(PlayerControlLayout next) {
     setState(() {
@@ -525,6 +606,15 @@ class _ControlPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final primary = layout.primary
+        .where((control) => control != PlayerControlId.favorite)
+        .toList(growable: false);
+    final secondary = layout.secondary
+        .where((control) => control != PlayerControlId.favorite)
+        .toList(growable: false);
+    final showFavorite =
+        layout.primary.contains(PlayerControlId.favorite) ||
+        layout.secondary.contains(PlayerControlId.favorite);
     final alignment = preset == PlayerControlPreset.oneHanded
         ? handedness == ControlHandedness.left
               ? MainAxisAlignment.start
@@ -573,34 +663,66 @@ class _ControlPreview extends StatelessWidget {
             ),
           ),
           const SizedBox(height: Tokens.space3),
-          Row(
-            mainAxisAlignment: alignment,
-            mainAxisSize: preset == PlayerControlPreset.oneHanded
-                ? MainAxisSize.max
-                : MainAxisSize.min,
-            children: [
-              for (final control in layout.primary)
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 4),
-                  child: control == PlayerControlId.playPause
-                      ? CircleAvatar(
-                          radius: 22,
-                          backgroundColor: Theme.of(
-                            context,
-                          ).colorScheme.primary,
-                          foregroundColor: Theme.of(
-                            context,
-                          ).colorScheme.onPrimary,
-                          child: Icon(control.icon),
-                        )
-                      : Icon(control.icon, size: 22),
-                ),
-            ],
+          _PreviewControlRow(
+            controls: primary,
+            alignment: alignment,
+            expand: preset == PlayerControlPreset.oneHanded,
+            emphasizePlayPause: true,
           ),
+          if (secondary.isNotEmpty) ...[
+            const SizedBox(height: Tokens.space2),
+            _PreviewControlRow(
+              controls: secondary,
+              alignment: alignment,
+              expand: preset == PlayerControlPreset.oneHanded,
+              emphasizePlayPause: false,
+            ),
+          ],
+          if (showFavorite) ...[
+            const SizedBox(height: Tokens.space2),
+            const Align(
+              alignment: Alignment.center,
+              child: Icon(Icons.favorite_border_rounded, size: 23),
+            ),
+          ],
         ],
       ),
     );
   }
+}
+
+class _PreviewControlRow extends StatelessWidget {
+  const _PreviewControlRow({
+    required this.controls,
+    required this.alignment,
+    required this.expand,
+    required this.emphasizePlayPause,
+  });
+
+  final List<PlayerControlId> controls;
+  final MainAxisAlignment alignment;
+  final bool expand;
+  final bool emphasizePlayPause;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisAlignment: alignment,
+    mainAxisSize: expand ? MainAxisSize.max : MainAxisSize.min,
+    children: [
+      for (final control in controls)
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: emphasizePlayPause && control == PlayerControlId.playPause
+              ? CircleAvatar(
+                  radius: 22,
+                  backgroundColor: Theme.of(context).colorScheme.primary,
+                  foregroundColor: Theme.of(context).colorScheme.onPrimary,
+                  child: Icon(control.icon),
+                )
+              : Icon(control.icon, size: 22),
+        ),
+    ],
+  );
 }
 
 extension PlayerControlPresentation on PlayerControlId {

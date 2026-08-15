@@ -39,6 +39,15 @@ class CustomizablePlayerControls extends StatelessWidget {
               ? WrapAlignment.start
               : WrapAlignment.end
         : WrapAlignment.center;
+    final primaryControls = layout.primary
+        .where((control) => control != PlayerControlId.favorite)
+        .toList(growable: false);
+    final secondaryControls = layout.secondary
+        .where((control) => control != PlayerControlId.favorite)
+        .toList(growable: false);
+    final showFavorite =
+        layout.primary.contains(PlayerControlId.favorite) ||
+        layout.secondary.contains(PlayerControlId.favorite);
 
     return Column(
       children: [
@@ -50,12 +59,12 @@ class CustomizablePlayerControls extends StatelessWidget {
             spacing: oneHanded ? 2 : 6,
             runSpacing: Tokens.space2,
             children: [
-              for (final control in layout.primary)
+              for (final control in primaryControls)
                 _button(context, control, primary: true),
             ],
           ),
         ),
-        if (layout.secondary.isNotEmpty) ...[
+        if (secondaryControls.isNotEmpty) ...[
           SizedBox(height: density.gap(Tokens.space2)),
           SizedBox(
             width: double.infinity,
@@ -64,10 +73,19 @@ class CustomizablePlayerControls extends StatelessWidget {
               crossAxisAlignment: WrapCrossAlignment.center,
               spacing: 2,
               children: [
-                for (final control in layout.secondary)
+                for (final control in secondaryControls)
                   _button(context, control, primary: false),
               ],
             ),
+          ),
+        ],
+        // La referencia visual coloca Favoritos como una acción afectiva y
+        // separada del transporte. Se respeta que el usuario pueda ocultarla,
+        // pero cuando está presente siempre ocupa este cierre centrado.
+        if (showFavorite) ...[
+          SizedBox(height: density.gap(Tokens.space2)),
+          Center(
+            child: _button(context, PlayerControlId.favorite, primary: false),
           ),
         ],
       ],

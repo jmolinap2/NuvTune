@@ -4,14 +4,25 @@ import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
+import 'package:nuvtune/core/platform/visualizer_power_monitor.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
+import 'package:nuvtune/features/player/visualizer_dynamics.dart';
+import 'package:nuvtune/features/player/visualizer_quality.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 import 'package:nuvtune/shared/widgets/option_picker.dart';
 
 final Stopwatch _sharedVisualizerClock = Stopwatch()..start();
+final _visualizerPowerMonitorProvider =
+    Provider.autoDispose<VisualizerPowerMonitor>(
+      (ref) => VisualizerPowerMonitor(),
+    );
+final _visualizerPowerStateProvider =
+    StreamProvider.autoDispose<VisualizerPowerState>(
+      (ref) => ref.watch(_visualizerPowerMonitorProvider).states,
+    );
 
 /// Portada generativa que reacciona a la dinamica real de la pista.
 ///
@@ -51,6 +62,17 @@ class _ReactiveAudioVisualizerState
   );
 
   bool _reduceMotion = false;
+  bool _systemReduceMotion = false;
+  bool _userReduceEffects = false;
+
+  // Única fuente de "qué está haciendo la música" (energía, beatImpulse,
+  // peak-hold): antes cada painter calculaba su propia versión de estos
+  // valores con umbrales distintos. Ver visualizer_dynamics.dart.
+  VisualizerDynamicsEngine _dynamicsEngine = VisualizerDynamicsEngine();
+  int _engineBandCount = const VisualizerDynamicsConfig().bandCount;
+  VisualizerDynamicsState? _lastDynamics;
+  int _lastFrameBucket = -1;
+  bool? _lastHadLiveAnalysis;
 
   @override
   void initState() {
@@ -61,13 +83,20 @@ class _ReactiveAudioVisualizerState
   @override
   void didChangeDependencies() {
     super.didChangeDependencies();
-    _reduceMotion = MediaQuery.disableAnimationsOf(context);
+    _systemReduceMotion = MediaQuery.disableAnimationsOf(context);
+    _reduceMotion = _systemReduceMotion || _userReduceEffects;
     _syncMotion();
   }
 
   @override
   void didUpdateWidget(covariant ReactiveAudioVisualizer oldWidget) {
     super.didUpdateWidget(oldWidget);
+    if (oldWidget.song.id != widget.song.id ||
+        (oldWidget.isPlaying && !widget.isPlaying)) {
+      _dynamicsEngine.reset();
+      _lastDynamics = null;
+      _lastFrameBucket = -1;
+    }
     if (oldWidget.isPlaying != widget.isPlaying) _syncMotion();
   }
 
@@ -93,6 +122,25 @@ class _ReactiveAudioVisualizerState
         ? ref.watch(audioAnalysisProvider).valueOrNull
         : null;
     final settings = ref.watch(settingsProvider).valueOrNull;
+    final powerState =
+        ref.watch(_visualizerPowerStateProvider).valueOrNull ??
+        const VisualizerPowerState.normal();
+    final requestedQuality = VisualizerQuality.byId(
+      settings?.playerVisualizerQuality,
+    );
+    _userReduceEffects = settings?.reduceVisualizerEffects ?? false;
+    final reduceMotion = _systemReduceMotion || _userReduceEffects;
+    final forceEco = reduceMotion || powerState.shouldReduceEffects;
+    final quality = forceEco ? VisualizerQuality.eco : requestedQuality;
+    _configureDynamics(quality.bandCount);
+    if (_reduceMotion != reduceMotion) {
+      _reduceMotion = reduceMotion;
+      WidgetsBinding.instance.addPostFrameCallback((_) {
+        if (mounted) _syncMotion();
+      });
+    }
+    final renderFrameMicros =
+        Duration.microsecondsPerSecond ~/ quality.targetFps;
     final settingIndex = settings?.playerVisualizerStyle ?? 0;
     final hasLiveAnalysis =
         analysis != null && !(settings?.directMode ?? false);
@@ -100,7 +148,7 @@ class _ReactiveAudioVisualizerState
         widget.styleOverride ?? VisualizerStyle.fromIndex(settingIndex);
     final seed = _stableSongSeed(widget.song);
     final style = requested.resolveFor(seed);
-    final colors = _palette(seed, Theme.of(context).colorScheme.primary);
+    final colors = _palette(seed);
 
     return Semantics(
       image: true,
@@ -115,25 +163,56 @@ class _ReactiveAudioVisualizerState
           child: RepaintBoundary(
             child: AnimatedBuilder(
               animation: _motion,
-              builder: (context, child) => CustomPaint(
-                painter: _VisualizerPainter(
-                  style: style,
-                  time:
-                      (_sharedVisualizerClock.elapsedMicroseconds % 14000000) /
-                      14000000,
-                  frame: _effectiveFrame(hasLiveAnalysis ? analysis : null),
-                  colors: colors,
-                  seed: seed,
-                  isPlaying: widget.isPlaying,
-                  immersive: widget.immersive,
-                  hasLiveAnalysis: hasLiveAnalysis,
-                ),
-              ),
+              builder: (context, child) {
+                final nowMicros = _sharedVisualizerClock.elapsedMicroseconds;
+                final frameBucket = nowMicros ~/ renderFrameMicros;
+                if (_lastHadLiveAnalysis != hasLiveAnalysis) {
+                  _dynamicsEngine.reset();
+                  _lastDynamics = null;
+                  _lastFrameBucket = -1;
+                  _lastHadLiveAnalysis = hasLiveAnalysis;
+                }
+                if (_lastDynamics == null || frameBucket != _lastFrameBucket) {
+                  _lastFrameBucket = frameBucket;
+                  final effectiveFrame = _effectiveFrame(
+                    hasLiveAnalysis ? analysis : null,
+                  );
+                  _lastDynamics = _dynamicsEngine.update(
+                    effectiveFrame,
+                    frameBucket * renderFrameMicros,
+                  );
+                }
+                final renderMicros = frameBucket * renderFrameMicros;
+                return CustomPaint(
+                  painter: _VisualizerPainter(
+                    style: style,
+                    time: (renderMicros % 14000000) / 14000000,
+                    dynamics: _lastDynamics!,
+                    colors: colors,
+                    seed: seed,
+                    isPlaying: widget.isPlaying,
+                    immersive: widget.immersive,
+                    hasLiveAnalysis: hasLiveAnalysis,
+                    reduceMotion: _reduceMotion,
+                    quality: quality,
+                  ),
+                );
+              },
             ),
           ),
         ),
       ),
     );
+  }
+
+  void _configureDynamics(int bandCount) {
+    if (_engineBandCount == bandCount) return;
+    _engineBandCount = bandCount;
+    _dynamicsEngine = VisualizerDynamicsEngine(
+      config: VisualizerDynamicsConfig(bandCount: bandCount),
+    );
+    _lastDynamics = null;
+    _lastFrameBucket = -1;
   }
 
   AudioAnalysisFrame _effectiveFrame(AudioAnalysisFrame? value) {
@@ -173,17 +252,32 @@ class _ReactiveAudioVisualizerState
     );
   }
 
-  static List<Color> _palette(int seed, Color accent) {
+  static List<Color> _palette(int seed) {
     final shift = ((seed.abs() % 41) - 20).toDouble();
-    final cyan = HSLColor.fromAHSL(1, 184 + shift * 0.22, 0.92, 0.57).toColor();
-    final blue = HSLColor.fromAHSL(1, 225 + shift * 0.14, 0.88, 0.6).toColor();
+    final darkBlue = HSLColor.fromAHSL(
+      1,
+      218 + shift * 0.08,
+      0.78,
+      0.24,
+    ).toColor();
+    final cyan = HSLColor.fromAHSL(1, 184 + shift * 0.22, 0.97, 0.56).toColor();
+    final blue = HSLColor.fromAHSL(1, 225 + shift * 0.14, 0.95, 0.59).toColor();
+    final violet = HSLColor.fromAHSL(
+      1,
+      268 + shift * 0.16,
+      0.96,
+      0.62,
+    ).toColor();
     final magenta = HSLColor.fromAHSL(
       1,
-      294 + shift * 0.18,
-      0.86,
-      0.59,
+      306 + shift * 0.16,
+      0.98,
+      0.63,
     ).toColor();
-    return [Color.lerp(cyan, accent, 0.12)!, blue, magenta];
+    final hotPink = HSLColor.fromAHSL(1, 334 + shift * 0.1, 1, 0.64).toColor();
+    // La paleta del visualizador pertenece a la música. El tema conserva sus
+    // controles y tipografía, pero ya no tiñe las anclas cromáticas del audio.
+    return [darkBlue, cyan, blue, violet, magenta, hotPink];
   }
 
   static int _stableSongSeed(Song song) {
@@ -230,28 +324,71 @@ class _VisualizerPainter extends CustomPainter {
   const _VisualizerPainter({
     required this.style,
     required this.time,
-    required this.frame,
+    required this.dynamics,
     required this.colors,
     required this.seed,
     required this.isPlaying,
     required this.immersive,
     required this.hasLiveAnalysis,
+    required this.reduceMotion,
+    required this.quality,
   });
 
   final VisualizerStyle style;
   final double time;
-  final AudioAnalysisFrame frame;
+  final VisualizerDynamicsState dynamics;
   final List<Color> colors;
   final int seed;
   final bool isPlaying;
   final bool immersive;
   final bool hasLiveAnalysis;
+  final bool reduceMotion;
+  final VisualizerQuality quality;
 
   double get phase => time * math.pi * 2;
+
+  /// Presencia común de los painters: el silencio FFT puede descansar de
+  /// verdad, mientras Ambient conserva una silueta tenue sin fingir beats.
+  double get visualActivity {
+    final raw = math
+        .max(
+          dynamics.energy,
+          math.max(dynamics.treble * 0.9, renderBeatImpulse),
+        )
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final curved = raw * raw * (3 - 2 * raw);
+    return hasLiveAnalysis ? curved : math.max(0.22, curved);
+  }
+
+  double get visualPresence => 0.06 + visualActivity * 0.94;
+
+  double get visualMotion => reduceMotion ? 0 : 0.05 + visualActivity * 0.95;
+
+  double get renderGlow =>
+      (dynamics.glow * quality.glowScale * (reduceMotion ? 0.42 : 1))
+          .clamp(0.0, 1.0)
+          .toDouble();
+
+  // El glow se compone con gradientes y pasadas de stroke translúcidas. No
+  // reintroducir MaskFilter.blur por primitiva: en el POCO/Mali provocó dos
+  // fallos nativos de RenderThread y era el mayor coste de rasterización.
+
+  double get renderParticleIntensity =>
+      (dynamics.particleIntensity * (reduceMotion ? 0 : 1))
+          .clamp(0.0, 1.0)
+          .toDouble();
+
+  int particleBudget(int normalBudget) =>
+      math.max(0, (normalBudget * quality.particleScale).round());
+
+  double get renderBeatImpulse =>
+      dynamics.beatImpulse * (reduceMotion ? 0.28 : 1);
 
   @override
   void paint(Canvas canvas, Size size) {
     canvas.clipRect(Offset.zero & size);
+    _paintBackdrop(canvas, size);
     if (immersive) _paintImmersiveAtmosphere(canvas, size);
     switch (style) {
       case VisualizerStyle.automatic:
@@ -283,118 +420,364 @@ class _VisualizerPainter extends CustomPainter {
     }
   }
 
+  void _paintBackdrop(Canvas canvas, Size size) {
+    final bounds = Offset.zero & size;
+    final focalPoint = Alignment(
+      math.sin(phase * 0.18) * 0.16,
+      -0.08 + math.cos(phase * 0.14) * 0.08,
+    );
+    final activeCenter = Color.lerp(
+      const Color(0xFF061127),
+      const Color(0xFF130729),
+      dynamics.hue * 0.72,
+    )!;
+    canvas.drawRect(
+      bounds,
+      Paint()
+        ..shader = RadialGradient(
+          center: focalPoint,
+          radius: 1.18,
+          colors: [
+            Color.lerp(
+              const Color(0xFF050D20),
+              activeCenter,
+              0.18 + dynamics.energy * 0.36,
+            )!,
+            const Color(0xFF010613),
+            const Color(0xFF01030A),
+          ],
+          stops: const [0, 0.58, 1],
+        ).createShader(bounds),
+    );
+  }
+
   void _paintImmersiveAtmosphere(Canvas canvas, Size size) {
     final center = size.center(Offset.zero);
     final drift = Offset(
-      math.sin(phase * 0.34) * size.width * 0.2,
-      math.cos(phase * 0.27) * size.height * 0.12,
+      math.sin(phase * 0.34) * size.width * 0.16,
+      math.cos(phase * 0.27) * size.height * 0.09,
     );
-    final glowRadius = size.shortestSide * (0.42 + frame.bass * 0.18);
+    final glowRadius = size.shortestSide * (0.26 + dynamics.energy * 0.2);
+    final glowBounds = Rect.fromCircle(
+      center: center + drift,
+      radius: glowRadius,
+    );
     canvas.drawCircle(
       center + drift,
       glowRadius,
       Paint()
-        ..color = colors[0].withValues(alpha: 0.08 + frame.level * 0.08)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius * 0.58),
-    );
-    canvas.drawCircle(
-      center - drift * 0.8,
-      glowRadius * 0.88,
-      Paint()
-        ..color = colors[2].withValues(alpha: 0.07 + frame.mid * 0.07)
-        ..maskFilter = MaskFilter.blur(BlurStyle.normal, glowRadius * 0.52),
+        ..shader = RadialGradient(
+          colors: [
+            _reactiveColor(
+              0.16,
+              dynamics.bass,
+              alpha: 0.025 + renderGlow * 0.14,
+            ),
+            _reactiveColor(
+              0.72,
+              dynamics.mid,
+              alpha: 0.012 + renderGlow * 0.055,
+            ),
+            Colors.transparent,
+          ],
+          stops: const [0, 0.44, 1],
+        ).createShader(glowBounds),
     );
 
     final random = math.Random(seed ^ 0x6A09E667);
-    for (var index = 0; index < 96; index++) {
+    final normalParticleBudget = switch (style) {
+      VisualizerStyle.ribbons => 48,
+      VisualizerStyle.minimalSpectrum => 20,
+      VisualizerStyle.prism => 10,
+      VisualizerStyle.electricWaves => 14,
+      VisualizerStyle.cosmicOrbs => 10,
+      VisualizerStyle.automatic => 20,
+    };
+    final scaledParticleBudget = particleBudget(normalParticleBudget);
+    final ambientParticles = hasLiveAnalysis ? 0 : 4;
+    final particleCount = reduceMotion
+        ? ambientParticles
+        : (ambientParticles + renderParticleIntensity * scaledParticleBudget)
+              .round();
+    final particlePaint = Paint();
+    for (var index = 0; index < particleCount; index++) {
       final x = random.nextDouble();
       final baseY = random.nextDouble();
       final speed = 0.012 + random.nextDouble() * 0.026;
-      final y = (baseY - time * speed) % 1.0;
+      final y = reduceMotion ? baseY : (baseY - time * speed) % 1.0;
       final tone = _spectrumAt(x);
       final point = Offset(
-        size.width * x + math.sin(phase * 0.3 + index) * 7,
+        size.width * x + (reduceMotion ? 0 : math.sin(phase * 0.3 + index) * 7),
         size.height * y,
       );
       canvas.drawCircle(
         point,
-        0.45 + random.nextDouble() * 1.2 + tone * 1.1,
-        Paint()..color = _colorAt(x).withValues(alpha: 0.1 + tone * 0.28),
+        0.35 + random.nextDouble() * 0.8 + tone * 1.25,
+        particlePaint
+          ..color = _reactiveColor(
+            x,
+            tone,
+            alpha:
+                (0.035 + tone * 0.34) * (0.28 + renderParticleIntensity * 0.72),
+          ),
       );
     }
   }
 
   void _paintRibbons(Canvas canvas, Size size) {
     final fullCanvas = immersive || size.width > size.height * 1.18;
-    final center = size.center(Offset.zero);
-    final baseRadius = size.shortestSide * (fullCanvas ? 0.34 : 0.235);
-    final innerRadius = baseRadius + size.shortestSide * frame.beat * 0.014;
-    final count = fullCanvas ? 96 : 64;
-    // En pantalla completa se suman anillos concéntricos para que el motivo
-    // ocupe el lienzo entero en vez de quedar como un círculo pequeño y
-    // centrado; en modo compacto se conserva el único anillo original.
-    final ringCount = fullCanvas ? 3 : 1;
+    final shortest = size.shortestSide;
+    final center = Offset(
+      size.width * 0.5,
+      size.height * (fullCanvas ? 0.46 : 0.5),
+    );
+    final baseRadius = shortest * (fullCanvas ? 0.26 : 0.235);
+    final innerRadius = baseRadius + shortest * renderBeatImpulse * 0.022;
+    // El aro de referencia necesita más trazos que bandas analíticas para
+    // conservar su densidad. Se interpola el estado común; el perfil solo
+    // reduce el muestreo donde realmente aporta ahorro.
+    final count = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 64,
+      (VisualizerQuality.eco, false) => 48,
+      (VisualizerQuality.normal, true) => 96,
+      (VisualizerQuality.normal, false) => 64,
+      (VisualizerQuality.ultra, true) => 112,
+      (VisualizerQuality.ultra, false) => 80,
+    };
+    final ringCount = fullCanvas
+        ? switch (quality) {
+            VisualizerQuality.eco => 2,
+            VisualizerQuality.normal || VisualizerQuality.ultra => 3,
+          }
+        : 1;
+    final ringBounds = Rect.fromCircle(center: center, radius: innerRadius);
+    final ringShader = SweepGradient(
+      transform: const GradientRotation(-math.pi / 2),
+      colors: _gradientColors(alpha: 1).reversed.toList(growable: false),
+    ).createShader(ringBounds);
+    final haloRingShader = SweepGradient(
+      transform: const GradientRotation(-math.pi / 2),
+      colors: _gradientColors(
+        alpha: 0.08 + renderGlow * 0.22,
+      ).reversed.toList(growable: false),
+    ).createShader(ringBounds);
 
+    // El interior oscuro y el aro nítido evitan que el halo convierta el
+    // motivo radial en una mancha. Es la misma jerarquía de las referencias:
+    // halo amplio, cuerpo saturado y un núcleo luminoso localizado.
     canvas.drawCircle(
       center,
-      innerRadius * 0.86,
+      innerRadius * 0.98,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            const Color(0xFF01040D),
+            const Color(0xFF02091B),
+            _reactiveColor(
+              0.54,
+              dynamics.energy,
+              alpha: 0.035 + renderGlow * 0.055,
+            ),
+          ],
+          stops: const [0, 0.72, 1],
+        ).createShader(ringBounds),
+    );
+    canvas.drawCircle(
+      center,
+      innerRadius,
       Paint()
         ..style = PaintingStyle.stroke
-        ..strokeWidth = 1.2
-        ..color = colors[0].withValues(alpha: 0.22),
+        ..strokeWidth = shortest * (0.006 + renderGlow * 0.006)
+        ..shader = haloRingShader
+        ..blendMode = BlendMode.plus,
+    );
+    canvas.drawCircle(
+      center,
+      innerRadius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = shortest * 0.0023
+        ..shader = ringShader
+        ..blendMode = BlendMode.plus,
     );
 
     for (var ring = 0; ring < ringCount; ring++) {
-      final ringRadius = innerRadius * (1.0 + ring * 0.62);
-      final ringAlpha = ring == 0 ? 1.0 : 0.55 - ring * 0.12;
+      final primary = ring == ringCount - 1;
+      final ringRadius = ringCount == 1
+          ? innerRadius
+          : innerRadius * (0.72 + ring * 0.14);
+      final ringAlpha = primary ? 1.0 : 0.12 + ring * 0.11;
       final ringDirection = ring.isOdd ? -1.0 : 1.0;
-      final lengthScale = ring == 0 ? 1.0 : 0.72;
+      final lengthScale = primary ? 1.0 : 0.24 + ring * 0.14;
+      final bars = Path();
+      final peakMarkers = Path();
 
       for (var index = 0; index < count; index++) {
         final normalized = index / count;
         final angle = normalized * math.pi * 2 * ringDirection - math.pi / 2;
         final tone = _mirroredSpectrumAt(normalized);
-        final flutter =
-            0.9 +
-            math.sin(phase * 3.2 + index * 1.71 + ring * 1.3) *
-                (hasLiveAnalysis ? 0.1 : 0.22);
+        final flutter = hasLiveAnalysis
+            ? 1.0
+            : 0.9 + math.sin(phase * 3.2 + index * 1.71 + ring * 1.3) * 0.1;
+        final shapedTone = math.pow(tone, 1.35).toDouble();
         final length =
-            size.shortestSide *
-            (0.038 + tone * 0.16 * flutter + frame.beat * 0.038) *
+            shortest *
+            (0.012 + shapedTone * 0.19 * flutter + renderBeatImpulse * 0.03) *
             lengthScale;
         final direction = Offset(math.cos(angle), math.sin(angle));
         final start = center + direction * ringRadius;
         final end = center + direction * (ringRadius + length);
-        final color = _colorAt(normalized);
-        canvas.drawLine(
-          start,
-          end,
+        bars
+          ..moveTo(start.dx, start.dy)
+          ..lineTo(end.dx, end.dy);
+
+        if (primary) {
+          final peak = _mirroredPeakAt(normalized);
+          if (peak > tone + 0.035) {
+            final peakEnd =
+                center +
+                direction *
+                    (ringRadius +
+                        shortest *
+                            (0.012 +
+                                math.pow(peak, 1.35).toDouble() * 0.19 +
+                                renderBeatImpulse * 0.03));
+            peakMarkers.addOval(
+              Rect.fromCircle(center: peakEnd, radius: shortest * 0.0032),
+            );
+          }
+        }
+      }
+
+      final shaderBounds = Rect.fromCircle(
+        center: center,
+        radius: ringRadius + shortest * 0.24,
+      );
+      if (primary && renderGlow > 0.08) {
+        canvas.drawPath(
+          bars,
           Paint()
+            ..style = PaintingStyle.stroke
             ..strokeCap = StrokeCap.round
-            ..strokeWidth = size.shortestSide * 0.011
-            ..color = color.withValues(alpha: (0.28 + tone * 0.72) * ringAlpha)
-            ..maskFilter = MaskFilter.blur(BlurStyle.normal, tone * 4),
+            ..strokeWidth = shortest * (0.014 + renderGlow * 0.01)
+            ..shader = SweepGradient(
+              transform: const GradientRotation(-math.pi / 2),
+              colors: _gradientColors(
+                alpha: 0.08 + renderGlow * 0.22,
+              ).reversed.toList(growable: false),
+            ).createShader(shaderBounds)
+            ..blendMode = BlendMode.plus,
+        );
+      }
+      canvas.drawPath(
+        bars,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = shortest * (primary ? 0.0095 : 0.0034)
+          ..shader = SweepGradient(
+            transform: const GradientRotation(-math.pi / 2),
+            colors: _gradientColors(
+              alpha: 0.9 * ringAlpha,
+            ).reversed.toList(growable: false),
+          ).createShader(shaderBounds)
+          ..blendMode = BlendMode.plus,
+      );
+      if (primary) {
+        canvas.drawPath(
+          peakMarkers,
+          Paint()
+            ..shader = SweepGradient(
+              transform: const GradientRotation(-math.pi / 2),
+              colors: _gradientColors(
+                alpha: 1,
+                highlight: true,
+              ).reversed.toList(growable: false),
+            ).createShader(shaderBounds)
+            ..blendMode = BlendMode.plus,
         );
       }
     }
+
+    final coreRadius = shortest * (0.018 + renderBeatImpulse * 0.007);
+    final coreGlowRadius = coreRadius * 3.4;
+    canvas.drawCircle(
+      center,
+      coreGlowRadius,
+      Paint()
+        ..shader = RadialGradient(
+          colors: [
+            _reactiveColor(
+              0.7,
+              dynamics.energy,
+              alpha: 0.08 + renderGlow * 0.18,
+            ),
+            Colors.transparent,
+          ],
+          stops: const [0, 1],
+        ).createShader(Rect.fromCircle(center: center, radius: coreGlowRadius))
+        ..blendMode = BlendMode.plus,
+    );
+    canvas.drawCircle(
+      center,
+      coreRadius,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeWidth = shortest * 0.003
+        ..color = _peakColor(0.68, dynamics.energy)
+        ..blendMode = BlendMode.plus,
+    );
   }
 
   void _paintPrism(Canvas canvas, Size size) {
     final fullCanvas = immersive || size.width > size.height * 1.18;
     final shortest = size.shortestSide;
     final direction = seed.isEven ? 1.0 : -1.0;
+    final activity = visualActivity;
+    final presence = visualPresence;
+    final motion = visualMotion;
     final center =
         size.center(Offset.zero) +
         Offset(
-          math.sin(phase * 2) * size.width * (0.018 + frame.mid * 0.042),
-          math.cos(phase * 3) * size.height * (0.012 + frame.bass * 0.028),
+          math.sin(phase * 2) *
+              size.width *
+              (0.004 + activity * 0.014 + dynamics.mid * 0.042) *
+              motion,
+          math.cos(phase * 3) *
+              size.height *
+              (0.003 + activity * 0.009 + dynamics.bass * 0.028) *
+              motion,
         );
     final orbitalTurn =
-        phase * direction +
-        math.sin(phase * 2) * (0.1 + frame.mid * 0.42) +
-        math.sin(phase * 6) * frame.beat * 0.1;
-    final strands = fullCanvas ? 9 : 8;
-    final points = fullCanvas ? 72 : 60;
+        (phase * direction +
+            math.sin(phase * 2) * (0.1 + dynamics.mid * 0.42) +
+            math.sin(phase * 6) * renderBeatImpulse * 0.1) *
+        motion;
+    final strands = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 6,
+      (VisualizerQuality.eco, false) => 5,
+      (VisualizerQuality.normal, true) => 8,
+      (VisualizerQuality.normal, false) => 7,
+      (VisualizerQuality.ultra, true) => 9,
+      (VisualizerQuality.ultra, false) => 8,
+    };
+    final points = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 42,
+      (VisualizerQuality.eco, false) => 36,
+      (VisualizerQuality.normal, true) => 56,
+      (VisualizerQuality.normal, false) => 48,
+      (VisualizerQuality.ultra, true) => 72,
+      (VisualizerQuality.ultra, false) => 60,
+    };
+    final maxParticles = particleBudget(fullCanvas ? 60 : 42);
+    final targetParticles = reduceMotion
+        ? 0
+        : (maxParticles * renderParticleIntensity).round();
+    final totalPoints = strands * points;
+    final particleStride = targetParticles == 0
+        ? totalPoints + 1
+        : math.max(1, (totalPoints / targetParticles).floor());
+    var particlesDrawn = 0;
     final particlePaint = Paint()..blendMode = BlendMode.plus;
     final streamPaint = Paint()
       ..style = PaintingStyle.stroke
@@ -402,15 +785,26 @@ class _VisualizerPainter extends CustomPainter {
 
     // Un halo barato (sin blur) da profundidad al vórtice sin multiplicar el
     // coste de cada partícula.
-    final glowRadius = shortest * (0.25 + frame.bass * 0.14);
+    final glowRadius =
+        shortest * (0.23 + dynamics.bass * 0.16) * (0.74 + activity * 0.26);
     canvas.drawCircle(
       center,
       glowRadius,
       Paint()
         ..shader = RadialGradient(
           colors: [
-            _fluidParticleColor(0.08, 0.2, frame.bass, alpha: 0.13),
-            _fluidParticleColor(0.64, 0.8, frame.mid, alpha: 0.05),
+            _fluidParticleColor(
+              0.08,
+              0.2,
+              dynamics.bass,
+              alpha: (0.035 + renderGlow * 0.13) * presence,
+            ),
+            _fluidParticleColor(
+              0.64,
+              0.8,
+              dynamics.mid,
+              alpha: (0.012 + renderGlow * 0.05) * presence,
+            ),
             Colors.transparent,
           ],
         ).createShader(Rect.fromCircle(center: center, radius: glowRadius))
@@ -420,44 +814,53 @@ class _VisualizerPainter extends CustomPainter {
     for (var strand = 0; strand < strands; strand++) {
       final band = strand / (strands - 1);
       final stream = Path();
+      Offset? strongestPeakPoint;
+      var strongestPeakLift = 0.0;
+      var strongestPeakPosition = band;
       final radiusX =
-          size.width * (fullCanvas ? 0.13 + band * 0.36 : 0.17 + band * 0.27);
+          size.width *
+          (fullCanvas ? 0.13 + band * 0.36 : 0.17 + band * 0.27) *
+          (0.74 + activity * 0.26);
       final radiusY =
-          size.height * (fullCanvas ? 0.1 + band * 0.31 : 0.16 + band * 0.25);
+          size.height *
+          (fullCanvas ? 0.1 + band * 0.31 : 0.16 + band * 0.25) *
+          (0.74 + activity * 0.26);
       for (var index = 0; index < points; index++) {
         final normalized = index / points;
-        final tone = _spectrumAt((normalized + band * 0.17) % 1);
+        final spectrumPosition = (normalized + band * 0.17) % 1;
+        final tone = _spectrumAt(spectrumPosition);
+        final peak = _peakAt(spectrumPosition);
         final baseAngle = normalized * math.pi * 2;
         // Los medios retuercen el flujo; los graves ensanchan la órbita y el
         // beat la impulsa. Los agudos solo añaden el detalle de alta frecuencia.
         final vortex =
             math.sin(baseAngle * (2 + band * 2.4) - phase * direction * 3) *
-            (0.035 + frame.mid * 0.2 + tone * 0.08);
+            (0.006 + activity * 0.029 + dynamics.mid * 0.2 + tone * 0.08);
         final angularJitter =
             math.sin(baseAngle * (13 + strand) + phase * 7) *
-            frame.treble *
+            dynamics.treble *
             0.045;
         final angle =
             baseAngle +
             orbitalTurn * (0.52 + band * 0.48) +
-            (band - 0.5) * frame.mid * 1.15 +
+            (band - 0.5) * dynamics.mid * 1.15 +
             vortex +
             angularJitter;
         final radialPulse =
             1 +
-            frame.bass * (0.07 + 0.13 * math.sin(baseAngle - phase * 2)) +
-            frame.beat * (0.04 + tone * 0.1);
+            dynamics.bass * (0.07 + 0.13 * math.sin(baseAngle - phase * 2)) +
+            renderBeatImpulse * (0.04 + tone * 0.1);
         final trebleRipple =
             math.sin(baseAngle * (17 + strand % 4) - phase * 8) *
             shortest *
-            frame.treble *
+            dynamics.treble *
             0.012;
         final local = Offset(
           math.cos(angle) * radiusX * radialPulse + trebleRipple,
           math.sin(angle) * radiusY * radialPulse +
               math.cos(baseAngle * 4 - phase * 2) *
                   shortest *
-                  frame.mid *
+                  dynamics.mid *
                   0.035,
         );
         final point = center + local;
@@ -466,143 +869,362 @@ class _VisualizerPainter extends CustomPainter {
         } else {
           stream.lineTo(point.dx, point.dy);
         }
-        particlePaint.color = _fluidParticleColor(
-          normalized,
-          band,
-          tone,
-          alpha: 0.2 + tone * 0.65,
-        );
-        canvas.drawCircle(
-          point,
-          0.55 + tone * 1.25 + frame.treble * 0.85 + frame.beat * tone * 0.55,
-          particlePaint,
-        );
+        final peakLift = math.max(0.0, peak - tone);
+        if (peakLift > strongestPeakLift) {
+          strongestPeakLift = peakLift;
+          strongestPeakPoint = point;
+          strongestPeakPosition = spectrumPosition;
+        }
+        final visibleParticle =
+            particlesDrawn < targetParticles &&
+            (strand * points + index) % particleStride == 0;
+        if (visibleParticle) {
+          particlesDrawn++;
+          particlePaint.color = _fluidParticleColor(
+            normalized,
+            band,
+            tone,
+            alpha: (0.2 + tone * 0.65) * presence,
+          );
+          canvas.drawCircle(
+            point,
+            0.45 +
+                tone * 1.35 +
+                dynamics.treble * 0.8 +
+                renderBeatImpulse * tone * 0.65,
+            particlePaint,
+          );
+        }
       }
       stream.close();
       streamPaint
-        ..strokeWidth = shortest * (0.0007 + frame.mid * 0.0012)
+        ..strokeWidth = shortest * (0.0007 + dynamics.mid * 0.0012)
         ..color = _fluidParticleColor(
           band,
           1 - band,
-          frame.mid,
-          alpha: 0.08 + frame.level * 0.13,
+          dynamics.mid,
+          alpha: (0.035 + renderGlow * 0.16) * presence,
         );
       canvas.drawPath(stream, streamPaint);
+      if (!reduceMotion &&
+          strongestPeakPoint != null &&
+          strongestPeakLift > 0.025) {
+        final point = strongestPeakPoint;
+        final peakRadius = shortest * (0.003 + strongestPeakLift * 0.009);
+        final peakColor = _peakColor(
+          strongestPeakPosition,
+          math.min(1.0, strongestPeakLift + dynamics.energy),
+        );
+        canvas.drawCircle(
+          point,
+          peakRadius * 2.6,
+          Paint()
+            ..color = peakColor.withValues(alpha: 0.2 + renderGlow * 0.25)
+            ..blendMode = BlendMode.plus,
+        );
+        canvas.drawCircle(
+          point,
+          peakRadius,
+          Paint()
+            ..color = peakColor.withValues(alpha: 0.88)
+            ..blendMode = BlendMode.plus,
+        );
+      }
     }
   }
 
   void _paintSpectrum(Canvas canvas, Size size) {
     final fullCanvas = immersive || size.width > size.height * 1.18;
-    final count = fullCanvas ? 64 : 42;
-    final gap = size.width * 0.0045;
+    final count = fullCanvas
+        ? quality.bandCount
+        : math.min(48, quality.bandCount);
+    final gap = size.width * (fullCanvas ? 0.0038 : 0.0052);
     final barWidth = (size.width - gap * (count + 1)) / count;
-    final baseline = size.height * 0.67;
-    final heightScale = fullCanvas ? 0.58 : 0.36;
-    final random = math.Random(seed);
+    final baseline = size.height * (fullCanvas ? 0.64 : 0.7);
+    final heightScale = fullCanvas ? 0.42 : 0.34;
+    final segmentHeight = math.max(
+      2.0,
+      size.shortestSide * (fullCanvas ? 0.0085 : 0.011),
+    );
+    final segmentGap = math.max(1.3, segmentHeight * 0.42);
+    final segmentStep = segmentHeight + segmentGap;
+    final bars = Path();
+    final highlights = Path();
+    final reflections = Path();
+    final peaks = Path();
+    var highestBar = baseline;
+    var reflectionBottom = baseline;
+
     for (var index = 0; index < count; index++) {
       final x = index / (count - 1);
       final tone = _spectrumAt(x);
-      final variation = 0.7 + random.nextDouble() * 0.3;
-      final flutter =
-          0.94 +
-          math.sin(phase * 3 + index * 1.7) * (hasLiveAnalysis ? 0.06 : 0.16);
+      final ambientFlutter = hasLiveAnalysis
+          ? 1.0
+          : 0.94 + math.sin(phase * 2.1 + index * 0.37) * 0.06;
       final height =
-          size.height * (0.022 + tone * heightScale * variation * flutter);
+          size.height *
+          (0.018 + tone * heightScale * ambientFlutter).clamp(0.0, 0.62);
       final left = gap + index * (barWidth + gap);
-      final rect = RRect.fromRectAndRadius(
-        Rect.fromLTWH(left, baseline - height, barWidth, height),
-        Radius.circular(barWidth),
+      final top = baseline - height;
+      highestBar = math.min(highestBar, top);
+      bars.addRRect(
+        RRect.fromRectAndRadius(
+          Rect.fromLTWH(left, top, barWidth, height),
+          Radius.circular(barWidth * 0.48),
+        ),
       );
-      final color = _colorAt(x);
-      canvas.drawRRect(
-        rect,
-        Paint()
-          ..color = color.withValues(alpha: 0.5 + tone * 0.5)
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, tone * 2.5),
-      );
-
-      // Reflejo especular corto y translúcido: solo en pantalla completa, donde
-      // hay espacio bajo la línea base para que el motivo "barras minimalistas"
-      // ocupe más lienzo sin perder su identidad limpia.
-      if (fullCanvas) {
-        final reflectionHeight = height * 0.42;
-        canvas.drawRRect(
+      if (tone > 0.52) {
+        final highlightHeight = math.min(segmentHeight, height);
+        highlights.addRRect(
           RRect.fromRectAndRadius(
-            Rect.fromLTWH(left, baseline, barWidth, reflectionHeight),
-            Radius.circular(barWidth),
+            Rect.fromLTWH(left, top, barWidth, highlightHeight),
+            Radius.circular(math.min(barWidth, highlightHeight) * 0.48),
           ),
-          Paint()..color = color.withValues(alpha: 0.14 + tone * 0.18),
+        );
+      }
+
+      if (fullCanvas && tone > 0.08) {
+        final reflectedHeight = math.min(height * 0.27, size.height * 0.095);
+        final reflectionTop = baseline + segmentGap;
+        reflectionBottom = math.max(
+          reflectionBottom,
+          reflectionTop + reflectedHeight,
+        );
+        reflections.addRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(left, reflectionTop, barWidth, reflectedHeight),
+            Radius.circular(barWidth * 0.45),
+          ),
+        );
+      }
+
+      final peakTone = _peakAt(x);
+      if (peakTone > tone + 0.02) {
+        final peakHeight = size.height * (0.018 + peakTone * heightScale);
+        final markerHeight = math.max(1.8, segmentHeight * 0.36);
+        peaks.addRRect(
+          RRect.fromRectAndRadius(
+            Rect.fromLTWH(
+              left,
+              baseline - peakHeight - segmentGap * 1.25,
+              barWidth,
+              markerHeight,
+            ),
+            Radius.circular(markerHeight * 0.5),
+          ),
         );
       }
     }
 
-    final particleCount = fullCanvas ? 48 : 28;
+    final bounds = Offset.zero & size;
+    if (renderGlow > 0.025) {
+      canvas.drawPath(
+        bars,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeWidth = 1.5 + renderGlow * 4
+          ..shader = LinearGradient(
+            colors: _gradientColors(alpha: 0.08 + renderGlow * 0.28),
+          ).createShader(bounds)
+          ..blendMode = BlendMode.plus,
+      );
+    }
+    canvas.save();
+    canvas.clipPath(bars);
+    canvas.drawRect(
+      bounds,
+      Paint()
+        ..shader = LinearGradient(
+          colors: _gradientColors(alpha: 0.82 + dynamics.energy * 0.18),
+        ).createShader(bounds)
+        ..blendMode = BlendMode.plus,
+    );
+    canvas.drawPath(
+      highlights,
+      Paint()
+        ..shader = LinearGradient(
+          colors: _gradientColors(alpha: 0.9, highlight: true),
+        ).createShader(bounds)
+        ..blendMode = BlendMode.plus,
+    );
+    final separatorPaint = Paint()..color = const Color(0xFF010613);
+    for (var y = baseline - segmentStep; y > highestBar; y -= segmentStep) {
+      canvas.drawRect(
+        Rect.fromLTWH(0, y, size.width, segmentGap),
+        separatorPaint,
+      );
+    }
+    canvas.restore();
+    if (fullCanvas) {
+      canvas.drawPath(
+        reflections,
+        Paint()
+          ..shader = LinearGradient(
+            colors: _gradientColors(alpha: 0.14 + renderGlow * 0.12),
+          ).createShader(bounds)
+          ..blendMode = BlendMode.plus,
+      );
+      canvas.save();
+      canvas.clipPath(reflections);
+      final reflectionSeparatorPaint = Paint()..color = const Color(0xB8010613);
+      final reflectionStep = segmentStep * 0.72;
+      for (
+        var y = baseline + segmentGap + segmentHeight * 0.62;
+        y < reflectionBottom;
+        y += reflectionStep
+      ) {
+        canvas.drawRect(
+          Rect.fromLTWH(0, y, size.width, segmentGap * 0.72),
+          reflectionSeparatorPaint,
+        );
+      }
+      canvas.restore();
+    }
+    canvas.drawPath(
+      peaks,
+      Paint()
+        ..shader = LinearGradient(
+          colors: _gradientColors(alpha: 0.98, highlight: true),
+        ).createShader(bounds)
+        ..blendMode = BlendMode.plus,
+    );
+
+    final maxParticles = particleBudget(fullCanvas ? 34 : 22);
+    final ambientParticles = hasLiveAnalysis ? 0 : 3;
+    final particleCount = reduceMotion
+        ? ambientParticles
+        : (ambientParticles + renderParticleIntensity * maxParticles).round();
     final randomParticles = math.Random(seed ^ 0x5F3759DF);
+    final particlePaint = Paint()..blendMode = BlendMode.plus;
     for (var index = 0; index < particleCount; index++) {
+      final x = 0.03 + randomParticles.nextDouble() * 0.94;
+      final baseY = randomParticles.nextDouble();
+      final drift = reduceMotion
+          ? 0.0
+          : (time * (0.025 + randomParticles.nextDouble() * 0.035)) % 1;
+      final y = (baseY - drift) % 1.0;
+      final tone = _spectrumAt(x);
       final point = Offset(
-        size.width * (0.08 + randomParticles.nextDouble() * 0.84),
-        size.height * (0.16 + randomParticles.nextDouble() * 0.34),
+        size.width * x,
+        size.height * (0.14 + y * (baseline / size.height - 0.2)),
       );
       canvas.drawCircle(
         point,
-        0.6 + frame.treble * 1.6,
-        Paint()
-          ..color = _colorAt(
-            randomParticles.nextDouble(),
-          ).withValues(alpha: 0.18 + frame.treble * 0.4),
+        0.4 + tone * 1.45 + renderBeatImpulse * 0.7,
+        particlePaint
+          ..color = _reactiveColor(
+            x,
+            tone,
+            alpha:
+                (0.04 + tone * 0.48) * (0.32 + renderParticleIntensity * 0.68),
+          ),
       );
     }
   }
 
   void _paintElectricWaves(Canvas canvas, Size size) {
     final fullCanvas = immersive || size.width > size.height * 1.18;
-    final strandCount = fullCanvas ? 8 : 6;
+    final strandCount = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 4,
+      (VisualizerQuality.eco, false) => 4,
+      (VisualizerQuality.normal, true) => 6,
+      (VisualizerQuality.normal, false) => 5,
+      (VisualizerQuality.ultra, true) => 8,
+      (VisualizerQuality.ultra, false) => 6,
+    };
     final bounds = Offset.zero & size;
-    final energy =
-        (frame.level * 0.38 +
-                frame.bass * 0.3 +
-                frame.mid * 0.2 +
-                frame.treble * 0.12)
-            .clamp(0.0, 1.0);
+    // dynamics.energy es la misma composición (level/bass/mid/treble
+    // ponderados) que antes se recalculaba aquí de forma local.
+    final energy = dynamics.energy;
+    final presence = visualPresence;
     final direction = seed.isEven ? 1.0 : -1.0;
     // Una vuelta completa mantiene continuidad al reiniciar el reloj. Graves y
     // medios desvían la trayectoria; el beat imprime pequeños golpes de giro.
     final orbitAngle =
-        phase * direction +
-        math.sin(phase * 2) * (0.12 + frame.mid * 0.44) +
-        math.sin(phase * 3) * frame.bass * 0.22 +
-        math.sin(phase * 7) * frame.beat * 0.1;
+        (phase * direction +
+            math.sin(phase * 2) * (0.12 + dynamics.mid * 0.44) +
+            math.sin(phase * 3) * dynamics.bass * 0.22 +
+            math.sin(phase * 7) * renderBeatImpulse * 0.1) *
+        visualMotion;
 
     canvas.save();
 
     final shader = LinearGradient(
       begin: Alignment.centerLeft,
       end: Alignment.centerRight,
-      colors: [
-        _electricColor(0, frame.bass).withValues(alpha: 0.72),
-        _electricColor(0.32, frame.mid),
-        _electricColor(0.68, frame.treble),
-        _electricColor(1, frame.beat).withValues(alpha: 0.9),
-      ],
+      colors: _gradientColors(alpha: 0.12 + presence * 0.84),
+      stops: const [0, 0.36, 0.7, 1],
+    ).createShader(bounds.inflate(size.width * 0.12));
+    final glowShader = LinearGradient(
+      begin: Alignment.centerLeft,
+      end: Alignment.centerRight,
+      colors: _gradientColors(alpha: 0.06 + renderGlow * 0.22),
       stops: const [0, 0.36, 0.7, 1],
     ).createShader(bounds.inflate(size.width * 0.12));
 
-    // Varias capas dibujadas de atrás hacia delante crean el aspecto de
-    // cintas de plasma de los visualizadores clásicos, sin encerrar la forma
-    // en una portada cuadrada.
+    // Se construyen primero las cintas para compartir una sola pasada de blur.
+    // Antes cada una creaba una superficie difuminada de pantalla completa;
+    // en GPU móviles eso multiplicaba memoria y podía bloquear el rasterizador.
+    final glowPaths = Path();
+    final strandLayers =
+        <
+          ({
+            Path path,
+            double normalized,
+            double tone,
+            double peak,
+            double peakLift,
+            Offset peakPoint,
+          })
+        >[];
     for (var strand = 0; strand < strandCount; strand++) {
       final normalized = strandCount == 1 ? 0.5 : strand / (strandCount - 1);
-      final path = _electricWavePath(
+      final wave = _electricWaveGeometry(
         size: size,
         strand: strand,
         strandCount: strandCount,
         fullCanvas: fullCanvas,
         orbitAngle: orbitAngle,
       );
-      final tone = _spectrumAt((normalized + time * 0.11) % 1.0);
-      final depth = 1 - (normalized - 0.5).abs() * 1.35;
-      final pulse = 1 + frame.beat * (0.42 + depth * 0.5);
+      final path = wave.path;
+      final tone = _spectrumAt(normalized);
+      final peak = _peakAt(normalized);
+      final peakLift = math.max(0.0, peak - tone);
+      glowPaths.addPath(path, Offset.zero);
+      strandLayers.add((
+        path: path,
+        normalized: normalized,
+        tone: tone,
+        peak: peak,
+        peakLift: peakLift,
+        peakPoint: wave.peakPoint,
+      ));
+    }
 
+    if (renderGlow > 0.025) {
+      canvas.drawPath(
+        glowPaths,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..strokeWidth =
+              size.shortestSide *
+              (0.018 + energy * 0.038 + renderBeatImpulse * 0.012)
+          ..shader = glowShader
+          ..blendMode = BlendMode.plus,
+      );
+    }
+
+    // Varias capas nítidas conservan el plasma y la profundidad, mientras el
+    // halo agregado de arriba evita ocho blurs independientes por fotograma.
+    for (final layer in strandLayers) {
+      final path = layer.path;
+      final normalized = layer.normalized;
+      final tone = layer.tone;
+      final peak = layer.peak;
+      final peakLift = layer.peakLift;
+      final peakPoint = layer.peakPoint;
       canvas.drawPath(
         path,
         Paint()
@@ -611,58 +1233,70 @@ class _VisualizerPainter extends CustomPainter {
           ..strokeJoin = StrokeJoin.round
           ..strokeWidth =
               size.shortestSide *
-              (0.034 + tone * 0.028 + energy * 0.018) *
-              pulse
-          ..shader = shader
-          ..color = Colors.white.withValues(alpha: 0.12 + tone * 0.1)
-          ..blendMode = BlendMode.plus
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.normal,
-            size.shortestSide * (0.025 + frame.bass * 0.022),
-          ),
-      );
-      canvas.drawPath(
-        path,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeJoin = StrokeJoin.round
-          ..strokeWidth =
-              size.shortestSide * (0.0036 + tone * 0.004 + frame.beat * 0.002)
+              (0.0012 +
+                  presence *
+                      (0.0024 + tone * 0.004 + renderBeatImpulse * 0.002))
           ..shader = shader
           ..blendMode = BlendMode.plus,
       );
+      if (!reduceMotion && peakLift > 0.025) {
+        final flare = size.shortestSide * (0.006 + peakLift * 0.018);
+        final peakPaint = Paint()
+          ..color = _peakColor(
+            normalized,
+            peak,
+          ).withValues(alpha: 0.64 + peakLift * 0.34)
+          ..strokeCap = StrokeCap.round
+          ..strokeWidth = 0.8 + peakLift * 1.8
+          ..blendMode = BlendMode.plus;
+        canvas.drawLine(
+          peakPoint - Offset(flare, 0),
+          peakPoint + Offset(flare, 0),
+          peakPaint,
+        );
+        canvas.drawLine(
+          peakPoint - Offset(0, flare),
+          peakPoint + Offset(0, flare),
+          peakPaint,
+        );
+      }
     }
 
     // Una onda fina y nerviosa aporta la vibración de agudos que caracterizaba
     // a los modos de pantalla completa de Windows Media Player.
-    for (var echo = 0; echo < 3; echo++) {
+    final tracePaths = Path();
+    final traceCount = switch (quality) {
+      VisualizerQuality.eco => 1,
+      VisualizerQuality.normal => 2,
+      VisualizerQuality.ultra => 3,
+    };
+    for (var echo = 0; echo < traceCount; echo++) {
       final path = _electricTracePath(
         size: size,
         echo: echo,
+        traceCount: traceCount,
         fullCanvas: fullCanvas,
         orbitAngle: orbitAngle,
       );
-      canvas.drawPath(
-        path,
-        Paint()
-          ..style = PaintingStyle.stroke
-          ..strokeCap = StrokeCap.round
-          ..strokeWidth = size.shortestSide * (0.0024 + frame.treble * 0.003)
-          ..shader = shader
-          ..blendMode = BlendMode.plus
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.normal,
-            1.4 + frame.treble * 4.5,
-          ),
-      );
+      tracePaths.addPath(path, Offset.zero);
     }
+    canvas.drawPath(
+      tracePaths,
+      Paint()
+        ..style = PaintingStyle.stroke
+        ..strokeCap = StrokeCap.round
+        ..strokeWidth =
+            size.shortestSide *
+            (0.0008 + presence * 0.0016 + dynamics.treble * 0.003)
+        ..shader = shader
+        ..blendMode = BlendMode.plus,
+    );
 
     _paintElectricSparks(canvas, size, shader, fullCanvas, orbitAngle);
     canvas.restore();
   }
 
-  Path _electricWavePath({
+  ({Path path, Offset peakPoint}) _electricWaveGeometry({
     required Size size,
     required int strand,
     required int strandCount,
@@ -670,7 +1304,14 @@ class _VisualizerPainter extends CustomPainter {
     required double orbitAngle,
   }) {
     final path = Path();
-    final steps = fullCanvas ? 144 : 104;
+    final steps = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 72,
+      (VisualizerQuality.eco, false) => 56,
+      (VisualizerQuality.normal, true) => 104,
+      (VisualizerQuality.normal, false) => 80,
+      (VisualizerQuality.ultra, true) => 144,
+      (VisualizerQuality.ultra, false) => 104,
+    };
     final diagonal = math.sqrt(
       size.width * size.width + size.height * size.height,
     );
@@ -679,12 +1320,20 @@ class _VisualizerPainter extends CustomPainter {
     final strandPosition = strand / (strandCount - 1);
     final signedPosition = strandPosition * 2 - 1;
     final strandPhase = signedPosition * 1.72 + strand * 0.29;
+    final peakStep = ((0.34 + strandPosition * 0.32) * steps).round();
+    var peakPoint = center;
     final baseAmplitude =
         size.height *
         (fullCanvas ? 0.22 : 0.18) *
-        (0.72 + frame.bass * 0.76 + frame.beat * 0.28);
+        (0.18 +
+            visualActivity * 0.54 +
+            dynamics.bass * 0.72 +
+            renderBeatImpulse * 0.28);
     final laneOffset =
-        signedPosition * size.height * (fullCanvas ? 0.12 : 0.105);
+        signedPosition *
+        size.height *
+        (fullCanvas ? 0.12 : 0.105) *
+        (0.35 + visualActivity * 0.65);
 
     for (var index = 0; index <= steps; index++) {
       final normalized = index / steps;
@@ -698,13 +1347,13 @@ class _VisualizerPainter extends CustomPainter {
             strandPhase,
       );
       final fold = math.sin(
-        normalized * math.pi * (5.2 + frame.mid * 2.6) -
+        normalized * math.pi * (5.2 + dynamics.mid * 2.6) -
             phase * (0.94 + strandPosition * 0.11) -
             strandPhase * 0.6,
       );
       final shimmer = math.sin(
         normalized * math.pi * (18 + strand * 0.55) +
-            phase * (3.1 + frame.treble * 2.7) +
+            phase * (3.1 + dynamics.treble * 2.7) +
             strand,
       );
       final localSpectrum = _spectrumAt(normalized);
@@ -720,14 +1369,14 @@ class _VisualizerPainter extends CustomPainter {
           center.dy +
           laneOffset * math.cos(normalized * math.pi * 2 + phase * 0.28) +
           broad * baseAmplitude * envelope +
-          fold * baseAmplitude * (0.12 + frame.mid * 0.15) +
+          fold * baseAmplitude * (0.12 + dynamics.mid * 0.15) +
           spectralRipple * envelope +
-          shimmer * size.height * frame.treble * 0.012;
+          shimmer * size.height * dynamics.treble * 0.012;
       final circularBend =
-          (normalized - 0.5) * (0.42 + frame.mid * 1.05) +
+          (normalized - 0.5) * (0.42 + dynamics.mid * 1.05) +
           math.sin(normalized * math.pi * 2 - phase * 2) *
-              (0.035 + frame.beat * 0.11) +
-          signedPosition * frame.bass * 0.09;
+              (0.035 + renderBeatImpulse * 0.11) +
+          signedPosition * dynamics.bass * 0.09;
       final point = _rotateAround(
         Offset(x, y),
         center,
@@ -738,18 +1387,27 @@ class _VisualizerPainter extends CustomPainter {
       } else {
         path.lineTo(point.dx, point.dy);
       }
+      if (index == peakStep) peakPoint = point;
     }
-    return path;
+    return (path: path, peakPoint: peakPoint);
   }
 
   Path _electricTracePath({
     required Size size,
     required int echo,
+    required int traceCount,
     required bool fullCanvas,
     required double orbitAngle,
   }) {
     final path = Path();
-    final steps = fullCanvas ? 160 : 120;
+    final steps = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 64,
+      (VisualizerQuality.eco, false) => 48,
+      (VisualizerQuality.normal, true) => 104,
+      (VisualizerQuality.normal, false) => 80,
+      (VisualizerQuality.ultra, true) => 160,
+      (VisualizerQuality.ultra, false) => 120,
+    };
     final diagonal = math.sqrt(
       size.width * size.width + size.height * size.height,
     );
@@ -770,16 +1428,19 @@ class _VisualizerPainter extends CustomPainter {
       final localSpectrum = _spectrumAt(normalized);
       final y =
           center.dy +
-          mirror * sweep * size.height * (0.15 + frame.mid * 0.16) +
+          mirror *
+              sweep *
+              size.height *
+              (0.035 + visualActivity * 0.115 + dynamics.mid * 0.16) +
           vibration *
               size.height *
-              (0.005 + frame.treble * 0.014 + localSpectrum * 0.025) *
+              (0.005 + dynamics.treble * 0.014 + localSpectrum * 0.025) *
               envelope +
-          (echo - 1) * size.height * 0.026;
+          (echo - (traceCount - 1) / 2) * size.height * 0.026;
       final circularBend =
-          (normalized - 0.5) * (0.35 + frame.mid * 0.8) +
+          (normalized - 0.5) * (0.35 + dynamics.mid * 0.8) +
           math.sin(normalized * math.pi * 2 + phase * 3 + echo) *
-              frame.beat *
+              renderBeatImpulse *
               0.09;
       final point = _rotateAround(
         Offset(x, y),
@@ -803,7 +1464,10 @@ class _VisualizerPainter extends CustomPainter {
     double orbitAngle,
   ) {
     final random = math.Random(seed ^ 0x00C0FFEE);
-    final count = fullCanvas ? 72 : 42;
+    final maxCount = particleBudget(fullCanvas ? 68 : 40);
+    final count = reduceMotion
+        ? 0
+        : (renderParticleIntensity * maxCount).round();
     final sparkPaint = Paint()
       ..shader = shader
       ..blendMode = BlendMode.plus;
@@ -812,34 +1476,41 @@ class _VisualizerPainter extends CustomPainter {
       final sweep = math.sin(normalized * math.pi * 3.2 + phase * 1.14);
       final spectralEnergy = _spectrumAt(normalized);
       final activity =
-          (0.12 +
-              spectralEnergy * 0.72 +
-              frame.treble * 0.34 +
-              frame.beat * 0.72) *
+          (spectralEnergy * 0.72 +
+              dynamics.treble * 0.34 +
+              renderBeatImpulse * 0.72) *
           (0.55 + random.nextDouble() * 0.45);
       final drift = math.sin(phase * (1.2 + random.nextDouble()) + index) * 8;
       final rawPoint = Offset(
         normalized * size.width + drift,
         size.height * 0.5 +
-            sweep * size.height * (0.15 + frame.mid * 0.16) +
+            sweep * size.height * (0.15 + dynamics.mid * 0.16) +
             (random.nextDouble() - 0.5) * size.height * 0.24 * activity,
       );
       final point = _rotateAround(
         rawPoint,
         size.center(Offset.zero),
         orbitAngle +
-            (normalized - 0.5) * (0.38 + frame.mid * 0.9) +
-            math.sin(normalized * math.pi * 2 - phase * 2) * frame.beat * 0.08,
+            (normalized - 0.5) * (0.38 + dynamics.mid * 0.9) +
+            math.sin(normalized * math.pi * 2 - phase * 2) *
+                renderBeatImpulse *
+                0.08,
       );
       final radius =
-          0.55 + random.nextDouble() * 1.25 + frame.treble * 1.9 + frame.beat;
+          0.55 +
+          random.nextDouble() * 1.25 +
+          dynamics.treble * 1.9 +
+          renderBeatImpulse;
       canvas.drawCircle(point, radius, sparkPaint);
-      if (frame.beat > 0.48 && index % 11 == 0) {
-        final flare = size.shortestSide * (0.014 + frame.beat * 0.018);
+      // beatImpulse normalizado (no dynamics.beat crudo) da un destello
+      // consistente con el resto de estilos: mismo umbral y misma forma de
+      // pulso en vez de que cada painter invente su propio disparador.
+      if (!reduceMotion && renderBeatImpulse > 0.48 && index % 11 == 0) {
+        final flare = size.shortestSide * (0.014 + renderBeatImpulse * 0.018);
         canvas.drawLine(
           point - Offset(flare, 0),
           point + Offset(flare, 0),
-          sparkPaint..strokeWidth = 0.8 + frame.beat,
+          sparkPaint..strokeWidth = 0.8 + renderBeatImpulse,
         );
         canvas.drawLine(
           point - Offset(0, flare),
@@ -852,15 +1523,26 @@ class _VisualizerPainter extends CustomPainter {
 
   void _paintCosmicOrbs(Canvas canvas, Size size) {
     final fullCanvas = immersive || size.width > size.height * 1.18;
+    final motionActivity = visualMotion;
     final camera = Offset(
-      size.width * (0.49 + math.sin(phase) * (0.07 + frame.beat * 0.025)),
-      size.height * (0.5 + math.cos(phase * 2) * (0.055 + frame.mid * 0.035)),
+      size.width *
+          (0.49 +
+              math.sin(phase) *
+                  (0.07 + renderBeatImpulse * 0.025) *
+                  motionActivity),
+      size.height *
+          (0.5 +
+              math.cos(phase * 2) *
+                  (0.055 + dynamics.mid * 0.035) *
+                  motionActivity),
     );
     final seededRoll = ((seed.abs() % 997) / 997 - 0.5) * 0.24;
     final cameraRoll =
         seededRoll +
-        math.sin(phase * (1 + seed.abs() % 2)) * (0.08 + frame.mid * 0.1) +
-        math.sin(phase * 4) * frame.beat * 0.035;
+        math.sin(phase * (1 + seed.abs() % 2)) *
+            (0.08 + dynamics.mid * 0.1) *
+            motionActivity +
+        math.sin(phase * 4) * renderBeatImpulse * 0.035;
 
     canvas.save();
     canvas.translate(camera.dx, camera.dy);
@@ -876,25 +1558,31 @@ class _VisualizerPainter extends CustomPainter {
 
   void _paintCosmicNebula(Canvas canvas, Size size, Offset camera) {
     final shortest = size.shortestSide;
-    for (var cloud = 0; cloud < 5; cloud++) {
+    final cloudCount = quality == VisualizerQuality.eco ? 2 : 3;
+    for (var cloud = 0; cloud < cloudCount; cloud++) {
       final angle = phase * (cloud.isEven ? 1 : -1) + cloud * 1.37;
       final reach = Offset(
         math.cos(angle) * size.width * (0.2 + cloud * 0.035),
         math.sin(angle * 1.17) * size.height * (0.17 + cloud * 0.025),
       );
-      final radius =
-          shortest *
-          (0.25 + cloud * 0.055 + frame.bass * 0.09 + frame.level * 0.04);
+      final radius = shortest * (0.2 + cloud * 0.045 + dynamics.bass * 0.075);
+      final center = camera + reach;
       canvas.drawCircle(
-        camera + reach,
+        center,
         radius,
         Paint()
-          ..color = _cosmicColor(
-            cloud / 5 + 0.11,
-            alpha: 0.045 + frame.mid * 0.055,
-          )
-          ..blendMode = BlendMode.plus
-          ..maskFilter = MaskFilter.blur(BlurStyle.normal, radius * 0.72),
+          ..shader = RadialGradient(
+            colors: [
+              _cosmicColor(
+                cloud / 5 + 0.11,
+                alpha: 0.012 + renderGlow * (0.035 + cloud * 0.009),
+              ),
+              _cosmicColor(cloud / 5 + 0.23, alpha: 0.004 + renderGlow * 0.012),
+              Colors.transparent,
+            ],
+            stops: const [0, 0.42, 1],
+          ).createShader(Rect.fromCircle(center: center, radius: radius))
+          ..blendMode = BlendMode.plus,
       );
     }
   }
@@ -908,8 +1596,17 @@ class _VisualizerPainter extends CustomPainter {
     // Mantiene densidad visual sin recalcular decenas de miles de vértices por
     // cuadro en un teléfono: 8/6 cintas y tres filamentos siguen cubriendo todo
     // el lienzo, mientras el glow completa el volumen aparente.
-    final ribbonCount = fullCanvas ? 8 : 6;
+    final ribbonCount = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 4,
+      (VisualizerQuality.eco, false) => 3,
+      (VisualizerQuality.normal, true) => 6,
+      (VisualizerQuality.normal, false) => 5,
+      (VisualizerQuality.ultra, true) => 8,
+      (VisualizerQuality.ultra, false) => 6,
+    };
     final bounds = (Offset.zero & size).inflate(size.shortestSide * 0.18);
+    final presence = visualPresence;
+    final tunnelGlow = Path();
     for (var ribbon = 0; ribbon < ribbonCount; ribbon++) {
       final normalized = ribbon / math.max(1, ribbonCount - 1);
       final spectrum = _spectrumAt(normalized);
@@ -919,21 +1616,22 @@ class _VisualizerPainter extends CustomPainter {
         begin: Alignment(-math.cos(directionAngle), -math.sin(directionAngle)),
         end: Alignment(math.cos(directionAngle), math.sin(directionAngle)),
         colors: [
-          _cosmicColor(normalized, alpha: 0.22),
-          _cosmicColor(normalized + 0.24, alpha: 0.92),
-          _cosmicColor(normalized + 0.52, alpha: 1),
-          _cosmicColor(normalized + 0.78, alpha: 0.9),
-          _cosmicColor(normalized + 1, alpha: 0.2),
+          _cosmicColor(normalized, alpha: 0.22 * presence),
+          _cosmicColor(normalized + 0.24, alpha: 0.92 * presence),
+          _cosmicColor(normalized + 0.52, alpha: presence),
+          _cosmicColor(normalized + 0.78, alpha: 0.9 * presence),
+          _cosmicColor(normalized + 1, alpha: 0.2 * presence),
         ],
         stops: const [0, 0.22, 0.5, 0.78, 1],
       ).createShader(bounds);
-      final centerPath = _cosmicRibbonPath(
+      final paths = _cosmicRibbonPaths(
         size: size,
         camera: camera,
         ribbon: ribbon,
-        filament: 0,
         fullCanvas: fullCanvas,
       );
+      final centerPath = paths.center;
+      tunnelGlow.addPath(centerPath, Offset.zero);
 
       canvas.drawPath(
         centerPath,
@@ -943,30 +1641,23 @@ class _VisualizerPainter extends CustomPainter {
           ..strokeJoin = StrokeJoin.round
           ..strokeWidth =
               size.shortestSide *
-              (0.032 +
-                  frame.bass * 0.045 +
+              (0.009 +
+                  dynamics.energy * 0.023 +
+                  dynamics.bass * 0.045 +
                   spectrum * 0.025 +
-                  frame.beat * 0.03)
+                  renderBeatImpulse * 0.03)
           ..shader = shader
-          ..blendMode = BlendMode.plus
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.normal,
-            size.shortestSide * (0.022 + frame.bass * 0.026),
-          ),
+          ..blendMode = BlendMode.plus,
       );
 
       // Los filamentos separados hacen visible la torsión pseudo-3D de cada
       // cinta y evitan que el resultado se lea como una única forma central.
       for (var filament = -1; filament <= 1; filament++) {
-        final filamentPath = filament == 0
-            ? centerPath
-            : _cosmicRibbonPath(
-                size: size,
-                camera: camera,
-                ribbon: ribbon,
-                filament: filament.toDouble(),
-                fullCanvas: fullCanvas,
-              );
+        final filamentPath = switch (filament) {
+          -1 => paths.negative,
+          0 => centerPath,
+          _ => paths.positive,
+        };
         canvas.drawPath(
           filamentPath,
           Paint()
@@ -976,24 +1667,34 @@ class _VisualizerPainter extends CustomPainter {
             ..strokeWidth =
                 size.shortestSide *
                 (0.0014 +
-                    frame.treble * 0.0028 +
+                    dynamics.treble * 0.0028 +
                     spectrum * 0.0018 +
-                    (filament == 0 ? frame.beat * 0.002 : 0))
+                    (filament == 0 ? renderBeatImpulse * 0.002 : 0))
             ..shader = shader
-            ..blendMode = BlendMode.plus
-            ..maskFilter = filament == 0
-                ? MaskFilter.blur(BlurStyle.normal, 1.2 + frame.treble * 3.2)
-                : null,
+            ..blendMode = BlendMode.plus,
         );
       }
     }
+    if (renderGlow > 0.04) {
+      canvas.drawPath(
+        tunnelGlow,
+        Paint()
+          ..style = PaintingStyle.stroke
+          ..strokeCap = StrokeCap.round
+          ..strokeJoin = StrokeJoin.round
+          ..strokeWidth = size.shortestSide * (0.014 + renderGlow * 0.024)
+          ..shader = LinearGradient(
+            colors: _gradientColors(alpha: 0.035 + renderGlow * 0.09),
+          ).createShader(bounds)
+          ..blendMode = BlendMode.plus,
+      );
+    }
   }
 
-  Path _cosmicRibbonPath({
+  ({Path negative, Path center, Path positive}) _cosmicRibbonPaths({
     required Size size,
     required Offset camera,
     required int ribbon,
-    required double filament,
     required bool fullCanvas,
   }) {
     final random = math.Random(seed ^ (ribbon * 0x27D4EB2D));
@@ -1008,14 +1709,34 @@ class _VisualizerPainter extends CustomPainter {
     final diagonal = math.sqrt(
       size.width * size.width + size.height * size.height,
     );
-    final steps = fullCanvas ? 140 : 104;
-    final path = Path();
+    final steps = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, true) => 64,
+      (VisualizerQuality.eco, false) => 52,
+      (VisualizerQuality.normal, true) => 96,
+      (VisualizerQuality.normal, false) => 76,
+      (VisualizerQuality.ultra, true) => 140,
+      (VisualizerQuality.ultra, false) => 104,
+    };
+    final negativePath = Path();
+    final centerPath = Path();
+    final positivePath = Path();
+    final travellingPhase =
+        phase *
+        direction *
+        (speed * (0.08 + visualActivity * 0.92) +
+            dynamics.bass * 0.34 +
+            renderBeatImpulse * 0.5);
+    final roll =
+        baseAngle +
+        math.sin(phase * (1 + ribbon % 2) + depthPhase) *
+            (0.12 + dynamics.mid * 0.25) +
+        math.sin(phase * 4 + ribbon) * renderBeatImpulse * 0.055;
+    final rollCosine = math.cos(roll);
+    final rollSine = math.sin(roll);
 
     for (var step = 0; step <= steps; step++) {
       final normalized = step / steps;
       final localSpectrum = _spectrumAt(normalized);
-      final travellingPhase =
-          phase * direction * (speed + frame.bass * 0.34 + frame.beat * 0.5);
       final depthAngle =
           normalized * math.pi * 2 * depthTurns + travellingPhase + depthPhase;
       final depth = math.sin(depthAngle);
@@ -1024,55 +1745,75 @@ class _VisualizerPainter extends CustomPainter {
       final bend =
           math.sin(
             normalized * math.pi * 2 * waveCount +
-                travellingPhase * (0.72 + frame.mid * 0.48) +
+                travellingPhase * (0.72 + dynamics.mid * 0.48) +
                 wavePhase,
           ) *
           size.shortestSide *
-          (0.11 + frame.bass * 0.17 + localSpectrum * 0.12);
+          (0.025 +
+              visualActivity * 0.085 +
+              dynamics.bass * 0.17 +
+              localSpectrum * 0.12);
       final changeOfDirection =
           math.sin(
             normalized * math.pi * (5 + ribbon % 4) -
-                phase * direction * (2 + frame.mid * 2.5) +
+                phase * direction * (2 + dynamics.mid * 2.5) +
                 depthPhase,
           ) *
           size.shortestSide *
-          (0.025 + frame.mid * 0.105 + frame.beat * 0.035);
+          (0.005 +
+              visualActivity * 0.02 +
+              dynamics.mid * 0.105 +
+              renderBeatImpulse * 0.035);
       final vibration =
           math.sin(
             normalized * math.pi * (28 + ribbon % 7) +
-                phase * direction * (5 + frame.treble * 5) +
+                phase * direction * (5 + dynamics.treble * 5) +
                 wavePhase,
           ) *
           size.shortestSide *
-          (0.002 + frame.treble * 0.023 + localSpectrum * 0.009);
+          (0.0005 +
+              visualActivity * 0.0015 +
+              dynamics.treble * 0.023 +
+              localSpectrum * 0.009);
       final ribbonWidth =
-          filament *
           size.shortestSide *
-          (0.01 + frame.bass * 0.025 + frame.beat * 0.008) *
+          (0.01 + dynamics.bass * 0.025 + renderBeatImpulse * 0.008) *
           (0.28 + (math.cos(depthAngle) + 1) * 0.5);
-      final roll =
-          baseAngle +
-          math.sin(phase * (1 + ribbon % 2) + depthPhase) *
-              (0.12 + frame.mid * 0.25) +
-          math.sin(phase * 4 + ribbon) * frame.beat * 0.055;
-      final local = Offset(
-        along * perspective,
-        (lane + bend + changeOfDirection + vibration + ribbonWidth) *
-            perspective,
-      );
-      final point =
+      final localX = along * perspective;
+      final centerY =
+          (lane + bend + changeOfDirection + vibration) * perspective;
+      final widthY = ribbonWidth * perspective;
+      final negativeY = centerY - widthY;
+      final positiveY = centerY + widthY;
+      final centerPoint =
           camera +
           Offset(
-            local.dx * math.cos(roll) - local.dy * math.sin(roll),
-            local.dx * math.sin(roll) + local.dy * math.cos(roll),
+            localX * rollCosine - centerY * rollSine,
+            localX * rollSine + centerY * rollCosine,
+          );
+      final negativePoint =
+          camera +
+          Offset(
+            localX * rollCosine - negativeY * rollSine,
+            localX * rollSine + negativeY * rollCosine,
+          );
+      final positivePoint =
+          camera +
+          Offset(
+            localX * rollCosine - positiveY * rollSine,
+            localX * rollSine + positiveY * rollCosine,
           );
       if (step == 0) {
-        path.moveTo(point.dx, point.dy);
+        negativePath.moveTo(negativePoint.dx, negativePoint.dy);
+        centerPath.moveTo(centerPoint.dx, centerPoint.dy);
+        positivePath.moveTo(positivePoint.dx, positivePoint.dy);
       } else {
-        path.lineTo(point.dx, point.dy);
+        negativePath.lineTo(negativePoint.dx, negativePoint.dy);
+        centerPath.lineTo(centerPoint.dx, centerPoint.dy);
+        positivePath.lineTo(positivePoint.dx, positivePoint.dy);
       }
     }
-    return path;
+    return (negative: negativePath, center: centerPath, positive: positivePath);
   }
 
   void _paintCosmicStars(
@@ -1082,21 +1823,38 @@ class _VisualizerPainter extends CustomPainter {
     bool fullCanvas,
   ) {
     final random = math.Random(seed ^ 0x51A7F1E1);
-    final starCount = fullCanvas ? 92 : 56;
+    final maxStars = particleBudget(fullCanvas ? 64 : 40);
+    final ambientBaseStars = hasLiveAnalysis ? 0 : 4;
+    final starCount = reduceMotion
+        ? ambientBaseStars
+        : (ambientBaseStars +
+                  visualActivity * 8 +
+                  renderParticleIntensity * (maxStars - ambientBaseStars - 8))
+              .round();
+    final starPaint = Paint()
+      ..strokeCap = StrokeCap.round
+      ..blendMode = BlendMode.plus;
     for (var star = 0; star < starCount; star++) {
       final angle = random.nextDouble() * math.pi * 2;
       final baseDepth = random.nextDouble();
       final speed = 1 + star % 3;
-      final reactiveSpeed = speed + frame.bass * 0.7 + frame.beat * 1.25;
+      final reactiveSpeed =
+          speed * (0.08 + visualActivity * 0.92) +
+          dynamics.bass * 0.7 +
+          renderBeatImpulse * 1.25;
       final depth = (baseDepth + time * reactiveSpeed) % 1.0;
       final previousDepth = math.max(
         0.0,
-        depth - 0.018 - frame.treble * 0.045 - frame.beat * 0.025,
+        depth -
+            0.004 -
+            visualActivity * 0.014 -
+            dynamics.treble * 0.045 -
+            renderBeatImpulse * 0.025,
       );
       final perspective = math.pow(depth, 1.72).toDouble();
       final previousPerspective = math.pow(previousDepth, 1.72).toDouble();
       final radialWobble =
-          math.sin(phase * (1 + star % 2) + star * 0.41) * frame.mid * 0.12;
+          math.sin(phase * (1 + star % 2) + star * 0.41) * dynamics.mid * 0.12;
       final direction = Offset(
         math.cos(angle + radialWobble),
         math.sin(angle + radialWobble),
@@ -1107,7 +1865,11 @@ class _VisualizerPainter extends CustomPainter {
       );
       final point = camera + ellipse * perspective;
       final previous = camera + ellipse * previousPerspective;
-      final brightness = 0.16 + depth * 0.56 + frame.treble * 0.28;
+      final brightness =
+          0.035 +
+          depth * (0.18 + visualActivity * 0.38) +
+          dynamics.energy * 0.22 +
+          dynamics.treble * 0.28;
       final color = _cosmicColor(
         star / starCount + depth * 0.18,
         alpha: brightness.clamp(0.0, 0.95).toDouble(),
@@ -1115,12 +1877,13 @@ class _VisualizerPainter extends CustomPainter {
       canvas.drawLine(
         previous,
         point,
-        Paint()
-          ..strokeCap = StrokeCap.round
+        starPaint
           ..strokeWidth =
-              0.45 + depth * 1.8 + frame.treble * 1.35 + frame.beat * 0.4
-          ..color = color
-          ..blendMode = BlendMode.plus,
+              0.45 +
+              depth * 1.8 +
+              dynamics.treble * 1.35 +
+              renderBeatImpulse * 0.4
+          ..color = color,
       );
     }
   }
@@ -1132,7 +1895,12 @@ class _VisualizerPainter extends CustomPainter {
     bool fullCanvas,
   ) {
     final random = math.Random(seed ^ 0x0B17C05A);
-    final orbCount = fullCanvas ? 4 : 3;
+    final orbCount = switch ((quality, fullCanvas)) {
+      (VisualizerQuality.eco, _) => 2,
+      (VisualizerQuality.normal, _) => 3,
+      (VisualizerQuality.ultra, true) => 4,
+      (VisualizerQuality.ultra, false) => 3,
+    };
     for (var orb = 0; orb < orbCount; orb++) {
       final baseTravel = random.nextDouble();
       final lane = random.nextDouble();
@@ -1140,21 +1908,33 @@ class _VisualizerPainter extends CustomPainter {
       final cycles = 1 + orb % 2;
       final travel =
           (baseTravel +
-              time * (cycles + frame.bass * 0.24 + frame.beat * 0.5)) %
+              time *
+                  (cycles * (0.12 + visualActivity * 0.88) +
+                      dynamics.bass * 0.24 +
+                      renderBeatImpulse * 0.5)) %
           1.0;
       final orbSpectrum = _spectrumAt(orb / math.max(1, orbCount - 1));
+      final orbPeak = _peakAt(orb / math.max(1, orbCount - 1));
+      final peakLift = math.max(0.0, orbPeak - orbSpectrum);
       final position = _cosmicOrbPosition(size, camera, travel, lane, orb);
       final radius =
           size.shortestSide *
-          (0.005 + baseRadius * 0.012 + frame.bass * 0.007) *
-          (0.68 + math.sin(travel * math.pi) * 0.46 + frame.beat * 0.18);
-      final color = _cosmicColor(orb / orbCount + travel * 0.28, alpha: 0.68);
+          (0.005 + baseRadius * 0.012 + dynamics.bass * 0.007) *
+          (0.24 +
+              visualActivity * 0.44 +
+              math.sin(travel * math.pi) * 0.46 * visualActivity +
+              renderBeatImpulse * 0.18 +
+              peakLift * 0.28);
+      final color = _cosmicColor(
+        orb / orbCount + travel * 0.28,
+        alpha: 0.12 + visualPresence * 0.56,
+      );
 
       final trail = Path();
       const trailSteps = 10;
       for (var step = 0; step <= trailSteps; step++) {
         final trailTravel =
-            (travel - step * (0.008 + frame.treble * 0.003)) % 1.0;
+            (travel - step * (0.008 + dynamics.treble * 0.003)) % 1.0;
         final trailPoint = _cosmicOrbPosition(
           size,
           camera,
@@ -1173,13 +1953,11 @@ class _VisualizerPainter extends CustomPainter {
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
-          ..strokeWidth = radius * (0.22 + frame.mid * 0.3)
-          ..color = color.withValues(alpha: 0.14 + orbSpectrum * 0.24)
-          ..blendMode = BlendMode.plus
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.normal,
-            radius * (0.3 + frame.treble * 0.26),
-          ),
+          ..strokeWidth = radius * (0.22 + dynamics.mid * 0.3)
+          ..color = color.withValues(
+            alpha: 0.03 + visualPresence * (0.11 + orbSpectrum * 0.24),
+          )
+          ..blendMode = BlendMode.plus,
       );
 
       final glowBounds = Rect.fromCircle(
@@ -1199,25 +1977,29 @@ class _VisualizerPainter extends CustomPainter {
             ],
             stops: const [0, 0.12, 0.5, 1],
           ).createShader(glowBounds)
-          ..blendMode = BlendMode.plus
-          ..maskFilter = MaskFilter.blur(
-            BlurStyle.normal,
-            radius * (0.14 + frame.bass * 0.24),
-          ),
+          ..blendMode = BlendMode.plus,
       );
       canvas.drawCircle(
         position,
-        radius * (0.22 + frame.beat * 0.12),
+        radius * (0.22 + renderBeatImpulse * 0.12),
         Paint()
-          ..color = Colors.white.withValues(alpha: 0.58 + frame.treble * 0.3)
+          ..color = Colors.white.withValues(
+            alpha: 0.1 + visualPresence * (0.48 + dynamics.treble * 0.3),
+          )
           ..blendMode = BlendMode.plus,
       );
 
-      if (frame.beat > 0.68) {
-        final flare = radius * (1.2 + frame.beat * 1.8);
+      // El golpe expande el orb de inmediato; el peak común conserva un flare
+      // más pequeño durante su hold/decay en vez de desaparecer de golpe.
+      final flareStrength = math.max(renderBeatImpulse, peakLift);
+      if (!reduceMotion && (renderBeatImpulse > 0.68 || peakLift > 0.025)) {
+        final flare = radius * (1.2 + flareStrength * 1.8);
         final flarePaint = Paint()
-          ..color = color.withValues(alpha: frame.beat * 0.7)
-          ..strokeWidth = 0.8 + frame.beat * 1.3
+          ..color = _peakColor(
+            orb / orbCount,
+            orbPeak,
+          ).withValues(alpha: 0.28 + flareStrength * 0.48)
+          ..strokeWidth = 0.8 + flareStrength * 1.3
           ..blendMode = BlendMode.plus;
         canvas.drawLine(
           position - Offset(flare, 0),
@@ -1245,9 +2027,9 @@ class _VisualizerPainter extends CustomPainter {
     final curl = math.cos(travel * math.pi * 4 - phase * 2 + orb * 0.7);
     final targetY =
         size.height * (0.12 + lane * 0.76) +
-        arc * size.height * (0.09 + frame.mid * 0.14) +
-        curl * size.height * frame.treble * 0.025;
-    final cameraPull = math.sin(travel * math.pi) * frame.bass * 0.08;
+        arc * size.height * (0.09 + dynamics.mid * 0.14) +
+        curl * size.height * dynamics.treble * 0.025;
+    final cameraPull = math.sin(travel * math.pi) * dynamics.bass * 0.08;
     return Offset(
       _lerp(x, camera.dx, cameraPull),
       _lerp(targetY, camera.dy, cameraPull * 0.72),
@@ -1255,63 +2037,8 @@ class _VisualizerPainter extends CustomPainter {
   }
 
   Color _cosmicColor(double offset, {double alpha = 1}) {
-    final seedHue = (seed.abs() % 360).toDouble();
-    // El abanico no ocupa siempre los 360°: así el giro de la base cromática
-    // es perceptible en vez de parecer el mismo arcoíris desplazado. Dos vueltas
-    // por ciclo mantienen continuidad y hacen visible el cambio en pocos s.
-    final audioShift =
-        frame.bass * 44 +
-        frame.mid * 118 +
-        frame.treble * 214 +
-        frame.beat * 76;
-    final hueSpan = 190 + frame.mid * 88 + frame.treble * 58;
-    final hue =
-        (seedHue +
-            time * 720 +
-            audioShift +
-            offset * hueSpan +
-            math.sin((offset + time) * math.pi * 2) * frame.beat * 24) %
-        360;
-    return HSVColor.fromAHSV(
-      alpha.clamp(0.0, 1.0).toDouble(),
-      hue,
-      (0.72 + frame.treble * 0.2 + frame.beat * 0.08)
-          .clamp(0.0, 1.0)
-          .toDouble(),
-      (0.74 + frame.level * 0.22 + frame.beat * 0.04)
-          .clamp(0.0, 1.0)
-          .toDouble(),
-    ).toColor();
-  }
-
-  Color _electricColor(double position, double tone) {
-    final seedHue = (seed.abs() % 360).toDouble();
-    // La oscilación sembrada evita una secuencia idéntica entre canciones,
-    // pero usa un número entero de vueltas para cerrar el ciclo sin saltos.
-    final harmonic = 1 + seed.abs() % 4;
-    final wandering =
-        math.sin((time * harmonic + position) * math.pi * 2) *
-        (22 + frame.mid * 42);
-    final audioShift =
-        frame.bass * 48 +
-        frame.mid * 104 +
-        frame.treble * 188 +
-        frame.beat * 82;
-    final hue =
-        (seedHue +
-            time * 720 +
-            wandering +
-            audioShift +
-            position * (210 + frame.treble * 110)) %
-        360;
-    return HSVColor.fromAHSV(
-      1,
-      hue,
-      (0.76 + frame.treble * 0.18 + frame.beat * 0.06)
-          .clamp(0.0, 1.0)
-          .toDouble(),
-      (0.76 + frame.level * 0.18 + tone * 0.1).clamp(0.0, 1.0).toDouble(),
-    ).toColor();
+    final position = offset - offset.floorToDouble();
+    return _reactiveColor(position, _spectrumAt(position), alpha: alpha);
   }
 
   Color _fluidParticleColor(
@@ -1320,25 +2047,8 @@ class _VisualizerPainter extends CustomPainter {
     double tone, {
     double alpha = 1,
   }) {
-    final seedHue = (seed.abs() % 360).toDouble();
-    final audioShift =
-        frame.bass * 38 +
-        frame.mid * 112 +
-        frame.treble * 196 +
-        frame.beat * 68;
-    final hue =
-        (seedHue +
-            time * 720 +
-            audioShift +
-            position * (145 + frame.treble * 105) +
-            band * (82 + frame.mid * 118)) %
-        360;
-    return HSVColor.fromAHSV(
-      alpha.clamp(0.0, 1.0).toDouble(),
-      hue,
-      (0.7 + frame.treble * 0.2 + tone * 0.08).clamp(0.0, 1.0).toDouble(),
-      (0.68 + frame.level * 0.18 + tone * 0.14).clamp(0.0, 1.0).toDouble(),
-    ).toColor();
+    final palettePosition = (position * 0.68 + band * 0.32) % 1.0;
+    return _reactiveColor(palettePosition, tone, alpha: alpha);
   }
 
   Offset _rotateAround(Offset point, Offset center, double angle) {
@@ -1355,16 +2065,16 @@ class _VisualizerPainter extends CustomPainter {
   double _toneAt(double normalized) {
     final value = normalized % 1.0;
     if (value < 1 / 3) {
-      return _lerp(frame.bass, frame.mid, value * 3);
+      return _lerp(dynamics.bass, dynamics.mid, value * 3);
     }
     if (value < 2 / 3) {
-      return _lerp(frame.mid, frame.treble, (value - 1 / 3) * 3);
+      return _lerp(dynamics.mid, dynamics.treble, (value - 1 / 3) * 3);
     }
-    return _lerp(frame.treble, frame.bass, (value - 2 / 3) * 3);
+    return _lerp(dynamics.treble, dynamics.bass, (value - 2 / 3) * 3);
   }
 
   double _spectrumAt(double normalized) {
-    final spectrum = frame.spectrum;
+    final spectrum = dynamics.spectrum;
     if (spectrum.isEmpty) return _toneAt(normalized);
     final value = normalized.clamp(0.0, 1.0).toDouble();
     final position = value * (spectrum.length - 1);
@@ -1377,16 +2087,113 @@ class _VisualizerPainter extends CustomPainter {
     ).clamp(0.0, 1.0).toDouble();
   }
 
+  double _peakAt(double normalized) {
+    if (!hasLiveAnalysis) return 0;
+    final peaks = dynamics.peaks;
+    if (peaks.isEmpty) return 0;
+    final value = normalized.clamp(0.0, 1.0).toDouble();
+    final position = value * (peaks.length - 1);
+    final lower = position.floor();
+    final upper = math.min(lower + 1, peaks.length - 1);
+    return _lerp(
+      peaks[lower],
+      peaks[upper],
+      position - lower,
+    ).clamp(0.0, 1.0).toDouble();
+  }
+
   double _mirroredSpectrumAt(double normalized) {
     final value = normalized % 1.0;
     final mirrored = value <= 0.5 ? value * 2 : (1 - value) * 2;
     return _spectrumAt(mirrored);
   }
 
+  double _mirroredPeakAt(double normalized) {
+    final value = normalized % 1.0;
+    final mirrored = value <= 0.5 ? value * 2 : (1 - value) * 2;
+    return _peakAt(mirrored);
+  }
+
   Color _colorAt(double normalized) {
     final value = normalized.clamp(0.0, 1.0).toDouble();
-    if (value < 0.5) return Color.lerp(colors[0], colors[1], value * 2)!;
-    return Color.lerp(colors[1], colors[2], (value - 0.5) * 2)!;
+    if (colors.length == 1) return colors.first;
+    final position = value * (colors.length - 1);
+    final lower = position.floor();
+    final upper = math.min(lower + 1, colors.length - 1);
+    return Color.lerp(colors[lower], colors[upper], position - lower)!;
+  }
+
+  /// Una sola traducción cromática para todos los estilos. La pista conserva
+  /// anclas sembradas estables, mientras la energía musical desplaza toda la
+  /// escena de azul oscuro/cian a violeta/magenta/rosa. La frecuencia solo abre
+  /// un contraste local alrededor de ese color dominante.
+  Color _reactiveColor(double normalized, double tone, {double alpha = 1}) {
+    final position = normalized.clamp(0.0, 1.0).toDouble();
+    final t = tone.clamp(0.0, 1.0).toDouble();
+    final energy = reduceMotion ? dynamics.hue * 0.58 : dynamics.hue;
+    // Curva perceptual: la música media ya abandona el azul, pero magenta y
+    // rosa quedan reservados para energía alta y golpes reales.
+    final liftedEnergy = math.pow(energy, 0.72).toDouble();
+    final chromaticEnergy =
+        liftedEnergy * liftedEnergy * (3 - 2 * liftedEnergy);
+    final frequencySpread = _lerp(0.1, 0.28, chromaticEnergy);
+    final frequencyOffset = (position - 0.5) * frequencySpread;
+    final beatWarmth = renderBeatImpulse * 0.055;
+    final palettePosition =
+        (0.04 +
+                chromaticEnergy * 0.86 +
+                frequencyOffset +
+                t * 0.025 +
+                beatWarmth)
+            .clamp(0.0, 1.0)
+            .toDouble();
+    final base = _colorAt(palettePosition);
+    final deep = Color.lerp(const Color(0xFF071A3A), base, 0.2)!;
+    final energized = Color.lerp(deep, base, 0.22 + energy * 0.78)!;
+    final hsl = HSLColor.fromColor(energized);
+    final saturation = (dynamics.saturation * (0.9 + t * 0.1))
+        .clamp(0.0, 1.0)
+        .toDouble();
+    final calmLightness = _lerp(0.2, 0.34, t);
+    final activeLightness = _lerp(
+      0.36,
+      dynamics.brightness,
+      math.pow(t, 1.3).toDouble(),
+    );
+    final lightness = _lerp(
+      calmLightness,
+      activeLightness,
+      0.18 + energy * 0.82,
+    ).clamp(0.0, 0.94).toDouble();
+    return hsl
+        .withAlpha(alpha.clamp(0.0, 1.0).toDouble())
+        .withSaturation(saturation)
+        .withLightness(lightness)
+        .toColor();
+  }
+
+  Color _peakColor(double normalized, double peak) {
+    final base = _reactiveColor(normalized, math.min(1.0, peak + 0.18));
+    final whiteMix = (0.34 + dynamics.energy * 0.22 + renderBeatImpulse * 0.22)
+        .clamp(0.0, 0.78)
+        .toDouble();
+    return Color.lerp(base, const Color(0xFFF6F8FF), whiteMix)!;
+  }
+
+  List<Color> _gradientColors({required double alpha, bool highlight = false}) {
+    final values = <({double position, double tone})>[
+      (position: 0, tone: dynamics.bass),
+      (position: 0.36, tone: _lerp(dynamics.bass, dynamics.mid, 0.68)),
+      (position: 0.7, tone: _lerp(dynamics.mid, dynamics.treble, 0.62)),
+      (position: 1, tone: dynamics.treble),
+    ];
+    return [
+      for (final value in values)
+        (highlight
+                ? _peakColor(value.position, value.tone)
+                : _reactiveColor(value.position, value.tone))
+            .withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
+    ];
   }
 
   double _lerp(double a, double b, double amount) => a + (b - a) * amount;
@@ -1395,9 +2202,11 @@ class _VisualizerPainter extends CustomPainter {
   bool shouldRepaint(covariant _VisualizerPainter oldDelegate) =>
       oldDelegate.style != style ||
       oldDelegate.time != time ||
-      oldDelegate.frame != frame ||
+      oldDelegate.dynamics != dynamics ||
       oldDelegate.seed != seed ||
       oldDelegate.isPlaying != isPlaying ||
       oldDelegate.immersive != immersive ||
-      oldDelegate.hasLiveAnalysis != hasLiveAnalysis;
+      oldDelegate.hasLiveAnalysis != hasLiveAnalysis ||
+      oldDelegate.reduceMotion != reduceMotion ||
+      oldDelegate.quality != quality;
 }

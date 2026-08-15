@@ -29,6 +29,7 @@ class MainActivity : FlutterActivity() {
     private var plugin: FlutterMusicPlugin? = null
     private var systemVolumeChannel: MethodChannel? = null
     private var giftIntentChannel: MethodChannel? = null
+    private var visualizerPowerMonitor: VisualizerPowerMonitor? = null
 
     /**
      * Uri del archivo de regalo con el que se abrio la aplicacion, a la
@@ -108,6 +109,11 @@ class MainActivity : FlutterActivity() {
         created.activity = this
         created.attach()
         plugin = created
+
+        visualizerPowerMonitor = VisualizerPowerMonitor(
+            context = applicationContext,
+            messenger = flutterEngine.dartExecutor.binaryMessenger,
+        )
 
         // Motor de descarga (busqueda + descarga de audio): a diferencia del
         // motor de reproduccion, no necesita resultados de actividad, asi que
@@ -204,6 +210,8 @@ class MainActivity : FlutterActivity() {
     }
 
     override fun cleanUpFlutterEngine(flutterEngine: FlutterEngine) {
+        visualizerPowerMonitor?.dispose()
+        visualizerPowerMonitor = null
         systemVolumeChannel?.setMethodCallHandler(null)
         systemVolumeChannel = null
         giftIntentChannel?.setMethodCallHandler(null)

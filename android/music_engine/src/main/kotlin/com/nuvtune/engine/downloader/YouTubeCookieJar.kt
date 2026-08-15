@@ -49,8 +49,12 @@ object YouTubeCookieJar {
     fun save(context: Context): Boolean {
         val manager = CookieManager.getInstance()
         manager.flush()
-        val cookies = parseCookies(manager.getCookie("https://www.youtube.com")) +
-            parseCookies(manager.getCookie("https://www.google.com"))
+        // Solo se exportan cookies cuyo dominio real es YouTube. Antes se
+        // mezclaban tambien las de google.com y se reescribian falsamente como
+        // .youtube.com; nombres repetidos como SID/SAPISID podian hacer que la
+        // ultima entrada sustituyera a la sesion valida al cargar el archivo.
+        val cookies = parseCookies(manager.getCookie("https://www.youtube.com"))
+            .distinctBy { (name, _) -> name }
         if (cookies.none { (name, _) -> name in authCookieNames }) {
             return false
         }

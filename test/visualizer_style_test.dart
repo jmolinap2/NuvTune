@@ -2,7 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
 
 void main() {
-  test('los estilos usan índices nuevos y consecutivos', () {
+  test('los estilos conservan sus índices públicos y consecutivos', () {
     expect(VisualizerStyle.fromIndex(0), VisualizerStyle.automatic);
     expect(VisualizerStyle.fromIndex(1), VisualizerStyle.ribbons);
     expect(VisualizerStyle.fromIndex(2), VisualizerStyle.prism);
@@ -22,8 +22,7 @@ void main() {
   });
 
   test('Automático también puede elegir Viaje psicodélico', () {
-    final concreteCount = VisualizerStyle.values.length - 1;
-    final seedForCosmic = concreteCount - 1;
+    final seedForCosmic = VisualizerStyle.cosmicOrbs.index - 1;
 
     expect(
       VisualizerStyle.automatic.resolveFor(seedForCosmic),

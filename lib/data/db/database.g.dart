@@ -6249,6 +6249,33 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant(0),
   );
+  static const VerificationMeta _playerVisualizerQualityMeta =
+      const VerificationMeta('playerVisualizerQuality');
+  @override
+  late final GeneratedColumn<String> playerVisualizerQuality =
+      GeneratedColumn<String>(
+        'player_visualizer_quality',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('normal'),
+      );
+  static const VerificationMeta _reduceVisualizerEffectsMeta =
+      const VerificationMeta('reduceVisualizerEffects');
+  @override
+  late final GeneratedColumn<bool> reduceVisualizerEffects =
+      GeneratedColumn<bool>(
+        'reduce_visualizer_effects',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("reduce_visualizer_effects" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   static const VerificationMeta _playerVisualSceneMeta = const VerificationMeta(
     'playerVisualScene',
   );
@@ -6425,6 +6452,8 @@ class $AppSettingsTable extends AppSettings
     librarySortJson,
     videoBackgroundEnabled,
     playerVisualizerStyle,
+    playerVisualizerQuality,
+    reduceVisualizerEffects,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -6793,6 +6822,24 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('player_visualizer_quality')) {
+      context.handle(
+        _playerVisualizerQualityMeta,
+        playerVisualizerQuality.isAcceptableOrUnknown(
+          data['player_visualizer_quality']!,
+          _playerVisualizerQualityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('reduce_visualizer_effects')) {
+      context.handle(
+        _reduceVisualizerEffectsMeta,
+        reduceVisualizerEffects.isAcceptableOrUnknown(
+          data['reduce_visualizer_effects']!,
+          _reduceVisualizerEffectsMeta,
+        ),
+      );
+    }
     if (data.containsKey('player_visual_scene')) {
       context.handle(
         _playerVisualSceneMeta,
@@ -7052,6 +7099,14 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.int,
         data['${effectivePrefix}player_visualizer_style'],
       )!,
+      playerVisualizerQuality: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}player_visualizer_quality'],
+      )!,
+      reduceVisualizerEffects: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}reduce_visualizer_effects'],
+      )!,
       playerVisualScene: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}player_visual_scene'],
@@ -7160,6 +7215,15 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// Cero es automatico; los demas valores siguen VisualizerStyle.values.
   final int playerVisualizerStyle;
 
+  /// Perfil de rendimiento del visualizador (`VisualizerQuality.id`). Se
+  /// guarda como identificador estable para que reordenar el enum no cambie
+  /// silenciosamente la preferencia elegida.
+  final String playerVisualizerQuality;
+
+  /// Reduce partículas, destellos y variaciones visuales rápidas sin depender
+  /// del ajuste de accesibilidad global de Android.
+  final bool reduceVisualizerEffects;
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -7224,6 +7288,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.librarySortJson,
     required this.videoBackgroundEnabled,
     required this.playerVisualizerStyle,
+    required this.playerVisualizerQuality,
+    required this.reduceVisualizerEffects,
     required this.playerVisualScene,
     required this.playerSceneAspectRatio,
     required this.playerControlPreset,
@@ -7280,6 +7346,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['library_sort_json'] = Variable<String>(librarySortJson);
     map['video_background_enabled'] = Variable<bool>(videoBackgroundEnabled);
     map['player_visualizer_style'] = Variable<int>(playerVisualizerStyle);
+    map['player_visualizer_quality'] = Variable<String>(
+      playerVisualizerQuality,
+    );
+    map['reduce_visualizer_effects'] = Variable<bool>(reduceVisualizerEffects);
     map['player_visual_scene'] = Variable<int>(playerVisualScene);
     map['player_scene_aspect_ratio'] = Variable<int>(playerSceneAspectRatio);
     map['player_control_preset'] = Variable<String>(playerControlPreset);
@@ -7345,6 +7415,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       librarySortJson: Value(librarySortJson),
       videoBackgroundEnabled: Value(videoBackgroundEnabled),
       playerVisualizerStyle: Value(playerVisualizerStyle),
+      playerVisualizerQuality: Value(playerVisualizerQuality),
+      reduceVisualizerEffects: Value(reduceVisualizerEffects),
       playerVisualScene: Value(playerVisualScene),
       playerSceneAspectRatio: Value(playerSceneAspectRatio),
       playerControlPreset: Value(playerControlPreset),
@@ -7420,6 +7492,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerVisualizerStyle: serializer.fromJson<int>(
         json['playerVisualizerStyle'],
       ),
+      playerVisualizerQuality: serializer.fromJson<String>(
+        json['playerVisualizerQuality'],
+      ),
+      reduceVisualizerEffects: serializer.fromJson<bool>(
+        json['reduceVisualizerEffects'],
+      ),
       playerVisualScene: serializer.fromJson<int>(json['playerVisualScene']),
       playerSceneAspectRatio: serializer.fromJson<int>(
         json['playerSceneAspectRatio'],
@@ -7494,6 +7572,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'librarySortJson': serializer.toJson<String>(librarySortJson),
       'videoBackgroundEnabled': serializer.toJson<bool>(videoBackgroundEnabled),
       'playerVisualizerStyle': serializer.toJson<int>(playerVisualizerStyle),
+      'playerVisualizerQuality': serializer.toJson<String>(
+        playerVisualizerQuality,
+      ),
+      'reduceVisualizerEffects': serializer.toJson<bool>(
+        reduceVisualizerEffects,
+      ),
       'playerVisualScene': serializer.toJson<int>(playerVisualScene),
       'playerSceneAspectRatio': serializer.toJson<int>(playerSceneAspectRatio),
       'playerControlPreset': serializer.toJson<String>(playerControlPreset),
@@ -7558,6 +7642,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? librarySortJson,
     bool? videoBackgroundEnabled,
     int? playerVisualizerStyle,
+    String? playerVisualizerQuality,
+    bool? reduceVisualizerEffects,
     int? playerVisualScene,
     int? playerSceneAspectRatio,
     String? playerControlPreset,
@@ -7611,6 +7697,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     videoBackgroundEnabled:
         videoBackgroundEnabled ?? this.videoBackgroundEnabled,
     playerVisualizerStyle: playerVisualizerStyle ?? this.playerVisualizerStyle,
+    playerVisualizerQuality:
+        playerVisualizerQuality ?? this.playerVisualizerQuality,
+    reduceVisualizerEffects:
+        reduceVisualizerEffects ?? this.reduceVisualizerEffects,
     playerVisualScene: playerVisualScene ?? this.playerVisualScene,
     playerSceneAspectRatio:
         playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -7747,6 +7837,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerVisualizerStyle: data.playerVisualizerStyle.present
           ? data.playerVisualizerStyle.value
           : this.playerVisualizerStyle,
+      playerVisualizerQuality: data.playerVisualizerQuality.present
+          ? data.playerVisualizerQuality.value
+          : this.playerVisualizerQuality,
+      reduceVisualizerEffects: data.reduceVisualizerEffects.present
+          ? data.reduceVisualizerEffects.value
+          : this.reduceVisualizerEffects,
       playerVisualScene: data.playerVisualScene.present
           ? data.playerVisualScene.value
           : this.playerVisualScene,
@@ -7823,6 +7919,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('librarySortJson: $librarySortJson, ')
           ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
           ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
+          ..write('playerVisualizerQuality: $playerVisualizerQuality, ')
+          ..write('reduceVisualizerEffects: $reduceVisualizerEffects, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -7879,6 +7977,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     librarySortJson,
     videoBackgroundEnabled,
     playerVisualizerStyle,
+    playerVisualizerQuality,
+    reduceVisualizerEffects,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -7934,6 +8034,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.librarySortJson == this.librarySortJson &&
           other.videoBackgroundEnabled == this.videoBackgroundEnabled &&
           other.playerVisualizerStyle == this.playerVisualizerStyle &&
+          other.playerVisualizerQuality == this.playerVisualizerQuality &&
+          other.reduceVisualizerEffects == this.reduceVisualizerEffects &&
           other.playerVisualScene == this.playerVisualScene &&
           other.playerSceneAspectRatio == this.playerSceneAspectRatio &&
           other.playerControlPreset == this.playerControlPreset &&
@@ -7987,6 +8089,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> librarySortJson;
   final Value<bool> videoBackgroundEnabled;
   final Value<int> playerVisualizerStyle;
+  final Value<String> playerVisualizerQuality;
+  final Value<bool> reduceVisualizerEffects;
   final Value<int> playerVisualScene;
   final Value<int> playerSceneAspectRatio;
   final Value<String> playerControlPreset;
@@ -8038,6 +8142,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.librarySortJson = const Value.absent(),
     this.videoBackgroundEnabled = const Value.absent(),
     this.playerVisualizerStyle = const Value.absent(),
+    this.playerVisualizerQuality = const Value.absent(),
+    this.reduceVisualizerEffects = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8090,6 +8196,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.librarySortJson = const Value.absent(),
     this.videoBackgroundEnabled = const Value.absent(),
     this.playerVisualizerStyle = const Value.absent(),
+    this.playerVisualizerQuality = const Value.absent(),
+    this.reduceVisualizerEffects = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8142,6 +8250,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? librarySortJson,
     Expression<bool>? videoBackgroundEnabled,
     Expression<int>? playerVisualizerStyle,
+    Expression<String>? playerVisualizerQuality,
+    Expression<bool>? reduceVisualizerEffects,
     Expression<int>? playerVisualScene,
     Expression<int>? playerSceneAspectRatio,
     Expression<String>? playerControlPreset,
@@ -8205,6 +8315,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'video_background_enabled': videoBackgroundEnabled,
       if (playerVisualizerStyle != null)
         'player_visualizer_style': playerVisualizerStyle,
+      if (playerVisualizerQuality != null)
+        'player_visualizer_quality': playerVisualizerQuality,
+      if (reduceVisualizerEffects != null)
+        'reduce_visualizer_effects': reduceVisualizerEffects,
       if (playerVisualScene != null) 'player_visual_scene': playerVisualScene,
       if (playerSceneAspectRatio != null)
         'player_scene_aspect_ratio': playerSceneAspectRatio,
@@ -8267,6 +8381,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? librarySortJson,
     Value<bool>? videoBackgroundEnabled,
     Value<int>? playerVisualizerStyle,
+    Value<String>? playerVisualizerQuality,
+    Value<bool>? reduceVisualizerEffects,
     Value<int>? playerVisualScene,
     Value<int>? playerSceneAspectRatio,
     Value<String>? playerControlPreset,
@@ -8325,6 +8441,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           videoBackgroundEnabled ?? this.videoBackgroundEnabled,
       playerVisualizerStyle:
           playerVisualizerStyle ?? this.playerVisualizerStyle,
+      playerVisualizerQuality:
+          playerVisualizerQuality ?? this.playerVisualizerQuality,
+      reduceVisualizerEffects:
+          reduceVisualizerEffects ?? this.reduceVisualizerEffects,
       playerVisualScene: playerVisualScene ?? this.playerVisualScene,
       playerSceneAspectRatio:
           playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -8480,6 +8600,16 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         playerVisualizerStyle.value,
       );
     }
+    if (playerVisualizerQuality.present) {
+      map['player_visualizer_quality'] = Variable<String>(
+        playerVisualizerQuality.value,
+      );
+    }
+    if (reduceVisualizerEffects.present) {
+      map['reduce_visualizer_effects'] = Variable<bool>(
+        reduceVisualizerEffects.value,
+      );
+    }
     if (playerVisualScene.present) {
       map['player_visual_scene'] = Variable<int>(playerVisualScene.value);
     }
@@ -8572,6 +8702,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('librarySortJson: $librarySortJson, ')
           ..write('videoBackgroundEnabled: $videoBackgroundEnabled, ')
           ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
+          ..write('playerVisualizerQuality: $playerVisualizerQuality, ')
+          ..write('reduceVisualizerEffects: $reduceVisualizerEffects, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -12524,6 +12656,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> librarySortJson,
       Value<bool> videoBackgroundEnabled,
       Value<int> playerVisualizerStyle,
+      Value<String> playerVisualizerQuality,
+      Value<bool> reduceVisualizerEffects,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -12577,6 +12711,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> librarySortJson,
       Value<bool> videoBackgroundEnabled,
       Value<int> playerVisualizerStyle,
+      Value<String> playerVisualizerQuality,
+      Value<bool> reduceVisualizerEffects,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -12795,6 +12931,16 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<int> get playerVisualizerStyle => $composableBuilder(
     column: $table.playerVisualizerStyle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get playerVisualizerQuality => $composableBuilder(
+    column: $table.playerVisualizerQuality,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get reduceVisualizerEffects => $composableBuilder(
+    column: $table.reduceVisualizerEffects,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13058,6 +13204,16 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get playerVisualizerQuality => $composableBuilder(
+    column: $table.playerVisualizerQuality,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<bool> get reduceVisualizerEffects => $composableBuilder(
+    column: $table.reduceVisualizerEffects,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => ColumnOrderings(column),
@@ -13314,6 +13470,16 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get playerVisualizerQuality => $composableBuilder(
+    column: $table.playerVisualizerQuality,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<bool> get reduceVisualizerEffects => $composableBuilder(
+    column: $table.reduceVisualizerEffects,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => column,
@@ -13436,6 +13602,8 @@ class $$AppSettingsTableTableManager
                 Value<String> librarySortJson = const Value.absent(),
                 Value<bool> videoBackgroundEnabled = const Value.absent(),
                 Value<int> playerVisualizerStyle = const Value.absent(),
+                Value<String> playerVisualizerQuality = const Value.absent(),
+                Value<bool> reduceVisualizerEffects = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -13487,6 +13655,8 @@ class $$AppSettingsTableTableManager
                 librarySortJson: librarySortJson,
                 videoBackgroundEnabled: videoBackgroundEnabled,
                 playerVisualizerStyle: playerVisualizerStyle,
+                playerVisualizerQuality: playerVisualizerQuality,
+                reduceVisualizerEffects: reduceVisualizerEffects,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,
@@ -13540,6 +13710,8 @@ class $$AppSettingsTableTableManager
                 Value<String> librarySortJson = const Value.absent(),
                 Value<bool> videoBackgroundEnabled = const Value.absent(),
                 Value<int> playerVisualizerStyle = const Value.absent(),
+                Value<String> playerVisualizerQuality = const Value.absent(),
+                Value<bool> reduceVisualizerEffects = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -13591,6 +13763,8 @@ class $$AppSettingsTableTableManager
                 librarySortJson: librarySortJson,
                 videoBackgroundEnabled: videoBackgroundEnabled,
                 playerVisualizerStyle: playerVisualizerStyle,
+                playerVisualizerQuality: playerVisualizerQuality,
+                reduceVisualizerEffects: reduceVisualizerEffects,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,

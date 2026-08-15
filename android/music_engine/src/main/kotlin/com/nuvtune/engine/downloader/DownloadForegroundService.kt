@@ -115,24 +115,78 @@ class DownloadForegroundService : Service() {
 
         var lastEmitAt = 0L
         try {
-            val request = YtDlpEngine.buildDownloadRequest(item.sourceUrl, item.formatId, outputTemplate)
-            YoutubeDL.getInstance().execute(request, item.downloadId) { percent, etaSeconds, _ ->
-                val now = System.currentTimeMillis()
-                // yt-dlp reporta progreso muchas veces por segundo en redes
-                // rapidas; sin este filtro el canal de Pigeon se satura sin
-                // que el usuario perciba diferencia visual.
-                if (now - lastEmitAt < PROGRESS_THROTTLE_MS && percent < 100f) return@execute
-                lastEmitAt = now
-                val downloaded = item.approxTotalBytes?.let { (it * (percent / 100.0)).toLong() } ?: 0L
-                DownloadEventBus.emitProgress(
-                    item.downloadId, percent.toDouble(), etaSeconds.takeIf { it > 0 },
-                    downloaded, item.approxTotalBytes,
-                )
-                updateNotification(item.suggestedFileName, percent.toInt(), indeterminate = false)
+            val attempts = YtDlpEngine.cookieModesFor(item.sourceUrl)
+                .flatMap { includeCookies ->
+                    // Portada/metadatos enriquecen el MP3, pero algunos sitios
+                    // entregan miniaturas en formatos o URLs que expiran antes
+                    // del postprocesado. El segundo intento conserva el audio y
+                    // metadatos de texto, omitiendo solo esa portada.
+                    listOf(includeCookies to true, includeCookies to false)
+                }
+            var completed = false
+            var lastError: Exception? = null
+            for ((attemptIndex, attempt) in attempts.withIndex()) {
+                val (includeCookies, embedThumbnail) = attempt
+                try {
+                    lastEmitAt = 0L
+                    val request = YtDlpEngine.buildDownloadRequest(
+                        item.sourceUrl,
+                        item.formatId,
+                        outputTemplate,
+                        includeYouTubeCookies = includeCookies,
+                        embedThumbnail = embedThumbnail,
+                    )
+                    YoutubeDL.getInstance().execute(request, item.downloadId) { percent, etaSeconds, _ ->
+                        val now = System.currentTimeMillis()
+                        // yt-dlp reporta progreso muchas veces por segundo en redes
+                        // rapidas; sin este filtro el canal de Pigeon se satura sin
+                        // que el usuario perciba diferencia visual.
+                        if (now - lastEmitAt < PROGRESS_THROTTLE_MS && percent < 100f) return@execute
+                        lastEmitAt = now
+                        val downloaded = item.approxTotalBytes
+                            ?.let { (it * (percent / 100.0)).toLong() }
+                            ?: 0L
+                        DownloadEventBus.emitProgress(
+                            item.downloadId,
+                            percent.toDouble(),
+                            etaSeconds.takeIf { it > 0 },
+                            downloaded,
+                            item.approxTotalBytes,
+                        )
+                        updateNotification(
+                            item.suggestedFileName,
+                            percent.toInt(),
+                            indeterminate = false,
+                        )
+                    }
+                    completed = true
+                    break
+                } catch (cancelled: YoutubeDL.CanceledException) {
+                    throw cancelled
+                } catch (error: Exception) {
+                    lastError = error
+                    clearTemporaryFiles(outputDir, item.downloadId)
+                    if (attemptIndex < attempts.lastIndex) {
+                        Log.i(
+                            TAG,
+                            "reintentando ${item.downloadId} " +
+                                "(cookies=$includeCookies, portada=$embedThumbnail)",
+                        )
+                        DownloadEventBus.emitProgress(
+                            item.downloadId,
+                            0.0,
+                            null,
+                            0L,
+                            item.approxTotalBytes,
+                        )
+                    }
+                }
             }
+            if (!completed) throw checkNotNull(lastError)
 
             val producedFile = outputDir.listFiles { file ->
-                file.name == "${item.downloadId}.mp3"
+                file.nameWithoutExtension == item.downloadId &&
+                    file.extension.equals("mp3", ignoreCase = true)
             }?.firstOrNull()
                 ?: error("yt-dlp no genero un archivo de salida")
 
@@ -150,9 +204,13 @@ class DownloadForegroundService : Service() {
             Log.w(TAG, "descarga fallida para ${item.downloadId} (${item.sourceUrl})", error)
             DownloadEventBus.emitFailed(item.downloadId, YtDlpEngine.classifyError(error), error.message)
         } finally {
-            outputDir.listFiles { file -> file.name.startsWith("${item.downloadId}.") }
-                ?.forEach { it.delete() }
+            clearTemporaryFiles(outputDir, item.downloadId)
         }
+    }
+
+    private fun clearTemporaryFiles(outputDir: File, downloadId: String) {
+        outputDir.listFiles { file -> file.name.startsWith("$downloadId.") }
+            ?.forEach { it.delete() }
     }
 
     private fun isOnWifi(): Boolean {

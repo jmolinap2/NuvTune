@@ -10,6 +10,7 @@ import 'package:nuvtune/features/player/audio_visualizer.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
+import 'package:nuvtune/features/player/visualizer_quality.dart';
 import 'package:nuvtune/features/settings/settings_components.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 import 'package:nuvtune/features/settings/widgets_screen.dart';
@@ -173,6 +174,9 @@ class _PlayerAppearancePanel extends ConsumerWidget {
     final visualizer = VisualizerStyle.fromIndex(
       settings.playerVisualizerStyle,
     );
+    final visualizerQuality = VisualizerQuality.byId(
+      settings.playerVisualizerQuality,
+    );
 
     return ListView(
       padding: const EdgeInsets.only(bottom: Tokens.space6),
@@ -219,8 +223,53 @@ class _PlayerAppearancePanel extends ConsumerWidget {
             SettingsNavigationRow(
               icon: visualizer.icon,
               title: 'Estilo del visualizador',
-              subtitle: '${visualizer.label} · reacciona al ritmo',
+              subtitle:
+                  '${visualizer.label} · color e intensidad siguen la música',
               onTap: () => showVisualizerStylePicker(context, ref),
+            ),
+          ],
+        ),
+        const SettingsSectionLabel('Rendimiento del visualizador'),
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              SegmentedButton<VisualizerQuality>(
+                segments: [
+                  for (final quality in VisualizerQuality.values)
+                    ButtonSegment(value: quality, label: Text(quality.label)),
+                ],
+                selected: {visualizerQuality},
+                onSelectionChanged: (selection) => mutation.save(
+                  AppSettingsCompanion(
+                    playerVisualizerQuality: Value(selection.first.id),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Tokens.space2),
+              Text(
+                visualizerQuality.description,
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SizedBox(height: Tokens.space3),
+        SettingsGroup(
+          children: [
+            SwitchListTile(
+              secondary: const Icon(Icons.motion_photos_off_outlined),
+              title: const Text('Reducir efectos visuales'),
+              subtitle: const Text(
+                'Reduce partículas, destellos y cambios rápidos de color.',
+              ),
+              value: settings.reduceVisualizerEffects,
+              onChanged: (value) => mutation.save(
+                AppSettingsCompanion(reduceVisualizerEffects: Value(value)),
+              ),
             ),
           ],
         ),

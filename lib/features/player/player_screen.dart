@@ -382,20 +382,31 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
               body: Stack(
                 fit: StackFit.expand,
                 children: [
-                  _ImmersivePlayerBackground(
-                    key: ValueKey('background-${song.id}'),
-                    song: song,
-                    isPlaying: isPlaying,
-                    videoId: videoBackgroundId,
-                    // El visualizador principal ya ocupa el escenario. Mantener
-                    // otro painter reactivo desenfocado detrás duplicaba el
-                    // trabajo de GPU sin aportar detalle visible.
-                    animateFallback: false,
-                    onVideoReadinessChanged: _handleVideoReadiness,
-                  ),
+                  if (visualizerVisible)
+                    const ColoredBox(color: Color(0xFF01040D))
+                  else
+                    _ImmersivePlayerBackground(
+                      key: ValueKey('background-${song.id}'),
+                      song: song,
+                      isPlaying: isPlaying,
+                      videoId: videoBackgroundId,
+                      animateFallback: false,
+                      onVideoReadinessChanged: _handleVideoReadiness,
+                    ),
                   DecoratedBox(
                     decoration: BoxDecoration(
-                      gradient: !videoReady
+                      gradient: visualizerVisible
+                          ? const LinearGradient(
+                              begin: Alignment.topCenter,
+                              end: Alignment.bottomCenter,
+                              colors: [
+                                Color(0xFF020817),
+                                Color(0x0001040D),
+                                Color(0xD901040D),
+                              ],
+                              stops: [0, 0.48, 1],
+                            )
+                          : !videoReady
                           ? accent.headerGradient(
                               scheme.surface.withValues(alpha: 0.92),
                             )
@@ -2018,15 +2029,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                     .min(stageWidth * density.coverFraction, stageHeight)
                     .clamp(120.0, 460.0)
                     .toDouble();
-                // Los painters reservan margen interno para el resplandor. Un
-                // lienzo mayor que la pantalla hace que la forma generativa,
-                // sin marco, sea el escenario visual y no una portada cuadrada
-                // diminuta.
-                final visualizerSize = math
-                    .max(stageWidth * 1.42, coverSize * 1.5)
-                    .clamp(280.0, 620.0)
-                    .toDouble();
-
                 return _VolumeDragTarget(
                   enabled: volumeGestureEnabled,
                   indicator: _volumeIndicator,
@@ -2034,30 +2036,24 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                   onUpdate: (dy) => _updateVolumeDrag(dy, stageHeight),
                   onEnd: _endVolumeDrag,
                   child: AnimatedSwitcher(
-                  duration: Tokens.durationMedium,
-                  switchInCurve: Curves.easeOutCubic,
-                  switchOutCurve: Curves.easeInCubic,
-                  child: showCleanVideo
-                      ? const SizedBox.expand(
-                          key: ValueKey('clean-video-stage'),
-                        )
-                      : showLyrics
-                      ? _PlayerLyricsSceneStage(
-                          key: ValueKey('lyrics-stage-${displaySong.id}'),
-                          song: displaySong,
-                          onOpenLyrics: widget.onOpenLyrics,
-                          videoOverlay:
-                              widget.visualScene == PlayerVisualScene.both,
-                        )
-                      : showSingleVisualizer
-                      ? OverflowBox(
-                          key: ValueKey('single-visualizer-${activeSong.id}'),
-                          alignment: Alignment.center,
-                          minWidth: stageWidth,
-                          maxWidth: stageWidth,
-                          child: SizedBox(
-                            width: stageWidth,
-                            height: stageHeight,
+                    duration: Tokens.durationMedium,
+                    switchInCurve: Curves.easeOutCubic,
+                    switchOutCurve: Curves.easeInCubic,
+                    child: showCleanVideo
+                        ? const SizedBox.expand(
+                            key: ValueKey('clean-video-stage'),
+                          )
+                        : showLyrics
+                        ? _PlayerLyricsSceneStage(
+                            key: ValueKey('lyrics-stage-${displaySong.id}'),
+                            song: displaySong,
+                            onOpenLyrics: widget.onOpenLyrics,
+                            videoOverlay:
+                                widget.visualScene == PlayerVisualScene.both,
+                          )
+                        : showSingleVisualizer
+                        ? SizedBox.expand(
+                            key: ValueKey('single-visualizer-${activeSong.id}'),
                             child: Semantics(
                               label: 'Visualización de ${activeSong.title}',
                               hint:
@@ -2092,108 +2088,101 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                                   _visualizerDragDx = 0;
                                 },
                                 onHorizontalDragEnd: _finishVisualizerDrag,
-                                child: Center(
-                                  child: OverflowBox(
-                                    alignment: Alignment.center,
-                                    minWidth: visualizerSize,
-                                    maxWidth: visualizerSize,
-                                    minHeight: visualizerSize,
-                                    maxHeight: visualizerSize,
-                                    child: _buildCarouselArtwork(
-                                      song: activeSong,
-                                      size: visualizerSize,
-                                      hasArtwork: false,
-                                      isCurrent: true,
-                                      isPlaying: state.isPlaying,
-                                      scheme: scheme,
-                                    ),
+                                child: ReactiveAudioVisualizer(
+                                  key: ValueKey(
+                                    'stage-visualizer-${activeSong.id}',
                                   ),
+                                  song: activeSong,
+                                  size: stageWidth,
+                                  height: stageHeight,
+                                  borderRadius: 0,
+                                  isPlaying: state.isPlaying,
+                                  immersive: true,
+                                ),
+                              ),
+                            ),
+                          )
+                        : OverflowBox(
+                            key: const ValueKey('cover-carousel-stage'),
+                            alignment: Alignment.center,
+                            minWidth: stageWidth,
+                            maxWidth: stageWidth,
+                            child: SizedBox(
+                              width: stageWidth,
+                              height: stageHeight,
+                              child: NotificationListener<ScrollNotification>(
+                                onNotification: _handleCarouselScroll,
+                                child: PageView.builder(
+                                  controller: _pageController,
+                                  itemCount: state.queue.length,
+                                  physics: state.queue.length > 1
+                                      ? const PageScrollPhysics()
+                                      : const NeverScrollableScrollPhysics(),
+                                  itemBuilder: (context, index) {
+                                    final item = state.queue[index];
+                                    final hasArtwork = _songHasArtwork(
+                                      item,
+                                      customCovers,
+                                    );
+                                    final itemSize = coverSize;
+                                    return AnimatedBuilder(
+                                      animation: _pageController,
+                                      builder: (context, child) {
+                                        final page = _pageController.hasClients
+                                            ? (_pageController.page ??
+                                                  engineIndex.toDouble())
+                                            : engineIndex.toDouble();
+                                        final distance = (page - index)
+                                            .abs()
+                                            .clamp(0.0, 1.0)
+                                            .toDouble();
+                                        return Transform.translate(
+                                          offset: Offset(0, distance * 8),
+                                          child: Transform.scale(
+                                            scale: 1 - distance * 0.065,
+                                            child: Opacity(
+                                              opacity: 1 - distance * 0.28,
+                                              child: child,
+                                            ),
+                                          ),
+                                        );
+                                      },
+                                      child: GestureDetector(
+                                        onTap: () async {
+                                          if (index != engineIndex) {
+                                            _requestIndex(index);
+                                            return;
+                                          }
+                                          await widget.onOpenFullscreen(
+                                            item,
+                                            widget.visualScene,
+                                          );
+                                        },
+                                        child: Center(
+                                          child: OverflowBox(
+                                            alignment: Alignment.center,
+                                            minWidth: itemSize,
+                                            maxWidth: itemSize,
+                                            minHeight: itemSize,
+                                            maxHeight: itemSize,
+                                            child: _buildCarouselArtwork(
+                                              song: item,
+                                              size: itemSize,
+                                              hasArtwork: hasArtwork,
+                                              isCurrent: index == engineIndex,
+                                              isPlaying: state.isPlaying,
+                                              scheme: scheme,
+                                              staticFallback: true,
+                                            ),
+                                          ),
+                                        ),
+                                      ),
+                                    );
+                                  },
                                 ),
                               ),
                             ),
                           ),
-                        )
-                      : OverflowBox(
-                          key: const ValueKey('cover-carousel-stage'),
-                          alignment: Alignment.center,
-                          minWidth: stageWidth,
-                          maxWidth: stageWidth,
-                          child: SizedBox(
-                            width: stageWidth,
-                            height: stageHeight,
-                            child: NotificationListener<ScrollNotification>(
-                              onNotification: _handleCarouselScroll,
-                              child: PageView.builder(
-                                controller: _pageController,
-                                itemCount: state.queue.length,
-                                physics: state.queue.length > 1
-                                    ? const PageScrollPhysics()
-                                    : const NeverScrollableScrollPhysics(),
-                                itemBuilder: (context, index) {
-                                  final item = state.queue[index];
-                                  final hasArtwork = _songHasArtwork(
-                                    item,
-                                    customCovers,
-                                  );
-                                  final itemSize = coverSize;
-                                  return AnimatedBuilder(
-                                    animation: _pageController,
-                                    builder: (context, child) {
-                                      final page = _pageController.hasClients
-                                          ? (_pageController.page ??
-                                                engineIndex.toDouble())
-                                          : engineIndex.toDouble();
-                                      final distance = (page - index)
-                                          .abs()
-                                          .clamp(0.0, 1.0)
-                                          .toDouble();
-                                      return Transform.translate(
-                                        offset: Offset(0, distance * 8),
-                                        child: Transform.scale(
-                                          scale: 1 - distance * 0.065,
-                                          child: Opacity(
-                                            opacity: 1 - distance * 0.28,
-                                            child: child,
-                                          ),
-                                        ),
-                                      );
-                                    },
-                                    child: GestureDetector(
-                                      onTap: () async {
-                                        if (index != engineIndex) {
-                                          _requestIndex(index);
-                                          return;
-                                        }
-                                        await widget.onOpenFullscreen(
-                                          item,
-                                          widget.visualScene,
-                                        );
-                                      },
-                                      child: Center(
-                                        child: OverflowBox(
-                                          alignment: Alignment.center,
-                                          minWidth: itemSize,
-                                          maxWidth: itemSize,
-                                          minHeight: itemSize,
-                                          maxHeight: itemSize,
-                                          child: _buildCarouselArtwork(
-                                            song: item,
-                                            size: itemSize,
-                                            hasArtwork: hasArtwork,
-                                            isCurrent: index == engineIndex,
-                                            isPlaying: state.isPlaying,
-                                            scheme: scheme,
-                                            staticFallback: true,
-                                          ),
-                                        ),
-                                      ),
-                                    ),
-                                  );
-                                },
-                              ),
-                            ),
-                          ),
-                        ),
                   ),
                 );
               },
@@ -2207,68 +2196,68 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: [
-                        // Se reserva la altura de dos lineas del titulo aunque
-                        // la cancion actual solo necesite una: si no, cada
-                        // titulo largo o corto empuja los controles arriba y
-                        // abajo al cambiar de pista.
-                        Builder(
-                          builder: (context) {
-                            final titleStyle = Theme.of(context)
-                                .textTheme
-                                .headlineSmall
-                                ?.copyWith(
-                                  fontWeight: FontWeight.w700,
-                                  height: 1.2,
-                                );
-                            final lineHeight =
-                                (titleStyle?.fontSize ?? 22) *
-                                (titleStyle?.height ?? 1.2);
-                            final reserved =
-                                MediaQuery.textScalerOf(
-                                  context,
-                                ).scale(lineHeight) *
-                                2;
-                            return SizedBox(
-                              height: reserved,
-                              child: Text(
-                                displaySong.title,
-                                maxLines: 2,
-                                overflow: TextOverflow.ellipsis,
-                                style: titleStyle,
-                              ),
+                    // Se reserva la altura de dos lineas del titulo aunque
+                    // la cancion actual solo necesite una: si no, cada
+                    // titulo largo o corto empuja los controles arriba y
+                    // abajo al cambiar de pista.
+                    Builder(
+                      builder: (context) {
+                        final titleStyle = Theme.of(context)
+                            .textTheme
+                            .headlineSmall
+                            ?.copyWith(
+                              fontWeight: FontWeight.w700,
+                              height: 1.2,
                             );
-                          },
-                        ),
-                        const SizedBox(height: 4),
-                        InkWell(
-                          onTap: () =>
-                              context.push('/artist/${displaySong.artistId}'),
+                        final lineHeight =
+                            (titleStyle?.fontSize ?? 22) *
+                            (titleStyle?.height ?? 1.2);
+                        final reserved =
+                            MediaQuery.textScalerOf(
+                              context,
+                            ).scale(lineHeight) *
+                            2;
+                        return SizedBox(
+                          height: reserved,
                           child: Text(
-                            displaySong.displayArtist,
-                            maxLines: 1,
+                            displaySong.title,
+                            maxLines: 2,
                             overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 15,
-                              color: scheme.onSurfaceVariant,
-                            ),
+                            style: titleStyle,
+                          ),
+                        );
+                      },
+                    ),
+                    const SizedBox(height: 4),
+                    InkWell(
+                      onTap: () =>
+                          context.push('/artist/${displaySong.artistId}'),
+                      child: Text(
+                        displaySong.displayArtist,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 15,
+                          color: scheme.onSurfaceVariant,
+                        ),
+                      ),
+                    ),
+                    const SizedBox(height: 2),
+                    InkWell(
+                      onTap: () =>
+                          context.push('/album/${displaySong.albumId}'),
+                      child: Text(
+                        displaySong.displayAlbum,
+                        maxLines: 1,
+                        overflow: TextOverflow.ellipsis,
+                        style: TextStyle(
+                          fontSize: 13,
+                          color: scheme.onSurfaceVariant.withValues(
+                            alpha: 0.75,
                           ),
                         ),
-                        const SizedBox(height: 2),
-                        InkWell(
-                          onTap: () =>
-                              context.push('/album/${displaySong.albumId}'),
-                          child: Text(
-                            displaySong.displayAlbum,
-                            maxLines: 1,
-                            overflow: TextOverflow.ellipsis,
-                            style: TextStyle(
-                              fontSize: 13,
-                              color: scheme.onSurfaceVariant.withValues(
-                                alpha: 0.75,
-                              ),
-                            ),
-                          ),
-                        ),
+                      ),
+                    ),
                   ],
                 ),
               ),

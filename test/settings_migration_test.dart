@@ -4,7 +4,7 @@ import 'package:nuvtune/data/db/database.dart';
 
 void main() {
   test(
-    'migración 10 a 13 conserva ajustes y añade controles, regalos y densidad',
+    'migración 10 a 14 conserva ajustes y añade preferencias nuevas',
     () async {
       final executor = NativeDatabase.memory(
         setup: (raw) {
@@ -39,6 +39,8 @@ void main() {
       // no sabría repartir la altura, así que el defecto tiene que existir
       // para una base de datos que nunca lo vio.
       expect(settings.playerDensity, 'normal');
+      expect(settings.playerVisualizerQuality, 'normal');
+      expect(settings.reduceVisualizerEffects, isFalse);
       final playlist = await database.select(database.playlists).getSingle();
       expect(playlist.name, 'Sin perder');
       expect(playlist.giftId, isNull);

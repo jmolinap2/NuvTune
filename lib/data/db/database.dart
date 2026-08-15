@@ -368,6 +368,17 @@ class AppSettings extends Table {
   IntColumn get playerVisualizerStyle =>
       integer().withDefault(const Constant(0))();
 
+  /// Perfil de rendimiento del visualizador (`VisualizerQuality.id`). Se
+  /// guarda como identificador estable para que reordenar el enum no cambie
+  /// silenciosamente la preferencia elegida.
+  TextColumn get playerVisualizerQuality =>
+      text().withDefault(const Constant('normal'))();
+
+  /// Reduce partículas, destellos y variaciones visuales rápidas sin depender
+  /// del ajuste de accesibilidad global de Android.
+  BoolColumn get reduceVisualizerEffects =>
+      boolean().withDefault(const Constant(false))();
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -441,7 +452,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 13;
+  int get schemaVersion => 14;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -461,6 +472,8 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   ///   cancion normal de la biblioteca sin necesitar esta tabla aparte.
   /// - Version 11: diseño y gestos personalizables del reproductor.
   /// - Version 12: identificador estable de regalos para importacion idempotente.
+  /// - Version 13: densidad del reproductor.
+  /// - Version 14: perfil de calidad y reducción de efectos del visualizador.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -571,6 +584,16 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
       }
       if (from < 13) {
         await migrator.addColumn(appSettings, appSettings.playerDensity);
+      }
+      if (from < 14) {
+        await migrator.addColumn(
+          appSettings,
+          appSettings.playerVisualizerQuality,
+        );
+        await migrator.addColumn(
+          appSettings,
+          appSettings.reduceVisualizerEffects,
+        );
       }
     },
   );
