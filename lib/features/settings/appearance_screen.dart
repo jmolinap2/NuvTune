@@ -24,8 +24,12 @@ import 'package:nuvtune/features/settings/widgets_screen.dart';
 import 'package:nuvtune/shared/widgets/accent_picker.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
 
+/// Pestañas de «Personalización del reproductor».
+///
+/// El tema global ya no está aquí: vive en su propia pantalla
+/// (`/settings/theme`) porque afecta a toda la aplicación, mientras que estas
+/// pestañas solo tocan el reproductor y su widget.
 enum AppearanceTab {
-  app('app'),
   player('player'),
   motion('motion'),
   widget('widget');
@@ -33,12 +37,14 @@ enum AppearanceTab {
   const AppearanceTab(this.id);
   final String id;
 
-  static AppearanceTab byId(String? id) =>
-      values.firstWhere((tab) => tab.id == id, orElse: () => AppearanceTab.app);
+  static AppearanceTab byId(String? id) => values.firstWhere(
+    (tab) => tab.id == id,
+    orElse: () => AppearanceTab.player,
+  );
 }
 
 class AppearanceScreen extends StatefulWidget {
-  const AppearanceScreen({this.initialTab = AppearanceTab.app, super.key});
+  const AppearanceScreen({this.initialTab = AppearanceTab.player, super.key});
 
   final AppearanceTab initialTab;
 
@@ -63,11 +69,10 @@ class _AppearanceScreenState extends State<AppearanceScreen>
   @override
   Widget build(BuildContext context) => Scaffold(
     appBar: AppBar(
-      title: const Text('Personalización'),
+      title: const Text('Personalización del reproductor'),
       bottom: TabBar(
         controller: _controller,
         tabs: const [
-          Tab(icon: Icon(Icons.palette_outlined), text: 'Tema'),
           Tab(icon: Icon(Icons.smart_display_outlined), text: 'Reproductor'),
           Tab(icon: Icon(Icons.animation_rounded), text: 'Movimiento'),
           Tab(icon: Icon(Icons.widgets_outlined), text: 'Widget'),
@@ -77,7 +82,6 @@ class _AppearanceScreenState extends State<AppearanceScreen>
     body: TabBarView(
       controller: _controller,
       children: const [
-        _AppAppearancePanel(),
         _PlayerAppearancePanel(),
         _MotionAppearancePanel(),
         WidgetSettingsContent(),
@@ -86,8 +90,10 @@ class _AppearanceScreenState extends State<AppearanceScreen>
   );
 }
 
-class _AppAppearancePanel extends ConsumerWidget {
-  const _AppAppearancePanel();
+/// Contenido de «Apariencia de la app». Se expone para que
+/// [AppThemeScreen] lo aloje en su propia pantalla.
+class AppThemePanel extends ConsumerWidget {
+  const AppThemePanel({super.key});
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {

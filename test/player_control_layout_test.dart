@@ -98,5 +98,90 @@ void main() {
         PlayerControlLayout.complete,
       );
     });
+
+    group('zona junto al título', () {
+      test('acepta Favorito, que es su caso de uso principal', () {
+        final layout = PlayerControlLayout(
+          metadata: const [PlayerControlId.favorite],
+          primary: const [PlayerControlId.playPause],
+          secondary: const [],
+        );
+
+        expect(layout.metadata, [PlayerControlId.favorite]);
+        expect(layout.footer, isEmpty);
+      });
+
+      test('admite dos acciones y desborda a secundarios', () {
+        final layout = PlayerControlLayout(
+          metadata: const [
+            PlayerControlId.favorite,
+            PlayerControlId.queue,
+            PlayerControlId.sleepTimer,
+          ],
+          primary: const [PlayerControlId.playPause],
+          secondary: const [],
+        );
+
+        expect(layout.metadata, [
+          PlayerControlId.favorite,
+          PlayerControlId.queue,
+        ]);
+        expect(layout.secondary, [PlayerControlId.sleepTimer]);
+      });
+
+      test('reproducir o pausar nunca puede quedar junto al título', () {
+        final layout = PlayerControlLayout(
+          metadata: const [PlayerControlId.playPause],
+          primary: const [],
+          secondary: const [],
+        );
+
+        expect(layout.metadata, isEmpty);
+        expect(layout.primary, [PlayerControlId.playPause]);
+      });
+
+      test('un control no puede estar en dos zonas a la vez', () {
+        final layout = PlayerControlLayout(
+          top: const [PlayerControlId.favorite],
+          metadata: const [PlayerControlId.favorite],
+          primary: const [PlayerControlId.playPause],
+          secondary: const [],
+        );
+
+        expect(layout.top, [PlayerControlId.favorite]);
+        expect(layout.metadata, isEmpty);
+      });
+
+      test('sobrevive a una ida y vuelta por JSON', () {
+        final original = PlayerControlLayout(
+          metadata: const [PlayerControlId.favorite],
+          primary: const [
+            PlayerControlId.previous,
+            PlayerControlId.playPause,
+            PlayerControlId.next,
+          ],
+          secondary: const [PlayerControlId.queue],
+          footer: const [],
+        );
+
+        expect(
+          PlayerControlLayout.fromJsonString(original.toJsonString()),
+          original,
+        );
+      });
+
+      test('una preferencia guardada sin esta zona sigue siendo válida', () {
+        // Los diseños existentes no traen la clave `metadata`: deben leerse
+        // con la zona vacía y sin alterar el resto del reparto.
+        final layout = PlayerControlLayout.fromJsonString(
+          '{"top":[],"primary":["previous","playPause","next"],'
+          '"secondary":["queue"],"footer":["favorite"]}',
+        );
+
+        expect(layout.metadata, isEmpty);
+        expect(layout.footer, [PlayerControlId.favorite]);
+        expect(layout.secondary, [PlayerControlId.queue]);
+      });
+    });
   });
 }

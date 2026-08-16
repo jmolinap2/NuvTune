@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/localization/strings.dart';
+import 'package:nuvtune/app/theme/app_theme_identity.dart';
 import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
@@ -40,7 +41,7 @@ class SettingsScreen extends ConsumerWidget {
         data: (settings) {
           final preset = PlayerControlPreset.byId(settings.playerControlPreset);
           final accent = AccentIdentity.byId(settings.accentId);
-          final background = BackgroundDepth.byId(settings.backgroundDepth);
+          final identity = AppThemeIdentity.byId(settings.themeIdentity);
 
           return ListView(
             padding: const EdgeInsets.only(bottom: Tokens.space6),
@@ -65,10 +66,10 @@ class SettingsScreen extends ConsumerWidget {
                     Expanded(
                       child: SettingsFeatureCard(
                         icon: Icons.palette_outlined,
-                        title: 'Personalización',
-                        subtitle: '${accent.name} · ${background.label}',
+                        title: 'Apariencia',
+                        subtitle: '${identity.name} · ${accent.name}',
                         warm: true,
-                        onTap: () => context.push('/settings/appearance'),
+                        onTap: () => context.push('/settings/theme'),
                       ),
                     ),
                   ],
@@ -164,11 +165,21 @@ const _settingsDestinations = <_SettingsDestination>[
     keywords: ['crossfade', 'gapless', 'bluetooth', 'android auto'],
   ),
   _SettingsDestination(
-    title: 'Temas y color',
-    subtitle: 'Sistema, claro, oscuro, AMOLED, paleta y énfasis',
-    route: '/settings/appearance?tab=app',
+    title: 'Apariencia de la app',
+    subtitle: 'Tema, superficies, tipografía, densidad y énfasis',
+    route: '/settings/theme',
     icon: Icons.palette_outlined,
-    keywords: ['tema', 'acento', 'nocturno', 'violeta'],
+    keywords: [
+      'tema',
+      'acento',
+      'nebula',
+      'amoled',
+      'paper',
+      'claro',
+      'oscuro',
+      'tipografía',
+      'densidad',
+    ],
   ),
   _SettingsDestination(
     title: 'Apariencia del reproductor',

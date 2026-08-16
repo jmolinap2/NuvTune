@@ -18,6 +18,7 @@ import 'package:nuvtune/features/playlists/playlist_detail_screen.dart';
 import 'package:nuvtune/features/playlists/playlists_screen.dart';
 import 'package:nuvtune/features/queue/queue_screen.dart';
 import 'package:nuvtune/features/remote_sources/remote_sources_screen.dart';
+import 'package:nuvtune/features/settings/app_theme_screen.dart';
 import 'package:nuvtune/features/settings/appearance_screen.dart';
 import 'package:nuvtune/features/settings/control_screen.dart';
 import 'package:nuvtune/features/settings/folders_screen.dart';
@@ -260,6 +261,11 @@ GoRouter createRouter() {
         builder: (context, state) => AppearanceScreen(
           initialTab: AppearanceTab.byId(state.uri.queryParameters['tab']),
         ),
+      ),
+      GoRoute(
+        path: '/settings/theme',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AppThemeScreen(),
       ),
       GoRoute(
         path: '/settings/widgets',
