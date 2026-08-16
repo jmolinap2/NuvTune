@@ -1,4 +1,5 @@
 import 'dart:math' as math;
+import 'dart:ui' as ui;
 
 import 'package:drift/drift.dart' show Value;
 import 'package:flutter/material.dart';
@@ -6,10 +7,9 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/platform/visualizer_power_monitor.dart';
 import 'package:nuvtune/core/providers.dart';
-import 'package:nuvtune/app/theme/theme_scope.dart';
-import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
+import 'package:nuvtune/features/player/visualizer_color_map.dart';
 import 'package:nuvtune/features/player/visualizer_dynamics.dart';
 import 'package:nuvtune/features/player/visualizer_quality.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
@@ -164,12 +164,10 @@ class _ReactiveAudioVisualizerState
         widget.styleOverride ?? VisualizerStyle.fromIndex(settingIndex);
     final seed = _stableSongSeed(widget.song);
     final style = requested.resolveFor(seed);
-    final colors = _palette(
-      seed,
-      motion.colorSource,
-      ThemeScope.of(context).accent,
-      Theme.of(context).colorScheme,
+    final colorMap = VisualizerColorMap.fromJsonString(
+      settings?.visualizerColorMapJson,
     );
+    final colorMode = VisualizerColorMode.byId(settings?.visualizerColorMode);
     final motionScale = switch (motion.effectiveIntensity) {
       0 => 0.0,
       1 => 0.62,
@@ -221,7 +219,8 @@ class _ReactiveAudioVisualizerState
                     style: style,
                     time: (renderMicros % 14000000) / 14000000,
                     dynamics: _lastDynamics!,
-                    colors: colors,
+                    colorMap: colorMap,
+                    colorMode: colorMode,
                     seed: seed,
                     isPlaying: widget.isPlaying,
                     immersive: widget.immersive,
@@ -312,49 +311,10 @@ class _ReactiveAudioVisualizerState
     );
   }
 
-  static List<Color> _palette(
-    int seed,
-    VisualizerColorSource source,
-    AccentIdentity accent,
-    ColorScheme scheme,
-  ) {
-    if (source == VisualizerColorSource.accent) {
-      return [accent.start, accent.middle, accent.end];
-    }
-    if (source == VisualizerColorSource.neutral ||
-        source == VisualizerColorSource.off) {
-      return [
-        scheme.surfaceContainerHighest,
-        scheme.onSurfaceVariant,
-        scheme.onSurface,
-      ];
-    }
-    final shift = ((seed.abs() % 41) - 20).toDouble();
-    final darkBlue = HSLColor.fromAHSL(
-      1,
-      218 + shift * 0.08,
-      0.78,
-      0.24,
-    ).toColor();
-    final cyan = HSLColor.fromAHSL(1, 184 + shift * 0.22, 0.97, 0.56).toColor();
-    final blue = HSLColor.fromAHSL(1, 225 + shift * 0.14, 0.95, 0.59).toColor();
-    final violet = HSLColor.fromAHSL(
-      1,
-      268 + shift * 0.16,
-      0.96,
-      0.62,
-    ).toColor();
-    final magenta = HSLColor.fromAHSL(
-      1,
-      306 + shift * 0.16,
-      0.98,
-      0.63,
-    ).toColor();
-    final hotPink = HSLColor.fromAHSL(1, 334 + shift * 0.1, 1, 0.64).toColor();
-    // La paleta del visualizador pertenece a la música. El tema conserva sus
-    // controles y tipografía, pero ya no tiñe las anclas cromáticas del audio.
-    return [darkBlue, cyan, blue, violet, magenta, hotPink];
-  }
+  // El mapa de colores gobierna siempre los estilos del visualizador. No se
+  // cruza con «Color de los efectos»: esa preferencia tiñe la animación de la
+  // carátula y su vista previa, no el visualizador. Dos ajustes decidiendo el
+  // mismo color eran dos escritores del mismo dato.
 
   static int _stableSongSeed(Song song) {
     // FNV-1a de 32 bits: no depende del hash aleatorio de la ejecucion, de modo
@@ -401,7 +361,8 @@ class _VisualizerPainter extends CustomPainter {
     required this.style,
     required this.time,
     required this.dynamics,
-    required this.colors,
+    required this.colorMap,
+    required this.colorMode,
     required this.seed,
     required this.isPlaying,
     required this.immersive,
@@ -415,7 +376,8 @@ class _VisualizerPainter extends CustomPainter {
   final VisualizerStyle style;
   final double time;
   final VisualizerDynamicsState dynamics;
-  final List<Color> colors;
+  final VisualizerColorMap colorMap;
+  final VisualizerColorMode colorMode;
   final int seed;
   final bool isPlaying;
   final bool immersive;
@@ -697,6 +659,9 @@ class _VisualizerPainter extends CustomPainter {
       final lengthScale = primary ? 1.0 : 0.24 + ring * 0.14;
       final bars = Path();
       final peakMarkers = Path();
+      // El modo «por columna» necesita cada trazo por separado con su propia
+      // intensidad; el modo «por fila» se conforma con la silueta común.
+      final segments = <({Offset start, Offset end, double tone})>[];
 
       for (var index = 0; index < count; index++) {
         final normalized = index / count;
@@ -716,6 +681,9 @@ class _VisualizerPainter extends CustomPainter {
         bars
           ..moveTo(start.dx, start.dy)
           ..lineTo(end.dx, end.dy);
+        if (colorMode == VisualizerColorMode.column) {
+          segments.add((start: start, end: end, tone: tone));
+        }
 
         if (primary) {
           final peak = _mirroredPeakAt(normalized);
@@ -735,51 +703,69 @@ class _VisualizerPainter extends CustomPainter {
         }
       }
 
-      final shaderBounds = Rect.fromCircle(
+      // Aquí «fila» es la distancia al aro: el degradado radial reparte el
+      // mapa a lo largo de cada trazo, de modo que uno corto solo alcanza los
+      // colores bajos. En «por columna» cada trazo se pinta con el color de su
+      // propia intensidad. Antes ambos casos usaban un barrido por ángulo, así
+      // que el color dependía de la posición en el aro y no de la fuerza.
+      final maxLength = shortest * (0.012 + 0.19 + renderBeatImpulse * 0.03);
+      Shader? radialRamp(double alpha) => _radialGradient(
         center: center,
-        radius: ringRadius + shortest * 0.24,
+        innerRadius: ringRadius,
+        maxLength: maxLength * lengthScale,
+        alpha: alpha,
       );
+
       if (primary && renderGlow > 0.08) {
+        final glowAlpha = (0.08 + renderGlow * 0.22).clamp(0.0, 1.0).toDouble();
         canvas.drawPath(
           bars,
           Paint()
             ..style = PaintingStyle.stroke
             ..strokeCap = StrokeCap.round
             ..strokeWidth = shortest * (0.014 + renderGlow * 0.01)
-            ..shader = SweepGradient(
-              transform: const GradientRotation(-math.pi / 2),
-              colors: _gradientColors(
-                alpha: 0.08 + renderGlow * 0.22,
-              ).reversed.toList(growable: false),
-            ).createShader(shaderBounds)
+            ..shader = radialRamp(glowAlpha)
+            ..color = colorMap
+                .colorAt(dynamics.energy)
+                .withValues(alpha: glowAlpha)
             ..blendMode = BlendMode.plus,
         );
       }
-      canvas.drawPath(
-        bars,
-        Paint()
+
+      if (colorMode == VisualizerColorMode.row) {
+        canvas.drawPath(
+          bars,
+          Paint()
+            ..style = PaintingStyle.stroke
+            ..strokeCap = StrokeCap.round
+            ..strokeWidth = shortest * (primary ? 0.0095 : 0.0034)
+            ..shader = radialRamp((0.9 * ringAlpha).clamp(0.0, 1.0).toDouble())
+            ..blendMode = BlendMode.plus,
+        );
+      } else {
+        final strokePaint = Paint()
           ..style = PaintingStyle.stroke
           ..strokeCap = StrokeCap.round
           ..strokeWidth = shortest * (primary ? 0.0095 : 0.0034)
-          ..shader = SweepGradient(
-            transform: const GradientRotation(-math.pi / 2),
-            colors: _gradientColors(
-              alpha: 0.9 * ringAlpha,
-            ).reversed.toList(growable: false),
-          ).createShader(shaderBounds)
-          ..blendMode = BlendMode.plus,
-      );
+          ..blendMode = BlendMode.plus;
+        for (final segment in segments) {
+          canvas.drawLine(
+            segment.start,
+            segment.end,
+            strokePaint
+              ..color = colorMap
+                  .colorAt(segment.tone)
+                  .withValues(alpha: (0.9 * ringAlpha).clamp(0.0, 1.0)),
+          );
+        }
+      }
+
       if (primary) {
         canvas.drawPath(
           peakMarkers,
           Paint()
-            ..shader = SweepGradient(
-              transform: const GradientRotation(-math.pi / 2),
-              colors: _gradientColors(
-                alpha: 1,
-                highlight: true,
-              ).reversed.toList(growable: false),
-            ).createShader(shaderBounds)
+            ..shader = radialRamp(1)
+            ..color = colorMap.colorAt(1)
             ..blendMode = BlendMode.plus,
         );
       }
@@ -1103,36 +1089,71 @@ class _VisualizerPainter extends CustomPainter {
     }
 
     final bounds = Offset.zero & size;
+    // Altura que alcanzaría una barra al 100 %: define el tramo del lienzo
+    // sobre el que se proyecta el mapa en modo «por fila».
+    final fullHeight = size.height * (0.018 + heightScale);
     if (renderGlow > 0.025) {
+      final glowAlpha = (0.08 + renderGlow * 0.28).clamp(0.0, 1.0).toDouble();
+      final glowShader = _barGradient(
+        baseline: baseline,
+        fullHeight: fullHeight,
+        alpha: glowAlpha,
+      );
       canvas.drawPath(
         bars,
         Paint()
           ..style = PaintingStyle.stroke
           ..strokeWidth = 1.5 + renderGlow * 4
-          ..shader = LinearGradient(
-            colors: _gradientColors(alpha: 0.08 + renderGlow * 0.28),
-          ).createShader(bounds)
+          // Sin degradado (modo «por columna») el halo toma el color del nivel
+          // general: un `shader` nulo dejaría el trazo en negro e invisible
+          // bajo BlendMode.plus.
+          ..shader = glowShader
+          ..color = colorMap
+              .colorAt(dynamics.energy)
+              .withValues(alpha: glowAlpha)
           ..blendMode = BlendMode.plus,
       );
     }
+    // Cada capa se recorta a su silueta y se rellena con el reparto elegido:
+    // un degradado vertical común («por fila») o una banda de color plano por
+    // columna («por columna»). Antes se rellenaba con un degradado horizontal
+    // derivado de graves/medios/agudos, y por eso todas las columnas cambiaban
+    // de color a la vez sin importar la altura de cada una.
+    void fillThrough(Path silhouette, double alpha, {bool highlight = false}) {
+      canvas.save();
+      canvas.clipPath(silhouette);
+      final gradient = _barGradient(
+        baseline: baseline,
+        fullHeight: fullHeight,
+        alpha: alpha,
+      );
+      if (gradient != null) {
+        canvas.drawRect(
+          bounds,
+          Paint()
+            ..shader = gradient
+            ..blendMode = BlendMode.plus,
+        );
+      } else {
+        for (var index = 0; index < count; index++) {
+          final x = index / (count - 1);
+          final tone = highlight ? _peakAt(x) : _spectrumAt(x);
+          final left = gap + index * (barWidth + gap);
+          canvas.drawRect(
+            Rect.fromLTWH(left - gap * 0.5, 0, barWidth + gap, size.height),
+            Paint()
+              ..color = colorMap.colorAt(tone).withValues(alpha: alpha)
+              ..blendMode = BlendMode.plus,
+          );
+        }
+      }
+      canvas.restore();
+    }
+
+    fillThrough(bars, (0.82 + dynamics.energy * 0.18).clamp(0.0, 1.0));
+    fillThrough(highlights, 0.9, highlight: true);
     canvas.save();
     canvas.clipPath(bars);
-    canvas.drawRect(
-      bounds,
-      Paint()
-        ..shader = LinearGradient(
-          colors: _gradientColors(alpha: 0.82 + dynamics.energy * 0.18),
-        ).createShader(bounds)
-        ..blendMode = BlendMode.plus,
-    );
-    canvas.drawPath(
-      highlights,
-      Paint()
-        ..shader = LinearGradient(
-          colors: _gradientColors(alpha: 0.9, highlight: true),
-        ).createShader(bounds)
-        ..blendMode = BlendMode.plus,
-    );
     final separatorPaint = Paint()..color = const Color(0xFF010613);
     for (var y = baseline - segmentStep; y > highestBar; y -= segmentStep) {
       canvas.drawRect(
@@ -1142,13 +1163,9 @@ class _VisualizerPainter extends CustomPainter {
     }
     canvas.restore();
     if (fullCanvas) {
-      canvas.drawPath(
+      fillThrough(
         reflections,
-        Paint()
-          ..shader = LinearGradient(
-            colors: _gradientColors(alpha: 0.14 + renderGlow * 0.12),
-          ).createShader(bounds)
-          ..blendMode = BlendMode.plus,
+        (0.14 + renderGlow * 0.12).clamp(0.0, 1.0).toDouble(),
       );
       canvas.save();
       canvas.clipPath(reflections);
@@ -1166,14 +1183,9 @@ class _VisualizerPainter extends CustomPainter {
       }
       canvas.restore();
     }
-    canvas.drawPath(
-      peaks,
-      Paint()
-        ..shader = LinearGradient(
-          colors: _gradientColors(alpha: 0.98, highlight: true),
-        ).createShader(bounds)
-        ..blendMode = BlendMode.plus,
-    );
+    // El marcador de pico vive por encima de la barra, así que en «por fila»
+    // le toca el color de esa altura y en «por columna» el de su propio pico.
+    fillThrough(peaks, 0.98, highlight: true);
 
     final maxParticles = particleBudget(fullCanvas ? 34 : 22);
     final ambientParticles = hasLiveAnalysis ? 0 : 3;
@@ -2200,68 +2212,101 @@ class _VisualizerPainter extends CustomPainter {
     return _peakAt(mirrored);
   }
 
-  Color _colorAt(double normalized) {
-    final value = normalized.clamp(0.0, 1.0).toDouble();
-    if (colors.length == 1) return colors.first;
-    final position = value * (colors.length - 1);
-    final lower = position.floor();
-    final upper = math.min(lower + 1, colors.length - 1);
-    return Color.lerp(colors[lower], colors[upper], position - lower)!;
+  /// Degradado vertical del mapa para las barras, o `null` en modo «por
+  /// columna», donde cada barra se pinta con su propio color plano.
+  ///
+  /// Va de la línea base (intensidad 0) a la altura que alcanzaría una barra
+  /// al 100 %, de modo que una barra corta solo llega a mostrar los colores
+  /// bajos del mapa.
+  Shader? _barGradient({
+    required double baseline,
+    required double fullHeight,
+    required double alpha,
+  }) {
+    if (colorMode != VisualizerColorMode.row) return null;
+    final ramp = colorMap.projectedOnto(0, 1);
+    return ui.Gradient.linear(
+      Offset(0, baseline),
+      Offset(0, baseline - fullHeight),
+      [
+        for (final color in ramp.colors)
+          color.withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
+      ],
+      ramp.positions,
+    );
   }
 
-  /// Una sola traducción cromática para todos los estilos. La pista conserva
-  /// anclas sembradas estables, mientras la energía musical desplaza toda la
-  /// escena de azul oscuro/cian a violeta/magenta/rosa. La frecuencia solo abre
-  /// un contraste local alrededor de ese color dominante.
-  Color _reactiveColor(double normalized, double tone, {double alpha = 1}) {
-    final position = normalized.clamp(0.0, 1.0).toDouble();
-    final t = tone.clamp(0.0, 1.0).toDouble();
-    final energy = reduceMotion ? dynamics.hue * 0.58 : dynamics.hue;
-    // Curva perceptual: la música media ya abandona el azul, pero magenta y
-    // rosa quedan reservados para energía alta y golpes reales.
-    final liftedEnergy = math.pow(energy, 0.72).toDouble();
-    final chromaticEnergy =
-        liftedEnergy * liftedEnergy * (3 - 2 * liftedEnergy);
-    final frequencySpread = _lerp(0.1, 0.28, chromaticEnergy);
-    final frequencyOffset = (position - 0.5) * frequencySpread;
-    final beatWarmth = renderBeatImpulse * 0.055;
-    final palettePosition =
-        (0.04 +
-                chromaticEnergy * 0.86 +
-                frequencyOffset +
-                t * 0.025 +
-                beatWarmth)
-            .clamp(0.0, 1.0)
-            .toDouble();
-    final base = _colorAt(palettePosition);
-    final deep = Color.lerp(const Color(0xFF071A3A), base, 0.2)!;
-    final energized = Color.lerp(deep, base, 0.22 + energy * 0.78)!;
-    final hsl = HSLColor.fromColor(energized);
-    final saturation = (dynamics.saturation * (0.9 + t * 0.1))
-        .clamp(0.0, 1.0)
-        .toDouble();
-    final calmLightness = _lerp(0.2, 0.34, t);
-    final activeLightness = _lerp(
-      0.36,
-      dynamics.brightness,
-      math.pow(t, 1.3).toDouble(),
+  /// Equivalente radial de [_barGradient] para los motivos circulares: el
+  /// mapa se reparte desde el aro (intensidad 0) hasta donde llegaría un trazo
+  /// del 100 %. Devuelve `null` en modo «por columna».
+  Shader? _radialGradient({
+    required Offset center,
+    required double innerRadius,
+    required double maxLength,
+    required double alpha,
+  }) {
+    if (colorMode != VisualizerColorMode.row) return null;
+    final outerRadius = innerRadius + maxLength;
+    if (outerRadius <= 0) return null;
+    final ramp = colorMap.projectedOnto(innerRadius / outerRadius, 1);
+    return ui.Gradient.radial(
+      center,
+      outerRadius,
+      [
+        for (final color in ramp.colors)
+          color.withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
+      ],
+      ramp.positions,
     );
-    final lightness = _lerp(
-      calmLightness,
-      activeLightness,
-      0.18 + energy * 0.82,
-    ).clamp(0.0, 0.94).toDouble();
+  }
+
+  /// Una sola traducción cromática para todos los estilos.
+  ///
+  /// El mapa se consulta con la intensidad **del propio elemento** (`tone`), no
+  /// con la energía global ni con la posición en pantalla: una barra que llega
+  /// al 90 % toma el color del 90 % aunque sus vecinas sigan bajas. Antes la
+  /// posición en la paleta la fijaba la energía global, así que toda la fila
+  /// cambiaba de color a la vez y ninguna columna podía destacar por su fuerza.
+  ///
+  /// La energía global sigue interviniendo, pero solo en *presencia* (cuánto
+  /// emerge el elemento del fondo), nunca en qué color le toca: así un naranja
+  /// elegido en el mapa se ve naranja.
+  Color _reactiveColor(double normalized, double tone, {double alpha = 1}) {
+    final t = tone.clamp(0.0, 1.0).toDouble();
+    final base = colorMap.colorAt(t);
+    // Los elementos apagados se hunden hacia el fondo y los activos muestran el
+    // color del mapa tal cual. La curva deja que la diferencia se note ya en
+    // amplitudes medias en vez de solo cerca del pico.
+    final emergence = math.pow(t, 0.62).toDouble();
+    final presence = reduceMotion
+        ? 0.45 + emergence * 0.4
+        : (0.12 + emergence * 0.88) * (0.72 + dynamics.energy * 0.28) +
+              renderBeatImpulse * 0.06;
+    final blended = Color.lerp(
+      _floorColor,
+      base,
+      presence.clamp(0.0, 1.0).toDouble(),
+    )!;
+    return blended.withValues(alpha: alpha.clamp(0.0, 1.0).toDouble());
+  }
+
+  /// Fondo hacia el que se hunden los elementos sin energía. Se deriva de la
+  /// parada más baja del mapa para que un mapa cálido no descanse sobre un
+  /// azul frío ajeno a la paleta elegida.
+  Color get _floorColor {
+    final hsl = HSLColor.fromColor(colorMap.stops.first.color);
     return hsl
-        .withAlpha(alpha.clamp(0.0, 1.0).toDouble())
-        .withSaturation(saturation)
-        .withLightness(lightness)
+        .withSaturation((hsl.saturation * 0.7).clamp(0.0, 1.0))
+        .withLightness(0.05)
         .toColor();
   }
 
   Color _peakColor(double normalized, double peak) {
-    final base = _reactiveColor(normalized, math.min(1.0, peak + 0.18));
-    final whiteMix = (0.34 + dynamics.energy * 0.22 + renderBeatImpulse * 0.22)
-        .clamp(0.0, 0.78)
+    // El marcador de pico mira algo más arriba en el mapa que la barra que lo
+    // sostiene, de modo que el tramo reservado al pico se vea de verdad.
+    final base = colorMap.colorAt(math.min(1.0, peak + 0.06));
+    final whiteMix = (0.12 + dynamics.energy * 0.16 + renderBeatImpulse * 0.16)
+        .clamp(0.0, 0.5)
         .toDouble();
     return Color.lerp(base, const Color(0xFFF6F8FF), whiteMix)!;
   }
@@ -2289,6 +2334,7 @@ class _VisualizerPainter extends CustomPainter {
       oldDelegate.style != style ||
       oldDelegate.time != time ||
       oldDelegate.dynamics != dynamics ||
+      oldDelegate.colorMap != colorMap ||
       oldDelegate.seed != seed ||
       oldDelegate.isPlaying != isPlaying ||
       oldDelegate.immersive != immersive ||

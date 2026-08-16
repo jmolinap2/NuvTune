@@ -295,6 +295,17 @@ class AppSettings extends Table {
   TextColumn get glassIntensity =>
       text().withDefault(const Constant('medium'))();
 
+  /// Identidad visual completa (`AppThemeIdentity.id`). Agrupa brillo, fondo,
+  /// superficie, tipografía, densidad y acento en una sola elección.
+  TextColumn get themeIdentity =>
+      text().withDefault(const Constant('nebulaGlass'))();
+
+  /// Desvíos por eje sobre la identidad. Vacío significa «lo que diga la
+  /// identidad», de modo que cambiar de identidad no arrastra ajustes viejos.
+  TextColumn get surfaceStyle => text().withDefault(const Constant(''))();
+  TextColumn get typographyStyle => text().withDefault(const Constant(''))();
+  TextColumn get layoutDensity => text().withDefault(const Constant(''))();
+
   // Reproduccion
   BoolColumn get restoreQueueOnStart =>
       boolean().withDefault(const Constant(true))();
@@ -394,6 +405,19 @@ class AppSettings extends Table {
   TextColumn get visualizerColorSource =>
       text().withDefault(const Constant('cover'))();
 
+  /// Mapa de colores del visualizador: paradas `{p, c}` ordenadas por
+  /// intensidad, no por posición en pantalla. Es JSON porque representa una
+  /// lista de longitud variable que el usuario edita.
+  /// Cadena vacía significa "usar el reparto por defecto".
+  TextColumn get visualizerColorMapJson =>
+      text().withDefault(const Constant(''))();
+
+  /// Cómo se reparte ese mapa sobre cada elemento (`VisualizerColorMode.id`):
+  /// `row` pinta cada nivel de altura con su color, `column` da a la barra
+  /// entera el color de la intensidad que alcanza.
+  TextColumn get visualizerColorMode =>
+      text().withDefault(const Constant('row'))();
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -468,7 +492,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 15;
+  int get schemaVersion => 18;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -491,6 +515,10 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   /// - Version 13: densidad del reproductor.
   /// - Version 14: perfil de calidad y reducción de efectos del visualizador.
   /// - Version 15: tema real, perfiles de movimiento y color del visualizador.
+  /// - Version 16: mapa de colores editable del visualizador, indexado por la
+  ///   intensidad que alcanza cada elemento.
+  /// - Version 17: reparto del mapa por fila o por columna.
+  /// - Version 18: identidades visuales completas y sus desvíos por eje.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -634,6 +662,32 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
               pure_black_background = 0,
               background_depth = 'night'
           WHERE pure_black_background = 1 OR background_depth = 'black'
+        ''');
+      }
+      if (from < 16) {
+        await migrator.addColumn(
+          appSettings,
+          appSettings.visualizerColorMapJson,
+        );
+      }
+      if (from < 17) {
+        await migrator.addColumn(appSettings, appSettings.visualizerColorMode);
+      }
+      if (from < 18) {
+        await migrator.addColumn(appSettings, appSettings.themeIdentity);
+        await migrator.addColumn(appSettings, appSettings.surfaceStyle);
+        await migrator.addColumn(appSettings, appSettings.typographyStyle);
+        await migrator.addColumn(appSettings, appSettings.layoutDensity);
+        // Una instalación previa conserva su apariencia: se le asigna la
+        // identidad más cercana a lo que ya tenía en vez de imponer la nueva
+        // por defecto.
+        await customStatement('''
+          UPDATE app_settings
+          SET theme_identity = CASE
+            WHEN theme_mode = 'light' THEN 'paperLoft'
+            WHEN theme_mode = 'amoled' THEN 'amoledMono'
+            ELSE 'nebulaGlass'
+          END
         ''');
       }
     },

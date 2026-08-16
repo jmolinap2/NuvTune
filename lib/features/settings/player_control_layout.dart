@@ -68,6 +68,7 @@ enum PlayerControlId {
 class PlayerControlLayout {
   const PlayerControlLayout._({
     required this.top,
+    required this.metadata,
     required this.primary,
     required this.secondary,
     required this.footer,
@@ -75,6 +76,7 @@ class PlayerControlLayout {
 
   factory PlayerControlLayout({
     Iterable<PlayerControlId> top = const [],
+    Iterable<PlayerControlId> metadata = const [],
     required Iterable<PlayerControlId> primary,
     required Iterable<PlayerControlId> secondary,
     Iterable<PlayerControlId> footer = const [],
@@ -82,6 +84,8 @@ class PlayerControlLayout {
     final seen = <PlayerControlId>{};
     final normalizedTop = <PlayerControlId>[];
     final topOverflow = <PlayerControlId>[];
+    final normalizedMetadata = <PlayerControlId>[];
+    final metadataOverflow = <PlayerControlId>[];
     final normalizedPrimary = <PlayerControlId>[];
     final normalizedSecondary = <PlayerControlId>[];
     final normalizedFooter = <PlayerControlId>[];
@@ -96,13 +100,25 @@ class PlayerControlLayout {
       }
     }
 
+    // La fila del título comparte ancho con el nombre de la canción, así que
+    // dos acciones son el máximo antes de empezar a recortar el texto.
+    for (final control in metadata) {
+      if (control == PlayerControlId.playPause) continue;
+      if (!seen.add(control)) continue;
+      if (normalizedMetadata.length < 2) {
+        normalizedMetadata.add(control);
+      } else {
+        metadataOverflow.add(control);
+      }
+    }
+
     for (final control in primary) {
       if (seen.add(control)) normalizedPrimary.add(control);
     }
     for (final control in secondary) {
       if (seen.add(control)) normalizedSecondary.add(control);
     }
-    normalizedSecondary.insertAll(0, topOverflow);
+    normalizedSecondary.insertAll(0, [...topOverflow, ...metadataOverflow]);
     for (final control in footer) {
       if (seen.add(control)) normalizedFooter.add(control);
     }
@@ -122,6 +138,7 @@ class PlayerControlLayout {
 
     return PlayerControlLayout._(
       top: List.unmodifiable(normalizedTop),
+      metadata: List.unmodifiable(normalizedMetadata),
       primary: List.unmodifiable(normalizedPrimary),
       secondary: List.unmodifiable(normalizedSecondary),
       footer: List.unmodifiable(normalizedFooter),
@@ -129,6 +146,9 @@ class PlayerControlLayout {
   }
 
   final List<PlayerControlId> top;
+
+  /// Acciones a la derecha del título y el artista, en la misma fila.
+  final List<PlayerControlId> metadata;
   final List<PlayerControlId> primary;
   final List<PlayerControlId> secondary;
   final List<PlayerControlId> footer;
@@ -187,6 +207,9 @@ class PlayerControlLayout {
           !hasZones && legacySecondary.remove(PlayerControlId.favorite);
       return PlayerControlLayout(
         top: _decodeList(decoded['top']),
+        // Una preferencia guardada antes de existir esta zona simplemente no
+        // trae la clave: se lee vacía y el resto del diseño no se altera.
+        metadata: _decodeList(decoded['metadata']),
         primary: _decodeList(decoded['primary']),
         secondary: legacySecondary,
         footer: hasZones
@@ -210,6 +233,7 @@ class PlayerControlLayout {
 
   String toJsonString() => jsonEncode({
     'top': top.map((control) => control.id).toList(),
+    'metadata': metadata.map((control) => control.id).toList(),
     'primary': primary.map((control) => control.id).toList(),
     'secondary': secondary.map((control) => control.id).toList(),
     'footer': footer.map((control) => control.id).toList(),
@@ -217,11 +241,13 @@ class PlayerControlLayout {
 
   PlayerControlLayout copyWith({
     Iterable<PlayerControlId>? top,
+    Iterable<PlayerControlId>? metadata,
     Iterable<PlayerControlId>? primary,
     Iterable<PlayerControlId>? secondary,
     Iterable<PlayerControlId>? footer,
   }) => PlayerControlLayout(
     top: top ?? this.top,
+    metadata: metadata ?? this.metadata,
     primary: primary ?? this.primary,
     secondary: secondary ?? this.secondary,
     footer: footer ?? this.footer,
@@ -231,6 +257,7 @@ class PlayerControlLayout {
   bool operator ==(Object other) =>
       other is PlayerControlLayout &&
       _same(top, other.top) &&
+      _same(metadata, other.metadata) &&
       _same(primary, other.primary) &&
       _same(secondary, other.secondary) &&
       _same(footer, other.footer);
@@ -238,6 +265,8 @@ class PlayerControlLayout {
   @override
   int get hashCode => Object.hashAll([
     ...top,
+    null,
+    ...metadata,
     null,
     ...primary,
     null,

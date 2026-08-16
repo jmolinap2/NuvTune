@@ -19,6 +19,12 @@ import java.net.UnknownHostException
  * conectan con Pigeon y con la notificacion en primer plano.
  */
 object YtDlpEngine {
+    enum class RecoveryAction {
+        NONE,
+        REANALYZE,
+        UPDATE_EXTRACTOR,
+    }
+
     @Volatile
     private var initialized = false
 
@@ -218,6 +224,20 @@ object YtDlpEngine {
         }
 
     /**
+     * Reanaliza con el binario que ya está instalado. Lo usa el servicio tras
+     * una recuperación de descarga para reconstruir la solicitud sin permitir
+     * una segunda actualización automática dentro del mismo trabajo.
+     */
+    fun reanalyzeCurrentExtractor(context: Context, url: String): VideoInfo =
+        executeWithRecovery(
+            context = context,
+            sourceUrl = url,
+            allowExtractorUpdate = false,
+        ) { includeCookies ->
+            analyze(url, includeCookies)
+        }
+
+    /**
      * URL directa del stream de audio, sin descargar nada. `-g`
      * (`--get-url`) hace que yt-dlp resuelva el formato y escriba la URL en
      * la salida estandar en vez de bajar el archivo; es lo que permite
@@ -352,10 +372,12 @@ object YtDlpEngine {
     private inline fun <T> executeWithRecovery(
         context: Context,
         sourceUrl: String,
+        allowExtractorUpdate: Boolean = true,
         operation: (includeYouTubeCookies: Boolean) -> T,
     ): T {
         var lastError: Exception? = null
         var extractorRefreshed = false
+        val observedVersion = currentVersion(context)
         for (includeCookies in cookieModesFor(sourceUrl)) {
             while (true) {
                 try {
@@ -363,11 +385,18 @@ object YtDlpEngine {
                 } catch (error: Exception) {
                     lastError = error
                     if (
+                        allowExtractorUpdate &&
                         !extractorRefreshed &&
-                        classifyError(error) == DownloadErrorCode.EXTRACTOR_OUTDATED
+                        recoveryAction(error) == RecoveryAction.UPDATE_EXTRACTOR
                     ) {
                         extractorRefreshed = true
-                        if (runCatching { updateExtractor(context) }.isSuccess) continue
+                        val readyToRetry = runCatching {
+                            refreshExtractorForRecovery(context, observedVersion)
+                        }.getOrElse {
+                            Log.w(TAG, "no se pudo recuperar el extractor", it)
+                            false
+                        }
+                        if (readyToRetry) continue
                     }
                     break
                 }
@@ -391,6 +420,49 @@ object YtDlpEngine {
         return updated to currentVersion(context)
     }
 
+    /**
+     * Actualización reactiva, distinta del botón manual de Ajustes.
+     *
+     * Es `@Synchronized` para que dos análisis/descargas no actualicen el
+     * binario a la vez. Si otro trabajo ya cambió la versión observada, el
+     * llamador puede reintentar sin volver a consultar la red. Un intento que
+     * no encontró una versión nueva entra en un enfriamiento breve para no
+     * golpear GitHub cada vez que el sitio falla por una causa aún no resuelta.
+     */
+    @Synchronized
+    fun refreshExtractorForRecovery(
+        context: Context,
+        observedVersion: String?,
+        onUpdateStarted: () -> Unit = {},
+    ): Boolean {
+        assertInitialized()
+        val appContext = context.applicationContext
+        val current = currentVersion(appContext)
+        if (observedVersion != null && current != null && current != observedVersion) {
+            return true
+        }
+
+        val preferences = appContext.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
+        val now = System.currentTimeMillis()
+        val lastAttempt = preferences.getLong(KEY_LAST_RECOVERY_UPDATE_ATTEMPT, 0L)
+        if (now - lastAttempt < RECOVERY_UPDATE_COOLDOWN_MS) return false
+
+        // Se guarda antes de la llamada de red: una excepción tampoco debe
+        // convertir cada pulsación posterior en otro intento inmediato.
+        preferences.edit().putLong(KEY_LAST_RECOVERY_UPDATE_ATTEMPT, now).apply()
+        onUpdateStarted()
+        val before = currentVersion(appContext)
+        val (reportedUpdated, after) = updateExtractor(appContext)
+        val versionChanged = before == null || after == null || before != after
+        val usable = reportedUpdated && versionChanged
+        Log.i(
+            TAG,
+            "actualizacion reactiva de yt-dlp: " +
+                "reportedUpdated=$reportedUpdated, versionChanged=$versionChanged",
+        )
+        return usable
+    }
+
     /** Mantiene los extractores frescos sin hacer una consulta en cada uso. */
     private fun refreshExtractorIfDue(context: Context) {
         val preferences = context.getSharedPreferences(PREFERENCES_NAME, Context.MODE_PRIVATE)
@@ -407,11 +479,9 @@ object YtDlpEngine {
      * coincidencia de texto conocido, no una clasificacion garantizada.
      */
     fun classifyError(throwable: Throwable): DownloadErrorCode {
-        if (throwable is UnknownHostException || throwable is IOException) {
-            return DownloadErrorCode.NETWORK_LOST
-        }
-        val text = (throwable.message ?: "").lowercase()
+        val text = diagnosticText(throwable)
         return when {
+            text.contains("no space left") -> DownloadErrorCode.INSUFFICIENT_STORAGE
             text.contains("unsupported url") -> DownloadErrorCode.UNSUPPORTED_LINK
             text.contains("private") -> DownloadErrorCode.PRIVATE_CONTENT
             text.contains("login") && text.contains("required") -> DownloadErrorCode.PRIVATE_CONTENT
@@ -421,14 +491,6 @@ object YtDlpEngine {
                 text.contains("has been removed") -> DownloadErrorCode.CONTENT_REMOVED
             text.contains("not available in your country") || text.contains("geo-restricted") ||
                 text.contains("blocked it in your country") -> DownloadErrorCode.REGION_RESTRICTED
-            text.contains("unable to extract") || text.contains("unable to parse") ||
-                text.contains("failed to parse json") ||
-                text.contains("signature") ||
-                text.contains("requested format is not available") ||
-                text.contains("only images are available") ||
-                text.contains("challenge solving failed") ||
-                text.contains("no supported javascript runtime") ->
-                DownloadErrorCode.EXTRACTOR_OUTDATED
             // El anti-bot y el 429 son limitaciones temporales de YouTube, no
             // un extractor viejo: mandarlos a EXTRACTOR_OUTDATED hacia que la
             // app pidiera "actualizar el motor de descarga", que no arregla
@@ -437,18 +499,68 @@ object YtDlpEngine {
             text.contains("not a bot") || text.contains("too many requests") ||
                 text.contains("http error 429") -> DownloadErrorCode.FETCH_FAILED
             text.contains("unable to download webpage") || text.contains("http error 404") ||
-                text.contains("http error 403") -> DownloadErrorCode.FETCH_FAILED
-            text.contains("no space left") -> DownloadErrorCode.INSUFFICIENT_STORAGE
+                text.contains("http error 403") ||
+                text.contains("requested format is not available") ||
+                text.contains("only images are available") ||
+                text.contains("challenge solving failed") -> DownloadErrorCode.FETCH_FAILED
+            text.contains("no supported javascript runtime") -> DownloadErrorCode.UNKNOWN
+            throwable.causes().any { it is UnknownHostException || it is IOException } ||
+                NETWORK_ERROR_MARKERS.any(text::contains) -> DownloadErrorCode.NETWORK_LOST
+            text.contains("unable to extract") || text.contains("unable to parse") ||
+                text.contains("failed to parse json") ||
+                text.contains("signature extraction failed") ||
+                text.contains("nsig extraction failed") ->
+                DownloadErrorCode.EXTRACTOR_OUTDATED
             else -> DownloadErrorCode.UNKNOWN
         }
     }
+
+    /** Decide la recuperación sin confundir el mensaje que verá el usuario. */
+    fun recoveryAction(throwable: Throwable): RecoveryAction {
+        val text = diagnosticText(throwable)
+        val errorCode = classifyError(throwable)
+        if (
+            errorCode == DownloadErrorCode.FETCH_FAILED &&
+            text.contains("requested format is not available")
+        ) {
+            return RecoveryAction.REANALYZE
+        }
+        return if (errorCode == DownloadErrorCode.EXTRACTOR_OUTDATED) {
+            RecoveryAction.UPDATE_EXTRACTOR
+        } else {
+            RecoveryAction.NONE
+        }
+    }
+
+    private fun diagnosticText(throwable: Throwable): String =
+        throwable.causes()
+            .mapNotNull { it.message }
+            .joinToString("\n")
+            .lowercase()
+
+    private fun Throwable.causes(): Sequence<Throwable> =
+        generateSequence(this) { current -> current.cause?.takeUnless { it === current } }
+            .take(MAX_CAUSE_DEPTH)
 
     private const val SOCKET_TIMEOUT_SECONDS = 15
     private const val NETWORK_RETRIES = 1
     private const val TAG = "NuvTune"
     private const val PREFERENCES_NAME = "nuvtune_download_engine"
     private const val KEY_LAST_EXTRACTOR_CHECK = "last_extractor_check"
+    private const val KEY_LAST_RECOVERY_UPDATE_ATTEMPT = "last_recovery_update_attempt"
     private const val EXTRACTOR_CHECK_INTERVAL_MS = 24L * 60 * 60 * 1000
+    private const val RECOVERY_UPDATE_COOLDOWN_MS = 15L * 60 * 1000
+    private const val MAX_CAUSE_DEPTH = 8
+
+    private val NETWORK_ERROR_MARKERS = listOf(
+        "temporary failure in name resolution",
+        "name or service not known",
+        "network is unreachable",
+        "connection timed out",
+        "read timed out",
+        "connection reset",
+        "no route to host",
+    )
 
     /** Nombre con el que youtubedl-android empaqueta el binario de QuickJS. */
     private const val QUICK_JS_LIB_NAME = "libqjs.so"

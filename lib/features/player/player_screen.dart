@@ -422,7 +422,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                             ),
                     ),
                   ),
+                  // El reproductor oculta la barra de navegacion inferior.
+                  // En Android (especialmente HyperOS) esa barra puede volver
+                  // como overlay transitorio sin que el inset se actualice en
+                  // el mismo fotograma. Reservar un minimo estable evita que
+                  // los controles inferiores queden dentro de su zona tactil;
+                  // SafeArea sigue usando el inset real cuando es mayor.
                   SafeArea(
+                    minimum: const EdgeInsets.only(bottom: Tokens.space6),
                     child: Column(
                       children: [
                         _PlayerAppBar(
@@ -2310,6 +2317,30 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                   ],
                 ),
               ),
+              // Zona «junto al título»: las acciones que el usuario coloque
+              // aquí acompañan a la canción en lugar de vivir en la fila de
+              // transporte. El título ya está dentro de un Expanded, así que
+              // estos botones se llevan solo el ancho que necesitan.
+              for (final control in controlLayout.metadata)
+                IconButton(
+                  tooltip: _metadataControlTooltip(
+                    control,
+                    state,
+                    isFavorite,
+                  ),
+                  color: _metadataControlActive(control, state, isFavorite)
+                      ? scheme.primary
+                      : scheme.onSurfaceVariant,
+                  icon: Icon(
+                    _metadataControlIcon(control, state, isFavorite),
+                  ),
+                  onPressed: () => _invokeMetadataControl(
+                    control,
+                    displaySong,
+                    state,
+                    controller,
+                  ),
+                ),
             ],
           ),
 
@@ -2360,6 +2391,90 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
         ],
       ),
     );
+  }
+
+  bool _metadataControlActive(
+    PlayerControlId control,
+    PlaybackState state,
+    bool isFavorite,
+  ) => switch (control) {
+    PlayerControlId.favorite => isFavorite,
+    PlayerControlId.shuffle => state.snapshot.shuffleEnabled,
+    PlayerControlId.repeat => state.snapshot.repeatMode != RepeatMode.off,
+    PlayerControlId.sleepTimer => state.snapshot.sleepTimerRemainingMs != null,
+    _ => false,
+  };
+
+  IconData _metadataControlIcon(
+    PlayerControlId control,
+    PlaybackState state,
+    bool isFavorite,
+  ) => switch (control) {
+    PlayerControlId.favorite =>
+      isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+    PlayerControlId.shuffle => Icons.shuffle_rounded,
+    PlayerControlId.previous => Icons.skip_previous_rounded,
+    PlayerControlId.playPause =>
+      state.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+    PlayerControlId.next => Icons.skip_next_rounded,
+    PlayerControlId.repeat =>
+      state.snapshot.repeatMode == RepeatMode.one
+          ? Icons.repeat_one_rounded
+          : Icons.repeat_rounded,
+    PlayerControlId.seekBackward => Icons.replay_10_rounded,
+    PlayerControlId.seekForward => Icons.forward_30_rounded,
+    PlayerControlId.queue => Icons.queue_music_rounded,
+    PlayerControlId.sleepTimer => Icons.bedtime_outlined,
+  };
+
+  String _metadataControlTooltip(
+    PlayerControlId control,
+    PlaybackState state,
+    bool isFavorite,
+  ) => switch (control) {
+    PlayerControlId.favorite =>
+      isFavorite ? 'Quitar de favoritos' : AppStrings.favorite,
+    PlayerControlId.shuffle => AppStrings.shuffle,
+    PlayerControlId.previous => 'Anterior',
+    PlayerControlId.playPause => state.isPlaying ? 'Pausar' : 'Reproducir',
+    PlayerControlId.next => 'Siguiente',
+    PlayerControlId.repeat => 'Repetición',
+    PlayerControlId.seekBackward => 'Retroceder 10 segundos',
+    PlayerControlId.seekForward => 'Avanzar 30 segundos',
+    PlayerControlId.queue => AppStrings.queue,
+    PlayerControlId.sleepTimer => AppStrings.sleepTimer,
+  };
+
+  /// El favorito se aplica a la pista que se está viendo en el carrusel, no a
+  /// la que suena: es la que el usuario tiene delante al pulsar.
+  void _invokeMetadataControl(
+    PlayerControlId control,
+    Song displaySong,
+    PlaybackState state,
+    PlaybackController controller,
+  ) {
+    switch (control) {
+      case PlayerControlId.favorite:
+        controller.toggleFavorite(displaySong.id);
+      case PlayerControlId.shuffle:
+        controller.toggleShuffle();
+      case PlayerControlId.previous:
+        controller.skipPrevious();
+      case PlayerControlId.playPause:
+        controller.togglePlayPause();
+      case PlayerControlId.next:
+        controller.skipNext();
+      case PlayerControlId.repeat:
+        controller.cycleRepeatMode();
+      case PlayerControlId.seekBackward:
+        controller.seekRelative(-10000);
+      case PlayerControlId.seekForward:
+        controller.seekRelative(30000);
+      case PlayerControlId.queue:
+        context.push('/queue');
+      case PlayerControlId.sleepTimer:
+        showSleepTimerSheet(context);
+    }
   }
 }
 

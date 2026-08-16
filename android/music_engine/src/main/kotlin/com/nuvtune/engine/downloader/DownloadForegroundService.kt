@@ -34,6 +34,8 @@ import java.util.concurrent.atomic.AtomicInteger
  */
 class DownloadForegroundService : Service() {
 
+    private class CancelledBeforeExecution : Exception()
+
     private val job = Job()
     private val scope = CoroutineScope(Dispatchers.IO + job)
     private lateinit var queue: Channel<QueuedDownload>
@@ -113,76 +115,62 @@ class DownloadForegroundService : Service() {
         val outputTemplate = File(outputDir, "${item.downloadId}.%(ext)s").absolutePath
         updateNotification(item.suggestedFileName, 0, indeterminate = true)
 
-        var lastEmitAt = 0L
         try {
-            val attempts = YtDlpEngine.cookieModesFor(item.sourceUrl)
-                .flatMap { includeCookies ->
-                    // Portada/metadatos enriquecen el MP3, pero algunos sitios
-                    // entregan miniaturas en formatos o URLs que expiran antes
-                    // del postprocesado. El segundo intento conserva el audio y
-                    // metadatos de texto, omitiendo solo esa portada.
-                    listOf(includeCookies to true, includeCookies to false)
-                }
-            var completed = false
-            var lastError: Exception? = null
-            for ((attemptIndex, attempt) in attempts.withIndex()) {
-                val (includeCookies, embedThumbnail) = attempt
+            val observedVersion = YtDlpEngine.currentVersion(applicationContext)
+            var recoveryUsed = false
+            while (true) {
                 try {
-                    lastEmitAt = 0L
-                    val request = YtDlpEngine.buildDownloadRequest(
-                        item.sourceUrl,
-                        item.formatId,
-                        outputTemplate,
-                        includeYouTubeCookies = includeCookies,
-                        embedThumbnail = embedThumbnail,
-                    )
-                    YoutubeDL.getInstance().execute(request, item.downloadId) { percent, etaSeconds, _ ->
-                        val now = System.currentTimeMillis()
-                        // yt-dlp reporta progreso muchas veces por segundo en redes
-                        // rapidas; sin este filtro el canal de Pigeon se satura sin
-                        // que el usuario perciba diferencia visual.
-                        if (now - lastEmitAt < PROGRESS_THROTTLE_MS && percent < 100f) return@execute
-                        lastEmitAt = now
-                        val downloaded = item.approxTotalBytes
-                            ?.let { (it * (percent / 100.0)).toLong() }
-                            ?: 0L
-                        DownloadEventBus.emitProgress(
-                            item.downloadId,
-                            percent.toDouble(),
-                            etaSeconds.takeIf { it > 0 },
-                            downloaded,
-                            item.approxTotalBytes,
-                        )
-                        updateNotification(
-                            item.suggestedFileName,
-                            percent.toInt(),
-                            indeterminate = false,
-                        )
-                    }
-                    completed = true
+                    executeDownload(item, outputTemplate)
                     break
                 } catch (cancelled: YoutubeDL.CanceledException) {
                     throw cancelled
+                } catch (cancelled: CancelledBeforeExecution) {
+                    throw cancelled
                 } catch (error: Exception) {
-                    lastError = error
                     clearTemporaryFiles(outputDir, item.downloadId)
-                    if (attemptIndex < attempts.lastIndex) {
-                        Log.i(
-                            TAG,
-                            "reintentando ${item.downloadId} " +
-                                "(cookies=$includeCookies, portada=$embedThumbnail)",
-                        )
-                        DownloadEventBus.emitProgress(
-                            item.downloadId,
-                            0.0,
-                            null,
-                            0L,
-                            item.approxTotalBytes,
-                        )
+                    val action = YtDlpEngine.recoveryAction(error)
+                    if (recoveryUsed || action == YtDlpEngine.RecoveryAction.NONE) throw error
+                    recoveryUsed = true
+
+                    val mayReanalyze = when (action) {
+                        YtDlpEngine.RecoveryAction.UPDATE_EXTRACTOR ->
+                            runCatching {
+                                YtDlpEngine.refreshExtractorForRecovery(
+                                    context = applicationContext,
+                                    observedVersion = observedVersion,
+                                    onUpdateStarted = {
+                                        Log.i(TAG, "actualizando yt-dlp para recuperar ${item.downloadId}")
+                                        updateNotification(
+                                            "Actualizando motor de descarga",
+                                            0,
+                                            indeterminate = true,
+                                        )
+                                    },
+                                )
+                            }.getOrElse {
+                                Log.w(TAG, "no se pudo recuperar el extractor", it)
+                                false
+                            }
+                        YtDlpEngine.RecoveryAction.REANALYZE -> true
+                        YtDlpEngine.RecoveryAction.NONE -> false
                     }
+                    if (!mayReanalyze) throw error
+                    if (cancelledIds.remove(item.downloadId)) throw CancelledBeforeExecution()
+
+                    // No se reutiliza a ciegas la solicitud fallida: primero
+                    // se confirma que el extractor actualizado puede resolver
+                    // de nuevo el enlace y sus cookies vigentes.
+                    YtDlpEngine.reanalyzeCurrentExtractor(applicationContext, item.sourceUrl)
+                    updateNotification(item.suggestedFileName, 0, indeterminate = true)
+                    DownloadEventBus.emitProgress(
+                        item.downloadId,
+                        0.0,
+                        null,
+                        0L,
+                        item.approxTotalBytes,
+                    )
                 }
             }
-            if (!completed) throw checkNotNull(lastError)
 
             val producedFile = outputDir.listFiles { file ->
                 file.nameWithoutExtension == item.downloadId &&
@@ -199,13 +187,85 @@ class DownloadForegroundService : Service() {
 
             DownloadEventBus.emitCompleted(item.downloadId, savedUri.toString(), item.suggestedFileName, sizeBytes)
         } catch (cancelled: YoutubeDL.CanceledException) {
+            cancelledIds.remove(item.downloadId)
+            DownloadEventBus.emitFailed(item.downloadId, DownloadErrorCode.CANCELLED, null)
+        } catch (cancelled: CancelledBeforeExecution) {
             DownloadEventBus.emitFailed(item.downloadId, DownloadErrorCode.CANCELLED, null)
         } catch (error: Exception) {
-            Log.w(TAG, "descarga fallida para ${item.downloadId} (${item.sourceUrl})", error)
+            Log.w(TAG, "descarga fallida para ${item.downloadId}", error)
             DownloadEventBus.emitFailed(item.downloadId, YtDlpEngine.classifyError(error), error.message)
         } finally {
             clearTemporaryFiles(outputDir, item.downloadId)
         }
+    }
+
+    private fun executeDownload(item: QueuedDownload, outputTemplate: String) {
+        val attempts = YtDlpEngine.cookieModesFor(item.sourceUrl)
+            .flatMap { includeCookies ->
+                // La portada es opcional y se reintenta sin ella si falla el
+                // postprocesado. Cookies y portada no se prueban si el fallo
+                // pide reanalizar o actualizar el extractor.
+                listOf(includeCookies to true, includeCookies to false)
+            }
+        var lastError: Exception? = null
+        for ((attemptIndex, attempt) in attempts.withIndex()) {
+            if (cancelledIds.remove(item.downloadId)) throw CancelledBeforeExecution()
+            val (includeCookies, embedThumbnail) = attempt
+            try {
+                var lastEmitAt = 0L
+                val request = YtDlpEngine.buildDownloadRequest(
+                    item.sourceUrl,
+                    item.formatId,
+                    outputTemplate,
+                    includeYouTubeCookies = includeCookies,
+                    embedThumbnail = embedThumbnail,
+                )
+                YoutubeDL.getInstance().execute(request, item.downloadId) { percent, etaSeconds, _ ->
+                    val now = System.currentTimeMillis()
+                    if (now - lastEmitAt < PROGRESS_THROTTLE_MS && percent < 100f) return@execute
+                    lastEmitAt = now
+                    val downloaded = item.approxTotalBytes
+                        ?.let { (it * (percent / 100.0)).toLong() }
+                        ?: 0L
+                    DownloadEventBus.emitProgress(
+                        item.downloadId,
+                        percent.toDouble(),
+                        etaSeconds.takeIf { it > 0 },
+                        downloaded,
+                        item.approxTotalBytes,
+                    )
+                    updateNotification(
+                        item.suggestedFileName,
+                        percent.toInt(),
+                        indeterminate = false,
+                    )
+                }
+                return
+            } catch (cancelled: YoutubeDL.CanceledException) {
+                throw cancelled
+            } catch (error: Exception) {
+                lastError = error
+                clearTemporaryFiles(File(cacheDir, "downloads"), item.downloadId)
+                if (YtDlpEngine.recoveryAction(error) != YtDlpEngine.RecoveryAction.NONE) {
+                    throw error
+                }
+                if (attemptIndex < attempts.lastIndex) {
+                    Log.i(
+                        TAG,
+                        "reintentando ${item.downloadId} " +
+                            "(cookies=$includeCookies, portada=$embedThumbnail)",
+                    )
+                    DownloadEventBus.emitProgress(
+                        item.downloadId,
+                        0.0,
+                        null,
+                        0L,
+                        item.approxTotalBytes,
+                    )
+                }
+            }
+        }
+        throw checkNotNull(lastError)
     }
 
     private fun clearTemporaryFiles(outputDir: File, downloadId: String) {

@@ -101,7 +101,7 @@ class DownloadEnginePlugin :
                 )
                 AnalysisResult(video = analysis)
             } catch (error: Exception) {
-                Log.w(TAG, "analyzeUrl fallo para $url", error)
+                Log.w(TAG, "analyzeUrl fallo", error)
                 AnalysisResult(errorCode = YtDlpEngine.classifyError(error), errorDetail = error.message)
             }
             callback(Result.success(result))

@@ -297,11 +297,13 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
 
     final visible = {
       ..._layout.top,
+      ..._layout.metadata,
       ..._layout.primary,
       ..._layout.secondary,
       ..._layout.footer,
     };
     final topControls = _layout.top.toList(growable: false);
+    final metadataControls = _layout.metadata.toList(growable: false);
     final primaryControls = _layout.primary.toList(growable: false);
     final secondaryControls = _layout.secondary.toList(growable: false);
     final footerControls = _layout.footer.toList(growable: false);
@@ -337,6 +339,19 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
             },
             onAction: _handleAction,
           ),
+          const SettingsSectionLabel('Junto al título'),
+          _ReorderSection(
+            controls: metadataControls,
+            destination: _ControlDestination.metadata,
+            emptyLabel: 'Sin acciones · admite hasta dos',
+            onReorder: (oldIndex, newIndex) {
+              final next = [...metadataControls];
+              final item = next.removeAt(oldIndex);
+              next.insert(newIndex, item);
+              _commit(_layout.copyWith(metadata: next));
+            },
+            onAction: _handleAction,
+          ),
           const SettingsSectionLabel('Controles principales'),
           _ReorderSection(
             controls: primaryControls,
@@ -348,6 +363,7 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
               _commit(
                 _composeLayout(
                   top: topControls,
+                  metadata: metadataControls,
                   primary: next,
                   secondary: secondaryControls,
                   footer: footerControls,
@@ -367,6 +383,7 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
               _commit(
                 _composeLayout(
                   top: topControls,
+                  metadata: metadataControls,
                   primary: primaryControls,
                   secondary: next,
                   footer: footerControls,
@@ -425,13 +442,26 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
       return;
     }
     final top = [..._layout.top]..remove(control);
+    final metadata = [..._layout.metadata]..remove(control);
     final primary = _layout.primary.toList()..remove(control);
     final secondary = _layout.secondary.toList()..remove(control);
     final footer = [..._layout.footer]..remove(control);
     switch (target) {
       case _ControlDestination.top:
-        if (top.length >= 2) return;
+        // La barra superior solo tiene sitio para dos acciones. Antes el
+        // intento se descartaba en silencio y parecía que ese control (por
+        // ejemplo Favorito) no se pudiera colocar ahí nunca.
+        if (top.length >= 2) {
+          _warnZoneIsFull('La barra superior');
+          return;
+        }
         top.add(control);
+      case _ControlDestination.metadata:
+        if (metadata.length >= 2) {
+          _warnZoneIsFull('La fila del título');
+          return;
+        }
+        metadata.add(control);
       case _ControlDestination.primary:
         primary.add(control);
       case _ControlDestination.secondary:
@@ -444,6 +474,7 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
     _commit(
       _composeLayout(
         top: top,
+        metadata: metadata,
         primary: primary,
         secondary: secondary,
         footer: footer,
@@ -451,13 +482,25 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
     );
   }
 
+  void _warnZoneIsFull(String zone) {
+    final messenger = ScaffoldMessenger.of(context);
+    messenger.hideCurrentSnackBar();
+    messenger.showSnackBar(
+      SnackBar(
+        content: Text('$zone admite dos acciones. Quita una para dejar sitio.'),
+      ),
+    );
+  }
+
   PlayerControlLayout _composeLayout({
     required Iterable<PlayerControlId> top,
+    required Iterable<PlayerControlId> metadata,
     required Iterable<PlayerControlId> primary,
     required Iterable<PlayerControlId> secondary,
     required Iterable<PlayerControlId> footer,
   }) => PlayerControlLayout(
     top: top,
+    metadata: metadata,
     primary: primary,
     secondary: secondary,
     footer: footer,
@@ -479,7 +522,7 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
   }
 }
 
-enum _ControlDestination { top, primary, secondary, footer, hidden }
+enum _ControlDestination { top, metadata, primary, secondary, footer, hidden }
 
 class _ReorderSection extends StatelessWidget {
   const _ReorderSection({
@@ -538,6 +581,11 @@ class _ReorderSection extends StatelessWidget {
                       const PopupMenuItem(
                         value: _ControlDestination.top,
                         child: Text('Mover a barra superior'),
+                      ),
+                    if (destination != _ControlDestination.metadata)
+                      const PopupMenuItem(
+                        value: _ControlDestination.metadata,
+                        child: Text('Mover junto al título'),
                       ),
                     if (destination != _ControlDestination.primary)
                       const PopupMenuItem(
@@ -687,16 +735,34 @@ class _ControlPreview extends StatelessWidget {
             child: const Icon(Icons.graphic_eq_rounded, size: 34),
           ),
           const SizedBox(height: Tokens.space3),
-          const Text(
-            'Vista previa',
-            style: TextStyle(fontWeight: FontWeight.w700),
-          ),
-          Text(
-            preset.label,
-            style: TextStyle(
-              fontSize: 12,
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+          // La fila del título con sus acciones a la derecha, tal como queda
+          // en el reproductor.
+          Row(
+            children: [
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    const Text(
+                      'Vista previa',
+                      style: TextStyle(fontWeight: FontWeight.w700),
+                    ),
+                    Text(
+                      preset.label,
+                      style: TextStyle(
+                        fontSize: 12,
+                        color: Theme.of(context).colorScheme.onSurfaceVariant,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
+              for (final control in layout.metadata)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Icon(control.icon, size: 20),
+                ),
+            ],
           ),
           const SizedBox(height: Tokens.space3),
           _PreviewControlRow(

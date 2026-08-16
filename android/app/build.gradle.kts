@@ -135,4 +135,6 @@ dependencies {
     // ObjectMapper no resuelve en tiempo de compilacion aunque si funcione en
     // tiempo de ejecucion.
     implementation("com.fasterxml.jackson.core:jackson-databind:2.15.2")
+
+    testImplementation("junit:junit:4.13.2")
 }

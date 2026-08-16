@@ -5,6 +5,7 @@ import 'package:nuvtune/app/bootstrap.dart';
 import 'package:nuvtune/app/localization/strings.dart';
 import 'package:nuvtune/app/navigation/app_router.dart';
 import 'package:nuvtune/app/theme/app_theme.dart';
+import 'package:nuvtune/app/theme/app_theme_identity.dart';
 import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/providers.dart';
@@ -23,12 +24,30 @@ final appearanceProvider = Provider<Appearance>((ref) {
   final settings = ref.watch(settingsProvider).valueOrNull;
   if (settings == null) return Appearance.fallback;
 
+  // La identidad manda; cada eje solo se desvía si el usuario lo tocó. Así
+  // «Nebula Glass» siempre se ve como Nebula Glass recién elegido, en vez de
+  // heredar la superficie o la densidad del tema anterior.
+  final identity = AppThemeIdentity.byId(settings.themeIdentity);
+  final surface = settings.surfaceStyle.isEmpty
+      ? identity.surface
+      : SurfaceStyle.byId(settings.surfaceStyle);
+
   return Appearance(
-    accent: AccentIdentity.byId(settings.accentId),
-    depth: BackgroundDepth.byId(settings.backgroundDepth),
-    glass: GlassIntensity.byId(settings.glassIntensity),
+    accent: AccentIdentity.byId(
+      settings.accentId.isEmpty ? identity.accentId : settings.accentId,
+    ),
+    depth: identity.depth,
+    glass: surface.glassIntensity,
     dynamicFromCover: settings.useDynamicColor,
     themePreference: AppThemePreference.byId(settings.themeMode),
+    identity: identity,
+    surface: surface,
+    typography: settings.typographyStyle.isEmpty
+        ? identity.typography
+        : TypographyStyle.byId(settings.typographyStyle),
+    density: settings.layoutDensity.isEmpty
+        ? identity.density
+        : LayoutDensity.byId(settings.layoutDensity),
     motion: MotionPreferences(
       profile: MotionProfile.byId(settings.motionProfile),
       intensity: settings.motionIntensity,
@@ -65,16 +84,18 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
   Widget build(BuildContext context) {
     final bootstrap = ref.watch(bootstrapProvider);
     final appearance = ref.watch(appearanceProvider);
-    final darkTheme = AppTheme.dark(
-      accent: appearance.accent,
-      depth: appearance.themePreference == AppThemePreference.amoled
-          ? BackgroundDepth.pureBlack
-          : appearance.depth,
+    final darkTheme = appearance.applyIdentity(
+      AppTheme.dark(accent: appearance.accent, depth: appearance.depth),
     );
-    final lightTheme = AppTheme.light(
-      accent: appearance.accent,
-      depth: appearance.depth,
+    final lightTheme = appearance.applyIdentity(
+      AppTheme.light(accent: appearance.accent, depth: appearance.depth),
     );
+    // El brillo lo fija la identidad: «Paper Loft» es claro y las otras dos
+    // oscuras. Que además existiera un selector claro/oscuro/sistema permitía
+    // combinaciones sin sentido, como Paper Loft renderizado en negro.
+    final themeMode = appearance.identity.brightness == Brightness.light
+        ? ThemeMode.light
+        : ThemeMode.dark;
 
     return ThemeScope(
       appearance: appearance,
@@ -84,7 +105,7 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
               debugShowCheckedModeBanner: false,
               theme: lightTheme,
               darkTheme: darkTheme,
-              themeMode: appearance.themePreference.themeMode,
+              themeMode: themeMode,
               routerConfig: ref.watch(_routerProvider),
               builder: _wrapErrors,
             )
@@ -93,7 +114,7 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
               debugShowCheckedModeBanner: false,
               theme: lightTheme,
               darkTheme: darkTheme,
-              themeMode: appearance.themePreference.themeMode,
+              themeMode: themeMode,
               home: _BootstrapScreen(state: bootstrap),
               builder: _wrapErrors,
             ),

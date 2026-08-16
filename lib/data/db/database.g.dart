@@ -5823,6 +5823,54 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant('medium'),
   );
+  static const VerificationMeta _themeIdentityMeta = const VerificationMeta(
+    'themeIdentity',
+  );
+  @override
+  late final GeneratedColumn<String> themeIdentity = GeneratedColumn<String>(
+    'theme_identity',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('nebulaGlass'),
+  );
+  static const VerificationMeta _surfaceStyleMeta = const VerificationMeta(
+    'surfaceStyle',
+  );
+  @override
+  late final GeneratedColumn<String> surfaceStyle = GeneratedColumn<String>(
+    'surface_style',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _typographyStyleMeta = const VerificationMeta(
+    'typographyStyle',
+  );
+  @override
+  late final GeneratedColumn<String> typographyStyle = GeneratedColumn<String>(
+    'typography_style',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _layoutDensityMeta = const VerificationMeta(
+    'layoutDensity',
+  );
+  @override
+  late final GeneratedColumn<String> layoutDensity = GeneratedColumn<String>(
+    'layout_density',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
   static const VerificationMeta _restoreQueueOnStartMeta =
       const VerificationMeta('restoreQueueOnStart');
   @override
@@ -6359,6 +6407,30 @@ class $AppSettingsTable extends AppSettings
         requiredDuringInsert: false,
         defaultValue: const Constant('cover'),
       );
+  static const VerificationMeta _visualizerColorMapJsonMeta =
+      const VerificationMeta('visualizerColorMapJson');
+  @override
+  late final GeneratedColumn<String> visualizerColorMapJson =
+      GeneratedColumn<String>(
+        'visualizer_color_map_json',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant(''),
+      );
+  static const VerificationMeta _visualizerColorModeMeta =
+      const VerificationMeta('visualizerColorMode');
+  @override
+  late final GeneratedColumn<String> visualizerColorMode =
+      GeneratedColumn<String>(
+        'visualizer_color_mode',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('row'),
+      );
   static const VerificationMeta _playerVisualSceneMeta = const VerificationMeta(
     'playerVisualScene',
   );
@@ -6505,6 +6577,10 @@ class $AppSettingsTable extends AppSettings
     themeMode,
     backgroundDepth,
     glassIntensity,
+    themeIdentity,
+    surfaceStyle,
+    typographyStyle,
+    layoutDensity,
     restoreQueueOnStart,
     gaplessEnabled,
     crossfadeSeconds,
@@ -6545,6 +6621,8 @@ class $AppSettingsTable extends AppSettings
     motionBeatResponse,
     motionParticles,
     visualizerColorSource,
+    visualizerColorMapJson,
+    visualizerColorMode,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -6634,6 +6712,42 @@ class $AppSettingsTable extends AppSettings
         glassIntensity.isAcceptableOrUnknown(
           data['glass_intensity']!,
           _glassIntensityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('theme_identity')) {
+      context.handle(
+        _themeIdentityMeta,
+        themeIdentity.isAcceptableOrUnknown(
+          data['theme_identity']!,
+          _themeIdentityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('surface_style')) {
+      context.handle(
+        _surfaceStyleMeta,
+        surfaceStyle.isAcceptableOrUnknown(
+          data['surface_style']!,
+          _surfaceStyleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('typography_style')) {
+      context.handle(
+        _typographyStyleMeta,
+        typographyStyle.isAcceptableOrUnknown(
+          data['typography_style']!,
+          _typographyStyleMeta,
+        ),
+      );
+    }
+    if (data.containsKey('layout_density')) {
+      context.handle(
+        _layoutDensityMeta,
+        layoutDensity.isAcceptableOrUnknown(
+          data['layout_density']!,
+          _layoutDensityMeta,
         ),
       );
     }
@@ -6991,6 +7105,24 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('visualizer_color_map_json')) {
+      context.handle(
+        _visualizerColorMapJsonMeta,
+        visualizerColorMapJson.isAcceptableOrUnknown(
+          data['visualizer_color_map_json']!,
+          _visualizerColorMapJsonMeta,
+        ),
+      );
+    }
+    if (data.containsKey('visualizer_color_mode')) {
+      context.handle(
+        _visualizerColorModeMeta,
+        visualizerColorMode.isAcceptableOrUnknown(
+          data['visualizer_color_mode']!,
+          _visualizerColorModeMeta,
+        ),
+      );
+    }
     if (data.containsKey('player_visual_scene')) {
       context.handle(
         _playerVisualSceneMeta,
@@ -7125,6 +7257,22 @@ class $AppSettingsTable extends AppSettings
       glassIntensity: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}glass_intensity'],
+      )!,
+      themeIdentity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}theme_identity'],
+      )!,
+      surfaceStyle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}surface_style'],
+      )!,
+      typographyStyle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}typography_style'],
+      )!,
+      layoutDensity: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}layout_density'],
       )!,
       restoreQueueOnStart: attachedDatabase.typeMapping.read(
         DriftSqlType.bool,
@@ -7286,6 +7434,14 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.string,
         data['${effectivePrefix}visualizer_color_source'],
       )!,
+      visualizerColorMapJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}visualizer_color_map_json'],
+      )!,
+      visualizerColorMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}visualizer_color_mode'],
+      )!,
       playerVisualScene: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}player_visual_scene'],
@@ -7354,6 +7510,16 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
 
   /// Intensidad del efecto de vidrio (`GlassIntensity.id`).
   final String glassIntensity;
+
+  /// Identidad visual completa (`AppThemeIdentity.id`). Agrupa brillo, fondo,
+  /// superficie, tipografía, densidad y acento en una sola elección.
+  final String themeIdentity;
+
+  /// Desvíos por eje sobre la identidad. Vacío significa «lo que diga la
+  /// identidad», de modo que cambiar de identidad no arrastra ajustes viejos.
+  final String surfaceStyle;
+  final String typographyStyle;
+  final String layoutDensity;
   final bool restoreQueueOnStart;
   final bool gaplessEnabled;
   final int crossfadeSeconds;
@@ -7415,6 +7581,17 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final int motionParticles;
   final String visualizerColorSource;
 
+  /// Mapa de colores del visualizador: paradas `{p, c}` ordenadas por
+  /// intensidad, no por posición en pantalla. Es JSON porque representa una
+  /// lista de longitud variable que el usuario edita.
+  /// Cadena vacía significa "usar el reparto por defecto".
+  final String visualizerColorMapJson;
+
+  /// Cómo se reparte ese mapa sobre cada elemento (`VisualizerColorMode.id`):
+  /// `row` pinta cada nivel de altura con su color, `column` da a la barra
+  /// entera el color de la intensidad que alcanza.
+  final String visualizerColorMode;
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -7448,6 +7625,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.themeMode,
     required this.backgroundDepth,
     required this.glassIntensity,
+    required this.themeIdentity,
+    required this.surfaceStyle,
+    required this.typographyStyle,
+    required this.layoutDensity,
     required this.restoreQueueOnStart,
     required this.gaplessEnabled,
     required this.crossfadeSeconds,
@@ -7488,6 +7669,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.motionBeatResponse,
     required this.motionParticles,
     required this.visualizerColorSource,
+    required this.visualizerColorMapJson,
+    required this.visualizerColorMode,
     required this.playerVisualScene,
     required this.playerSceneAspectRatio,
     required this.playerControlPreset,
@@ -7513,6 +7696,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['theme_mode'] = Variable<String>(themeMode);
     map['background_depth'] = Variable<String>(backgroundDepth);
     map['glass_intensity'] = Variable<String>(glassIntensity);
+    map['theme_identity'] = Variable<String>(themeIdentity);
+    map['surface_style'] = Variable<String>(surfaceStyle);
+    map['typography_style'] = Variable<String>(typographyStyle);
+    map['layout_density'] = Variable<String>(layoutDensity);
     map['restore_queue_on_start'] = Variable<bool>(restoreQueueOnStart);
     map['gapless_enabled'] = Variable<bool>(gaplessEnabled);
     map['crossfade_seconds'] = Variable<int>(crossfadeSeconds);
@@ -7555,6 +7742,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['motion_beat_response'] = Variable<int>(motionBeatResponse);
     map['motion_particles'] = Variable<int>(motionParticles);
     map['visualizer_color_source'] = Variable<String>(visualizerColorSource);
+    map['visualizer_color_map_json'] = Variable<String>(visualizerColorMapJson);
+    map['visualizer_color_mode'] = Variable<String>(visualizerColorMode);
     map['player_visual_scene'] = Variable<int>(playerVisualScene);
     map['player_scene_aspect_ratio'] = Variable<int>(playerSceneAspectRatio);
     map['player_control_preset'] = Variable<String>(playerControlPreset);
@@ -7589,6 +7778,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       themeMode: Value(themeMode),
       backgroundDepth: Value(backgroundDepth),
       glassIntensity: Value(glassIntensity),
+      themeIdentity: Value(themeIdentity),
+      surfaceStyle: Value(surfaceStyle),
+      typographyStyle: Value(typographyStyle),
+      layoutDensity: Value(layoutDensity),
       restoreQueueOnStart: Value(restoreQueueOnStart),
       gaplessEnabled: Value(gaplessEnabled),
       crossfadeSeconds: Value(crossfadeSeconds),
@@ -7629,6 +7822,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       motionBeatResponse: Value(motionBeatResponse),
       motionParticles: Value(motionParticles),
       visualizerColorSource: Value(visualizerColorSource),
+      visualizerColorMapJson: Value(visualizerColorMapJson),
+      visualizerColorMode: Value(visualizerColorMode),
       playerVisualScene: Value(playerVisualScene),
       playerSceneAspectRatio: Value(playerSceneAspectRatio),
       playerControlPreset: Value(playerControlPreset),
@@ -7659,6 +7854,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       themeMode: serializer.fromJson<String>(json['themeMode']),
       backgroundDepth: serializer.fromJson<String>(json['backgroundDepth']),
       glassIntensity: serializer.fromJson<String>(json['glassIntensity']),
+      themeIdentity: serializer.fromJson<String>(json['themeIdentity']),
+      surfaceStyle: serializer.fromJson<String>(json['surfaceStyle']),
+      typographyStyle: serializer.fromJson<String>(json['typographyStyle']),
+      layoutDensity: serializer.fromJson<String>(json['layoutDensity']),
       restoreQueueOnStart: serializer.fromJson<bool>(
         json['restoreQueueOnStart'],
       ),
@@ -7719,6 +7918,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       visualizerColorSource: serializer.fromJson<String>(
         json['visualizerColorSource'],
       ),
+      visualizerColorMapJson: serializer.fromJson<String>(
+        json['visualizerColorMapJson'],
+      ),
+      visualizerColorMode: serializer.fromJson<String>(
+        json['visualizerColorMode'],
+      ),
       playerVisualScene: serializer.fromJson<int>(json['playerVisualScene']),
       playerSceneAspectRatio: serializer.fromJson<int>(
         json['playerSceneAspectRatio'],
@@ -7760,6 +7965,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'themeMode': serializer.toJson<String>(themeMode),
       'backgroundDepth': serializer.toJson<String>(backgroundDepth),
       'glassIntensity': serializer.toJson<String>(glassIntensity),
+      'themeIdentity': serializer.toJson<String>(themeIdentity),
+      'surfaceStyle': serializer.toJson<String>(surfaceStyle),
+      'typographyStyle': serializer.toJson<String>(typographyStyle),
+      'layoutDensity': serializer.toJson<String>(layoutDensity),
       'restoreQueueOnStart': serializer.toJson<bool>(restoreQueueOnStart),
       'gaplessEnabled': serializer.toJson<bool>(gaplessEnabled),
       'crossfadeSeconds': serializer.toJson<int>(crossfadeSeconds),
@@ -7806,6 +8015,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'motionBeatResponse': serializer.toJson<int>(motionBeatResponse),
       'motionParticles': serializer.toJson<int>(motionParticles),
       'visualizerColorSource': serializer.toJson<String>(visualizerColorSource),
+      'visualizerColorMapJson': serializer.toJson<String>(
+        visualizerColorMapJson,
+      ),
+      'visualizerColorMode': serializer.toJson<String>(visualizerColorMode),
       'playerVisualScene': serializer.toJson<int>(playerVisualScene),
       'playerSceneAspectRatio': serializer.toJson<int>(playerSceneAspectRatio),
       'playerControlPreset': serializer.toJson<String>(playerControlPreset),
@@ -7839,6 +8052,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? themeMode,
     String? backgroundDepth,
     String? glassIntensity,
+    String? themeIdentity,
+    String? surfaceStyle,
+    String? typographyStyle,
+    String? layoutDensity,
     bool? restoreQueueOnStart,
     bool? gaplessEnabled,
     int? crossfadeSeconds,
@@ -7879,6 +8096,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     int? motionBeatResponse,
     int? motionParticles,
     String? visualizerColorSource,
+    String? visualizerColorMapJson,
+    String? visualizerColorMode,
     int? playerVisualScene,
     int? playerSceneAspectRatio,
     String? playerControlPreset,
@@ -7899,6 +8118,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     themeMode: themeMode ?? this.themeMode,
     backgroundDepth: backgroundDepth ?? this.backgroundDepth,
     glassIntensity: glassIntensity ?? this.glassIntensity,
+    themeIdentity: themeIdentity ?? this.themeIdentity,
+    surfaceStyle: surfaceStyle ?? this.surfaceStyle,
+    typographyStyle: typographyStyle ?? this.typographyStyle,
+    layoutDensity: layoutDensity ?? this.layoutDensity,
     restoreQueueOnStart: restoreQueueOnStart ?? this.restoreQueueOnStart,
     gaplessEnabled: gaplessEnabled ?? this.gaplessEnabled,
     crossfadeSeconds: crossfadeSeconds ?? this.crossfadeSeconds,
@@ -7943,6 +8166,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     motionBeatResponse: motionBeatResponse ?? this.motionBeatResponse,
     motionParticles: motionParticles ?? this.motionParticles,
     visualizerColorSource: visualizerColorSource ?? this.visualizerColorSource,
+    visualizerColorMapJson:
+        visualizerColorMapJson ?? this.visualizerColorMapJson,
+    visualizerColorMode: visualizerColorMode ?? this.visualizerColorMode,
     playerVisualScene: playerVisualScene ?? this.playerVisualScene,
     playerSceneAspectRatio:
         playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -7984,6 +8210,18 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       glassIntensity: data.glassIntensity.present
           ? data.glassIntensity.value
           : this.glassIntensity,
+      themeIdentity: data.themeIdentity.present
+          ? data.themeIdentity.value
+          : this.themeIdentity,
+      surfaceStyle: data.surfaceStyle.present
+          ? data.surfaceStyle.value
+          : this.surfaceStyle,
+      typographyStyle: data.typographyStyle.present
+          ? data.typographyStyle.value
+          : this.typographyStyle,
+      layoutDensity: data.layoutDensity.present
+          ? data.layoutDensity.value
+          : this.layoutDensity,
       restoreQueueOnStart: data.restoreQueueOnStart.present
           ? data.restoreQueueOnStart.value
           : this.restoreQueueOnStart,
@@ -8104,6 +8342,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       visualizerColorSource: data.visualizerColorSource.present
           ? data.visualizerColorSource.value
           : this.visualizerColorSource,
+      visualizerColorMapJson: data.visualizerColorMapJson.present
+          ? data.visualizerColorMapJson.value
+          : this.visualizerColorMapJson,
+      visualizerColorMode: data.visualizerColorMode.present
+          ? data.visualizerColorMode.value
+          : this.visualizerColorMode,
       playerVisualScene: data.playerVisualScene.present
           ? data.playerVisualScene.value
           : this.playerVisualScene,
@@ -8149,6 +8393,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('themeMode: $themeMode, ')
           ..write('backgroundDepth: $backgroundDepth, ')
           ..write('glassIntensity: $glassIntensity, ')
+          ..write('themeIdentity: $themeIdentity, ')
+          ..write('surfaceStyle: $surfaceStyle, ')
+          ..write('typographyStyle: $typographyStyle, ')
+          ..write('layoutDensity: $layoutDensity, ')
           ..write('restoreQueueOnStart: $restoreQueueOnStart, ')
           ..write('gaplessEnabled: $gaplessEnabled, ')
           ..write('crossfadeSeconds: $crossfadeSeconds, ')
@@ -8189,6 +8437,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('motionBeatResponse: $motionBeatResponse, ')
           ..write('motionParticles: $motionParticles, ')
           ..write('visualizerColorSource: $visualizerColorSource, ')
+          ..write('visualizerColorMapJson: $visualizerColorMapJson, ')
+          ..write('visualizerColorMode: $visualizerColorMode, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -8214,6 +8464,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     themeMode,
     backgroundDepth,
     glassIntensity,
+    themeIdentity,
+    surfaceStyle,
+    typographyStyle,
+    layoutDensity,
     restoreQueueOnStart,
     gaplessEnabled,
     crossfadeSeconds,
@@ -8254,6 +8508,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     motionBeatResponse,
     motionParticles,
     visualizerColorSource,
+    visualizerColorMapJson,
+    visualizerColorMode,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -8278,6 +8534,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.themeMode == this.themeMode &&
           other.backgroundDepth == this.backgroundDepth &&
           other.glassIntensity == this.glassIntensity &&
+          other.themeIdentity == this.themeIdentity &&
+          other.surfaceStyle == this.surfaceStyle &&
+          other.typographyStyle == this.typographyStyle &&
+          other.layoutDensity == this.layoutDensity &&
           other.restoreQueueOnStart == this.restoreQueueOnStart &&
           other.gaplessEnabled == this.gaplessEnabled &&
           other.crossfadeSeconds == this.crossfadeSeconds &&
@@ -8318,6 +8578,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.motionBeatResponse == this.motionBeatResponse &&
           other.motionParticles == this.motionParticles &&
           other.visualizerColorSource == this.visualizerColorSource &&
+          other.visualizerColorMapJson == this.visualizerColorMapJson &&
+          other.visualizerColorMode == this.visualizerColorMode &&
           other.playerVisualScene == this.playerVisualScene &&
           other.playerSceneAspectRatio == this.playerSceneAspectRatio &&
           other.playerControlPreset == this.playerControlPreset &&
@@ -8340,6 +8602,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> themeMode;
   final Value<String> backgroundDepth;
   final Value<String> glassIntensity;
+  final Value<String> themeIdentity;
+  final Value<String> surfaceStyle;
+  final Value<String> typographyStyle;
+  final Value<String> layoutDensity;
   final Value<bool> restoreQueueOnStart;
   final Value<bool> gaplessEnabled;
   final Value<int> crossfadeSeconds;
@@ -8380,6 +8646,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<int> motionBeatResponse;
   final Value<int> motionParticles;
   final Value<String> visualizerColorSource;
+  final Value<String> visualizerColorMapJson;
+  final Value<String> visualizerColorMode;
   final Value<int> playerVisualScene;
   final Value<int> playerSceneAspectRatio;
   final Value<String> playerControlPreset;
@@ -8400,6 +8668,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.themeMode = const Value.absent(),
     this.backgroundDepth = const Value.absent(),
     this.glassIntensity = const Value.absent(),
+    this.themeIdentity = const Value.absent(),
+    this.surfaceStyle = const Value.absent(),
+    this.typographyStyle = const Value.absent(),
+    this.layoutDensity = const Value.absent(),
     this.restoreQueueOnStart = const Value.absent(),
     this.gaplessEnabled = const Value.absent(),
     this.crossfadeSeconds = const Value.absent(),
@@ -8440,6 +8712,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.motionBeatResponse = const Value.absent(),
     this.motionParticles = const Value.absent(),
     this.visualizerColorSource = const Value.absent(),
+    this.visualizerColorMapJson = const Value.absent(),
+    this.visualizerColorMode = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8461,6 +8735,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.themeMode = const Value.absent(),
     this.backgroundDepth = const Value.absent(),
     this.glassIntensity = const Value.absent(),
+    this.themeIdentity = const Value.absent(),
+    this.surfaceStyle = const Value.absent(),
+    this.typographyStyle = const Value.absent(),
+    this.layoutDensity = const Value.absent(),
     this.restoreQueueOnStart = const Value.absent(),
     this.gaplessEnabled = const Value.absent(),
     this.crossfadeSeconds = const Value.absent(),
@@ -8501,6 +8779,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.motionBeatResponse = const Value.absent(),
     this.motionParticles = const Value.absent(),
     this.visualizerColorSource = const Value.absent(),
+    this.visualizerColorMapJson = const Value.absent(),
+    this.visualizerColorMode = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8522,6 +8802,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? themeMode,
     Expression<String>? backgroundDepth,
     Expression<String>? glassIntensity,
+    Expression<String>? themeIdentity,
+    Expression<String>? surfaceStyle,
+    Expression<String>? typographyStyle,
+    Expression<String>? layoutDensity,
     Expression<bool>? restoreQueueOnStart,
     Expression<bool>? gaplessEnabled,
     Expression<int>? crossfadeSeconds,
@@ -8562,6 +8846,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<int>? motionBeatResponse,
     Expression<int>? motionParticles,
     Expression<String>? visualizerColorSource,
+    Expression<String>? visualizerColorMapJson,
+    Expression<String>? visualizerColorMode,
     Expression<int>? playerVisualScene,
     Expression<int>? playerSceneAspectRatio,
     Expression<String>? playerControlPreset,
@@ -8584,6 +8870,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (themeMode != null) 'theme_mode': themeMode,
       if (backgroundDepth != null) 'background_depth': backgroundDepth,
       if (glassIntensity != null) 'glass_intensity': glassIntensity,
+      if (themeIdentity != null) 'theme_identity': themeIdentity,
+      if (surfaceStyle != null) 'surface_style': surfaceStyle,
+      if (typographyStyle != null) 'typography_style': typographyStyle,
+      if (layoutDensity != null) 'layout_density': layoutDensity,
       if (restoreQueueOnStart != null)
         'restore_queue_on_start': restoreQueueOnStart,
       if (gaplessEnabled != null) 'gapless_enabled': gaplessEnabled,
@@ -8638,6 +8928,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (motionParticles != null) 'motion_particles': motionParticles,
       if (visualizerColorSource != null)
         'visualizer_color_source': visualizerColorSource,
+      if (visualizerColorMapJson != null)
+        'visualizer_color_map_json': visualizerColorMapJson,
+      if (visualizerColorMode != null)
+        'visualizer_color_mode': visualizerColorMode,
       if (playerVisualScene != null) 'player_visual_scene': playerVisualScene,
       if (playerSceneAspectRatio != null)
         'player_scene_aspect_ratio': playerSceneAspectRatio,
@@ -8669,6 +8963,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? themeMode,
     Value<String>? backgroundDepth,
     Value<String>? glassIntensity,
+    Value<String>? themeIdentity,
+    Value<String>? surfaceStyle,
+    Value<String>? typographyStyle,
+    Value<String>? layoutDensity,
     Value<bool>? restoreQueueOnStart,
     Value<bool>? gaplessEnabled,
     Value<int>? crossfadeSeconds,
@@ -8709,6 +9007,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<int>? motionBeatResponse,
     Value<int>? motionParticles,
     Value<String>? visualizerColorSource,
+    Value<String>? visualizerColorMapJson,
+    Value<String>? visualizerColorMode,
     Value<int>? playerVisualScene,
     Value<int>? playerSceneAspectRatio,
     Value<String>? playerControlPreset,
@@ -8730,6 +9030,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       themeMode: themeMode ?? this.themeMode,
       backgroundDepth: backgroundDepth ?? this.backgroundDepth,
       glassIntensity: glassIntensity ?? this.glassIntensity,
+      themeIdentity: themeIdentity ?? this.themeIdentity,
+      surfaceStyle: surfaceStyle ?? this.surfaceStyle,
+      typographyStyle: typographyStyle ?? this.typographyStyle,
+      layoutDensity: layoutDensity ?? this.layoutDensity,
       restoreQueueOnStart: restoreQueueOnStart ?? this.restoreQueueOnStart,
       gaplessEnabled: gaplessEnabled ?? this.gaplessEnabled,
       crossfadeSeconds: crossfadeSeconds ?? this.crossfadeSeconds,
@@ -8779,6 +9083,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       motionParticles: motionParticles ?? this.motionParticles,
       visualizerColorSource:
           visualizerColorSource ?? this.visualizerColorSource,
+      visualizerColorMapJson:
+          visualizerColorMapJson ?? this.visualizerColorMapJson,
+      visualizerColorMode: visualizerColorMode ?? this.visualizerColorMode,
       playerVisualScene: playerVisualScene ?? this.playerVisualScene,
       playerSceneAspectRatio:
           playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -8828,6 +9135,18 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     }
     if (glassIntensity.present) {
       map['glass_intensity'] = Variable<String>(glassIntensity.value);
+    }
+    if (themeIdentity.present) {
+      map['theme_identity'] = Variable<String>(themeIdentity.value);
+    }
+    if (surfaceStyle.present) {
+      map['surface_style'] = Variable<String>(surfaceStyle.value);
+    }
+    if (typographyStyle.present) {
+      map['typography_style'] = Variable<String>(typographyStyle.value);
+    }
+    if (layoutDensity.present) {
+      map['layout_density'] = Variable<String>(layoutDensity.value);
     }
     if (restoreQueueOnStart.present) {
       map['restore_queue_on_start'] = Variable<bool>(restoreQueueOnStart.value);
@@ -8967,6 +9286,16 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         visualizerColorSource.value,
       );
     }
+    if (visualizerColorMapJson.present) {
+      map['visualizer_color_map_json'] = Variable<String>(
+        visualizerColorMapJson.value,
+      );
+    }
+    if (visualizerColorMode.present) {
+      map['visualizer_color_mode'] = Variable<String>(
+        visualizerColorMode.value,
+      );
+    }
     if (playerVisualScene.present) {
       map['player_visual_scene'] = Variable<int>(playerVisualScene.value);
     }
@@ -9028,6 +9357,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('themeMode: $themeMode, ')
           ..write('backgroundDepth: $backgroundDepth, ')
           ..write('glassIntensity: $glassIntensity, ')
+          ..write('themeIdentity: $themeIdentity, ')
+          ..write('surfaceStyle: $surfaceStyle, ')
+          ..write('typographyStyle: $typographyStyle, ')
+          ..write('layoutDensity: $layoutDensity, ')
           ..write('restoreQueueOnStart: $restoreQueueOnStart, ')
           ..write('gaplessEnabled: $gaplessEnabled, ')
           ..write('crossfadeSeconds: $crossfadeSeconds, ')
@@ -9068,6 +9401,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('motionBeatResponse: $motionBeatResponse, ')
           ..write('motionParticles: $motionParticles, ')
           ..write('visualizerColorSource: $visualizerColorSource, ')
+          ..write('visualizerColorMapJson: $visualizerColorMapJson, ')
+          ..write('visualizerColorMode: $visualizerColorMode, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -12989,6 +13324,10 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> themeMode,
       Value<String> backgroundDepth,
       Value<String> glassIntensity,
+      Value<String> themeIdentity,
+      Value<String> surfaceStyle,
+      Value<String> typographyStyle,
+      Value<String> layoutDensity,
       Value<bool> restoreQueueOnStart,
       Value<bool> gaplessEnabled,
       Value<int> crossfadeSeconds,
@@ -13029,6 +13368,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> motionBeatResponse,
       Value<int> motionParticles,
       Value<String> visualizerColorSource,
+      Value<String> visualizerColorMapJson,
+      Value<String> visualizerColorMode,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -13051,6 +13392,10 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> themeMode,
       Value<String> backgroundDepth,
       Value<String> glassIntensity,
+      Value<String> themeIdentity,
+      Value<String> surfaceStyle,
+      Value<String> typographyStyle,
+      Value<String> layoutDensity,
       Value<bool> restoreQueueOnStart,
       Value<bool> gaplessEnabled,
       Value<int> crossfadeSeconds,
@@ -13091,6 +13436,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> motionBeatResponse,
       Value<int> motionParticles,
       Value<String> visualizerColorSource,
+      Value<String> visualizerColorMapJson,
+      Value<String> visualizerColorMode,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -13154,6 +13501,26 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get glassIntensity => $composableBuilder(
     column: $table.glassIntensity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get themeIdentity => $composableBuilder(
+    column: $table.themeIdentity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get surfaceStyle => $composableBuilder(
+    column: $table.surfaceStyle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get typographyStyle => $composableBuilder(
+    column: $table.typographyStyle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get layoutDensity => $composableBuilder(
+    column: $table.layoutDensity,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -13357,6 +13724,16 @@ class $$AppSettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get visualizerColorMapJson => $composableBuilder(
+    column: $table.visualizerColorMapJson,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get visualizerColorMode => $composableBuilder(
+    column: $table.visualizerColorMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => ColumnFilters(column),
@@ -13459,6 +13836,26 @@ class $$AppSettingsTableOrderingComposer
 
   ColumnOrderings<String> get glassIntensity => $composableBuilder(
     column: $table.glassIntensity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get themeIdentity => $composableBuilder(
+    column: $table.themeIdentity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get surfaceStyle => $composableBuilder(
+    column: $table.surfaceStyle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get typographyStyle => $composableBuilder(
+    column: $table.typographyStyle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get layoutDensity => $composableBuilder(
+    column: $table.layoutDensity,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -13662,6 +14059,16 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get visualizerColorMapJson => $composableBuilder(
+    column: $table.visualizerColorMapJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get visualizerColorMode => $composableBuilder(
+    column: $table.visualizerColorMode,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => ColumnOrderings(column),
@@ -13758,6 +14165,26 @@ class $$AppSettingsTableAnnotationComposer
 
   GeneratedColumn<String> get glassIntensity => $composableBuilder(
     column: $table.glassIntensity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get themeIdentity => $composableBuilder(
+    column: $table.themeIdentity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get surfaceStyle => $composableBuilder(
+    column: $table.surfaceStyle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get typographyStyle => $composableBuilder(
+    column: $table.typographyStyle,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get layoutDensity => $composableBuilder(
+    column: $table.layoutDensity,
     builder: (column) => column,
   );
 
@@ -13961,6 +14388,16 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get visualizerColorMapJson => $composableBuilder(
+    column: $table.visualizerColorMapJson,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get visualizerColorMode => $composableBuilder(
+    column: $table.visualizerColorMode,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => column,
@@ -14052,6 +14489,10 @@ class $$AppSettingsTableTableManager
                 Value<String> themeMode = const Value.absent(),
                 Value<String> backgroundDepth = const Value.absent(),
                 Value<String> glassIntensity = const Value.absent(),
+                Value<String> themeIdentity = const Value.absent(),
+                Value<String> surfaceStyle = const Value.absent(),
+                Value<String> typographyStyle = const Value.absent(),
+                Value<String> layoutDensity = const Value.absent(),
                 Value<bool> restoreQueueOnStart = const Value.absent(),
                 Value<bool> gaplessEnabled = const Value.absent(),
                 Value<int> crossfadeSeconds = const Value.absent(),
@@ -14092,6 +14533,8 @@ class $$AppSettingsTableTableManager
                 Value<int> motionBeatResponse = const Value.absent(),
                 Value<int> motionParticles = const Value.absent(),
                 Value<String> visualizerColorSource = const Value.absent(),
+                Value<String> visualizerColorMapJson = const Value.absent(),
+                Value<String> visualizerColorMode = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -14112,6 +14555,10 @@ class $$AppSettingsTableTableManager
                 themeMode: themeMode,
                 backgroundDepth: backgroundDepth,
                 glassIntensity: glassIntensity,
+                themeIdentity: themeIdentity,
+                surfaceStyle: surfaceStyle,
+                typographyStyle: typographyStyle,
+                layoutDensity: layoutDensity,
                 restoreQueueOnStart: restoreQueueOnStart,
                 gaplessEnabled: gaplessEnabled,
                 crossfadeSeconds: crossfadeSeconds,
@@ -14152,6 +14599,8 @@ class $$AppSettingsTableTableManager
                 motionBeatResponse: motionBeatResponse,
                 motionParticles: motionParticles,
                 visualizerColorSource: visualizerColorSource,
+                visualizerColorMapJson: visualizerColorMapJson,
+                visualizerColorMode: visualizerColorMode,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,
@@ -14174,6 +14623,10 @@ class $$AppSettingsTableTableManager
                 Value<String> themeMode = const Value.absent(),
                 Value<String> backgroundDepth = const Value.absent(),
                 Value<String> glassIntensity = const Value.absent(),
+                Value<String> themeIdentity = const Value.absent(),
+                Value<String> surfaceStyle = const Value.absent(),
+                Value<String> typographyStyle = const Value.absent(),
+                Value<String> layoutDensity = const Value.absent(),
                 Value<bool> restoreQueueOnStart = const Value.absent(),
                 Value<bool> gaplessEnabled = const Value.absent(),
                 Value<int> crossfadeSeconds = const Value.absent(),
@@ -14214,6 +14667,8 @@ class $$AppSettingsTableTableManager
                 Value<int> motionBeatResponse = const Value.absent(),
                 Value<int> motionParticles = const Value.absent(),
                 Value<String> visualizerColorSource = const Value.absent(),
+                Value<String> visualizerColorMapJson = const Value.absent(),
+                Value<String> visualizerColorMode = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -14234,6 +14689,10 @@ class $$AppSettingsTableTableManager
                 themeMode: themeMode,
                 backgroundDepth: backgroundDepth,
                 glassIntensity: glassIntensity,
+                themeIdentity: themeIdentity,
+                surfaceStyle: surfaceStyle,
+                typographyStyle: typographyStyle,
+                layoutDensity: layoutDensity,
                 restoreQueueOnStart: restoreQueueOnStart,
                 gaplessEnabled: gaplessEnabled,
                 crossfadeSeconds: crossfadeSeconds,
@@ -14274,6 +14733,8 @@ class $$AppSettingsTableTableManager
                 motionBeatResponse: motionBeatResponse,
                 motionParticles: motionParticles,
                 visualizerColorSource: visualizerColorSource,
+                visualizerColorMapJson: visualizerColorMapJson,
+                visualizerColorMode: visualizerColorMode,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,

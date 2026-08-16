@@ -2,7 +2,7 @@ name: nuvtune
 description: "NuvTune — reproductor de musica local con motor nativo Media3, ecualizador y edicion de metadatos."
 publish_to: 'none'
 
-version: 1.5.0+20
+version: 1.5.0+21
 
 environment:
   sdk: ^3.12.2

@@ -136,16 +136,23 @@ class DownloadFailedEvent {
 /// solo clasifica, Dart redacta el texto que ve el usuario).
 extension DownloadErrorCodeMessage on DownloadErrorCode {
   String get userMessage => switch (this) {
-    DownloadErrorCode.unsupportedLink => 'Ese enlace no es de un sitio compatible.',
-    DownloadErrorCode.privateContent => 'El contenido es privado o requiere iniciar sesión.',
+    DownloadErrorCode.unsupportedLink =>
+      'Ese enlace no es de un sitio compatible.',
+    DownloadErrorCode.privateContent =>
+      'El contenido es privado o requiere iniciar sesión.',
     DownloadErrorCode.contentRemoved => 'El contenido ya no está disponible.',
-    DownloadErrorCode.regionRestricted => 'El contenido no está disponible en tu región.',
-    DownloadErrorCode.fetchFailed => 'No se pudo obtener el contenido. Inténtalo de nuevo.',
-    DownloadErrorCode.extractorOutdated => 'NuvTune necesita actualizar su motor de descarga.',
-    DownloadErrorCode.insufficientStorage => 'No hay espacio suficiente en el dispositivo.',
+    DownloadErrorCode.regionRestricted =>
+      'El contenido no está disponible en tu región.',
+    DownloadErrorCode.fetchFailed =>
+      'No se pudo obtener el contenido. Inténtalo de nuevo.',
+    DownloadErrorCode.extractorOutdated =>
+      'La plataforma cambió y la actualización automática no pudo resolverlo. Inténtalo más tarde.',
+    DownloadErrorCode.insufficientStorage =>
+      'No hay espacio suficiente en el dispositivo.',
     DownloadErrorCode.cancelled => 'Descarga cancelada.',
     DownloadErrorCode.networkLost => 'Se perdió la conexión a internet.',
-    DownloadErrorCode.wifiRequired => 'Activa el Wi-Fi o desactiva "Solo con Wi-Fi" en Ajustes.',
+    DownloadErrorCode.wifiRequired =>
+      'Activa el Wi-Fi o desactiva "Solo con Wi-Fi" en Ajustes.',
     DownloadErrorCode.unknown => 'No se pudo completar la descarga.',
   };
 }

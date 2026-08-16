@@ -5,14 +5,17 @@ import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/localization/strings.dart';
+import 'package:nuvtune/app/theme/app_theme_identity.dart';
 import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
+import 'package:nuvtune/features/player/visualizer_color_map.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
 import 'package:nuvtune/features/player/visualizer_quality.dart';
+import 'package:nuvtune/features/settings/visualizer_color_map_screen.dart';
 import 'package:nuvtune/features/player/visualization_picker.dart';
 import 'package:nuvtune/features/settings/settings_components.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
@@ -98,82 +101,88 @@ class _AppAppearancePanel extends ConsumerWidget {
     return ListView(
       padding: const EdgeInsets.only(bottom: Tokens.space6),
       children: [
-        const _AppearancePreview(),
-        const SettingsSectionLabel('Modo'),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-          child: Wrap(
-            spacing: Tokens.space2,
-            runSpacing: Tokens.space2,
-            children: [
-              for (final mode in AppThemePreference.values)
-                ChoiceChip(
-                  label: Text(mode.label),
-                  selected: AppThemePreference.byId(settings.themeMode) == mode,
-                  onSelected: (_) => mutation.save(
-                    AppSettingsCompanion(themeMode: Value(mode.id)),
+        // Tres bloques, de lo general a lo concreto: qué identidad quieres,
+        // qué define esa identidad y, por último, el color de énfasis. Antes
+        // eran cuatro listas sueltas (modo, tema base, énfasis, superficies)
+        // cuya relación entre sí no se podía deducir mirándolas.
+        const SettingsSectionLabel('Tema activo'),
+        const _Note('Elige la identidad visual general de NuvTune.'),
+        const SizedBox(height: Tokens.space3),
+        SizedBox(
+          height: 232,
+          child: ListView.separated(
+            scrollDirection: Axis.horizontal,
+            padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+            itemCount: AppThemeIdentity.values.length,
+            separatorBuilder: (_, _) => const SizedBox(width: Tokens.space3),
+            itemBuilder: (context, index) {
+              final identity = AppThemeIdentity.values[index];
+              return _IdentityCard(
+                identity: identity,
+                selected: appearance.identity == identity,
+                // Cambiar de identidad limpia los desvíos por eje: si no, un
+                // ajuste heredado del tema anterior haría que la identidad
+                // recién elegida no se viera como se anuncia.
+                onTap: () => mutation.save(
+                  AppSettingsCompanion(
+                    themeIdentity: Value(identity.id),
+                    accentId: Value(identity.accentId),
+                    backgroundDepth: Value(identity.depth.id),
+                    glassIntensity: Value(identity.surface.glassIntensity.id),
+                    surfaceStyle: const Value(''),
+                    typographyStyle: const Value(''),
+                    layoutDensity: const Value(''),
                   ),
                 ),
-            ],
-          ),
-        ),
-        const SettingsSectionLabel('Tema base'),
-        const _Note(
-          'Define fondos y superficies. El color de énfasis se elige aparte.',
-        ),
-        const SizedBox(height: Tokens.space3),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-          child: LayoutBuilder(
-            builder: (context, constraints) {
-              final width = (constraints.maxWidth - Tokens.space2) / 2;
-              return Wrap(
-                spacing: Tokens.space2,
-                runSpacing: Tokens.space2,
-                children: [
-                  for (final depth in BackgroundDepth.values.where(
-                    (value) => value != BackgroundDepth.pureBlack,
-                  ))
-                    SizedBox(
-                      width: width,
-                      child: _DepthOption(
-                        depth: depth,
-                        selected: appearance.depth == depth,
-                        onTap: () => mutation.save(
-                          AppSettingsCompanion(
-                            backgroundDepth: Value(depth.id),
-                            pureBlackBackground: Value(
-                              depth == BackgroundDepth.pureBlack,
-                            ),
-                          ),
-                        ),
-                      ),
-                    ),
-                ],
               );
             },
+          ),
+        ),
+        const SettingsSectionLabel('Qué cambia'),
+        const _Note('Define la estructura visual de la app.'),
+        const SizedBox(height: Tokens.space3),
+        _AxisSelector<SurfaceStyle>(
+          icon: Icons.layers_outlined,
+          title: 'Superficies y profundidad',
+          values: SurfaceStyle.values,
+          selected: appearance.surface,
+          labelOf: (value) => value.label,
+          descriptionOf: (value) => value.description,
+          onSelected: (value) => mutation.save(
+            AppSettingsCompanion(
+              surfaceStyle: Value(value.id),
+              glassIntensity: Value(value.glassIntensity.id),
+            ),
+          ),
+        ),
+        _AxisSelector<TypographyStyle>(
+          icon: Icons.text_fields_rounded,
+          title: 'Tipografía e iconos',
+          values: TypographyStyle.values,
+          selected: appearance.typography,
+          labelOf: (value) => value.label,
+          descriptionOf: (value) => value.description,
+          onSelected: (value) => mutation.save(
+            AppSettingsCompanion(typographyStyle: Value(value.id)),
+          ),
+        ),
+        _AxisSelector<LayoutDensity>(
+          icon: Icons.density_medium_rounded,
+          title: 'Densidad y espaciado',
+          values: LayoutDensity.values,
+          selected: appearance.density,
+          labelOf: (value) => value.label,
+          descriptionOf: (value) => value.description,
+          onSelected: (value) => mutation.save(
+            AppSettingsCompanion(layoutDensity: Value(value.id)),
           ),
         ),
         const SettingsSectionLabel('Color de énfasis'),
         const _Note(AppStrings.appearanceAccentNote),
         const SizedBox(height: Tokens.space3),
         _AccentGrid(selected: settings.accentId),
-        const SettingsSectionLabel('Superficies'),
-        const _Note(AppStrings.appearanceGlassNote),
-        const SizedBox(height: Tokens.space3),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-          child: SegmentedButton<GlassIntensity>(
-            segments: [
-              for (final intensity in GlassIntensity.values)
-                ButtonSegment(value: intensity, label: Text(intensity.label)),
-            ],
-            selected: {appearance.glass},
-            onSelectionChanged: (selection) => mutation.save(
-              AppSettingsCompanion(glassIntensity: Value(selection.first.id)),
-            ),
-          ),
-        ),
+        const SettingsSectionLabel('Vista previa'),
+        const _AppearancePreview(),
         const SizedBox(height: Tokens.space4),
         const SettingsInfoPanel(
           icon: Icons.accessibility_new_rounded,
@@ -402,7 +411,16 @@ class _MotionAppearancePanel extends ConsumerWidget {
             ),
           ),
         ],
-        const SettingsSectionLabel('Color de los efectos'),
+        // El mapa gobierna los estilos del visualizador y no depende de la
+        // fuente de color: son dos ajustes de cosas distintas.
+        const SettingsSectionLabel('Color del visualizador'),
+        _ColorMapTile(
+          map: VisualizerColorMap.fromJsonString(
+            settings.visualizerColorMapJson,
+          ),
+          mode: VisualizerColorMode.byId(settings.visualizerColorMode),
+        ),
+        const SettingsSectionLabel('Color de la carátula'),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
           child: Wrap(
@@ -430,6 +448,47 @@ class _MotionAppearancePanel extends ConsumerWidget {
               'Reducir animaciones de Android y la protección térmica siempre tienen prioridad sobre este perfil.',
         ),
       ],
+    );
+  }
+}
+
+/// Acceso al mapa de colores con su degradado a la vista, para que el ajuste
+/// se reconozca sin abrirlo.
+class _ColorMapTile extends StatelessWidget {
+  const _ColorMapTile({required this.map, required this.mode});
+
+  final VisualizerColorMap map;
+  final VisualizerColorMode mode;
+
+  @override
+  Widget build(BuildContext context) {
+    final gradient = map.toGradient();
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
+      child: ListTile(
+        contentPadding: EdgeInsets.zero,
+        title: const Text('Mapa de colores'),
+        subtitle: Text(
+          '${map.stops.length} colores · ${mode.label.toLowerCase()}',
+        ),
+        leading: Container(
+          width: 44,
+          height: 44,
+          decoration: BoxDecoration(
+            borderRadius: BorderRadius.circular(Tokens.radiusSmall),
+            gradient: LinearGradient(
+              colors: gradient.colors,
+              stops: gradient.positions,
+            ),
+          ),
+        ),
+        trailing: const Icon(Icons.chevron_right_rounded),
+        onTap: () => Navigator.of(context).push(
+          MaterialPageRoute<void>(
+            builder: (context) => const VisualizerColorMapScreen(),
+          ),
+        ),
+      ),
     );
   }
 }
@@ -709,76 +768,255 @@ class _AccentGrid extends ConsumerWidget {
   );
 }
 
-class _DepthOption extends StatelessWidget {
-  const _DepthOption({
-    required this.depth,
+/// Tarjeta de una identidad completa: se ve con sus propios colores, no con
+/// los del tema activo, para poder compararlas de un vistazo.
+class _IdentityCard extends StatelessWidget {
+  const _IdentityCard({
+    required this.identity,
     required this.selected,
     required this.onTap,
   });
 
-  final BackgroundDepth depth;
+  final AppThemeIdentity identity;
   final bool selected;
   final VoidCallback onTap;
 
   @override
   Widget build(BuildContext context) {
-    final accent = ThemeScope.of(context).accent;
+    final accent = identity.accent;
     return Semantics(
       button: true,
       selected: selected,
-      label: depth.label,
+      label: '${identity.name}. ${identity.tags.join(", ")}',
       child: InkWell(
         onTap: onTap,
-        borderRadius: BorderRadius.circular(Tokens.radiusMedium),
+        borderRadius: BorderRadius.circular(Tokens.radiusLarge),
         child: AnimatedContainer(
           duration: ThemeScope.of(context).motion.scale(
             Tokens.durationFast,
             systemReduceMotion: MediaQuery.disableAnimationsOf(context),
           ),
           curve: ThemeScope.of(context).motion.curve,
+          width: 208,
           padding: const EdgeInsets.all(Tokens.space3),
           decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(Tokens.radiusMedium),
-            color: depth.background,
+            borderRadius: BorderRadius.circular(Tokens.radiusLarge),
+            color: identity.previewBackground,
             border: Border.all(
               color: selected
                   ? accent.middle
-                  : Colors.white.withValues(alpha: 0.08),
+                  : identity.previewText.withValues(alpha: 0.14),
               width: selected ? 2 : 1,
             ),
           ),
           child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Row(
-                mainAxisAlignment: MainAxisAlignment.center,
                 children: [
-                  for (final color in [
-                    depth.surface,
-                    depth.surfaceHigh,
-                    depth.surfaceHighest,
-                  ])
-                    Container(
-                      width: 12,
-                      height: 12,
-                      margin: const EdgeInsets.symmetric(horizontal: 1),
-                      decoration: BoxDecoration(
-                        color: color,
-                        borderRadius: BorderRadius.circular(4),
+                  Expanded(
+                    child: Text(
+                      identity.name,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        color: accent.middle,
+                        fontWeight: FontWeight.w700,
                       ),
+                    ),
+                  ),
+                  if (selected)
+                    Icon(
+                      Icons.check_circle_rounded,
+                      size: 18,
+                      color: accent.middle,
                     ),
                 ],
               ),
               const SizedBox(height: Tokens.space2),
-              Text(
-                depth.label,
-                textAlign: TextAlign.center,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-                style: const TextStyle(fontSize: 11.5),
+              // Miniatura del reproductor: es donde más se nota la identidad.
+              Container(
+                padding: const EdgeInsets.all(Tokens.space2),
+                decoration: BoxDecoration(
+                  color: identity.previewSurface,
+                  borderRadius: BorderRadius.circular(Tokens.radiusMedium),
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Row(
+                      children: [
+                        Container(
+                          width: 26,
+                          height: 26,
+                          decoration: BoxDecoration(
+                            gradient: accent.compactGradient,
+                            borderRadius: BorderRadius.circular(6),
+                          ),
+                        ),
+                        const SizedBox(width: Tokens.space2),
+                        Expanded(
+                          child: Column(
+                            crossAxisAlignment: CrossAxisAlignment.start,
+                            children: [
+                              Container(
+                                height: 6,
+                                decoration: BoxDecoration(
+                                  color: identity.previewText.withValues(
+                                    alpha: 0.85,
+                                  ),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                              const SizedBox(height: 4),
+                              Container(
+                                height: 5,
+                                width: 52,
+                                decoration: BoxDecoration(
+                                  color: identity.previewText.withValues(
+                                    alpha: 0.4,
+                                  ),
+                                  borderRadius: BorderRadius.circular(3),
+                                ),
+                              ),
+                            ],
+                          ),
+                        ),
+                      ],
+                    ),
+                    const SizedBox(height: Tokens.space2),
+                    Row(
+                      mainAxisAlignment: MainAxisAlignment.center,
+                      children: [
+                        Icon(
+                          Icons.skip_previous_rounded,
+                          size: 14,
+                          color: identity.previewText.withValues(alpha: 0.6),
+                        ),
+                        const SizedBox(width: 6),
+                        Container(
+                          width: 22,
+                          height: 22,
+                          decoration: BoxDecoration(
+                            color: accent.middle,
+                            shape: BoxShape.circle,
+                          ),
+                          child: Icon(
+                            Icons.pause_rounded,
+                            size: 13,
+                            color: identity.previewBackground,
+                          ),
+                        ),
+                        const SizedBox(width: 6),
+                        Icon(
+                          Icons.skip_next_rounded,
+                          size: 14,
+                          color: identity.previewText.withValues(alpha: 0.6),
+                        ),
+                      ],
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(height: Tokens.space2),
+              Wrap(
+                spacing: 4,
+                runSpacing: 4,
+                children: [
+                  for (final tag in identity.tags)
+                    Container(
+                      padding: const EdgeInsets.symmetric(
+                        horizontal: 6,
+                        vertical: 2,
+                      ),
+                      decoration: BoxDecoration(
+                        borderRadius: BorderRadius.circular(Tokens.radiusPill),
+                        border: Border.all(
+                          color: identity.previewText.withValues(alpha: 0.2),
+                        ),
+                      ),
+                      child: Text(
+                        tag,
+                        style: TextStyle(
+                          fontSize: 9.5,
+                          color: identity.previewText.withValues(alpha: 0.78),
+                        ),
+                      ),
+                    ),
+                ],
               ),
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// Uno de los tres ejes que componen una identidad. Se muestran juntos y con
+/// el mismo formato porque juntos responden a «qué cambia» al elegir un tema.
+class _AxisSelector<T> extends StatelessWidget {
+  const _AxisSelector({
+    required this.icon,
+    required this.title,
+    required this.values,
+    required this.selected,
+    required this.labelOf,
+    required this.descriptionOf,
+    required this.onSelected,
+  });
+
+  final IconData icon;
+  final String title;
+  final List<T> values;
+  final T selected;
+  final String Function(T) labelOf;
+  final String Function(T) descriptionOf;
+  final ValueChanged<T> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(
+        Tokens.gutter,
+        0,
+        Tokens.gutter,
+        Tokens.space3,
+      ),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: [
+          Row(
+            children: [
+              Icon(icon, size: 18, color: scheme.onSurfaceVariant),
+              const SizedBox(width: Tokens.space2),
+              Expanded(
+                child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+              ),
+            ],
+          ),
+          const SizedBox(height: Tokens.space2),
+          Wrap(
+            spacing: Tokens.space2,
+            runSpacing: Tokens.space2,
+            children: [
+              for (final value in values)
+                ChoiceChip(
+                  label: Text(labelOf(value)),
+                  selected: selected == value,
+                  onSelected: (_) => onSelected(value),
+                ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            descriptionOf(selected),
+            style: Theme.of(context).textTheme.bodySmall?.copyWith(
+              color: scheme.onSurfaceVariant,
+            ),
+          ),
+        ],
       ),
     );
   }

@@ -25,6 +25,11 @@ principal y nunca puede ocultarse.
 El lector mantiene compatibilidad con el JSON anterior de dos zonas y mueve
 Favorito a `footer`, preservando el aspecto que tenía antes de esta versión.
 
+El reproductor conserva además un área inferior mínima de 32 dp fuera del
+contenido. Android puede volver a mostrar su navegación como una superposición
+transitoria cuando el reproductor está en modo inmersivo; el margen efectivo
+usa el mayor valor entre esa reserva y el inset comunicado por el sistema.
+
 ## Movimiento y visualizador
 
 Perfiles disponibles: Sin animación, Calmada, Equilibrada, Enérgica y
