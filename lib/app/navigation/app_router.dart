@@ -21,6 +21,10 @@ import 'package:nuvtune/features/remote_sources/remote_sources_screen.dart';
 import 'package:nuvtune/features/settings/app_theme_screen.dart';
 import 'package:nuvtune/features/settings/appearance_screen.dart';
 import 'package:nuvtune/features/settings/control_screen.dart';
+import 'package:nuvtune/features/settings/controls_settings_screen.dart';
+import 'package:nuvtune/features/settings/playback_settings_screen.dart';
+import 'package:nuvtune/features/settings/system_settings_screen.dart';
+import 'package:nuvtune/features/settings/visualizer_color_map_screen.dart';
 import 'package:nuvtune/features/settings/folders_screen.dart';
 import 'package:nuvtune/features/settings/playback_failure_log_screen.dart';
 import 'package:nuvtune/features/settings/settings_category_screens.dart';
@@ -255,37 +259,51 @@ GoRouter createRouter() {
         builder: (context, state) => const YouTubeLoginScreen(),
       ),
 
+      // Personalización
       GoRoute(
         path: '/settings/appearance',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => AppearanceScreen(
-          initialTab: AppearanceTab.byId(state.uri.queryParameters['tab']),
-        ),
+        builder: (context, state) {
+          // `?tab=` sigue existiendo solo para los accesos antiguos a
+          // Movimiento y Widget, que ya no cuelgan de Apariencia.
+          final tab = state.uri.queryParameters['tab'];
+          if (tab == null) return const AppThemeScreen();
+          return AppearanceScreen(initialTab: AppearanceTab.byId(tab));
+        },
       ),
       GoRoute(
-        path: '/settings/theme',
+        path: '/settings/player',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AppThemeScreen(),
+        builder: (context, state) =>
+            const AppearanceScreen(initialTab: AppearanceTab.player),
       ),
       GoRoute(
-        path: '/settings/widgets',
+        path: '/settings/player/visualizer',
         parentNavigatorKey: rootNavigatorKey,
-        redirect: (context, state) => '/settings/appearance?tab=widget',
+        builder: (context, state) =>
+            const AppearanceScreen(initialTab: AppearanceTab.player),
       ),
       GoRoute(
-        path: '/settings/control',
+        path: '/settings/player/visualizer/colors',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ControlSettingsScreen(),
+        builder: (context, state) => const VisualizerColorMapScreen(),
+      ),
+
+      // Configuración
+      GoRoute(
+        path: '/settings/controls',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const ControlsAndGesturesScreen(),
       ),
       GoRoute(
-        path: '/settings/control/layout',
+        path: '/settings/controls/layout',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const ControlLayoutScreen(),
       ),
       GoRoute(
-        path: '/settings/audio',
+        path: '/settings/playback',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AudioQualitySettingsScreen(),
+        builder: (context, state) => const PlaybackAudioSettingsScreen(),
       ),
       GoRoute(
         path: '/settings/library',
@@ -298,14 +316,68 @@ GoRouter createRouter() {
         builder: (context, state) => const SourcesSettingsScreen(),
       ),
       GoRoute(
-        path: '/settings/data',
+        path: '/settings/widget',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const DataPrivacySettingsScreen(),
+        builder: (context, state) =>
+            const AppearanceScreen(initialTab: AppearanceTab.widget),
       ),
       GoRoute(
         path: '/settings/system',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const SystemHelpSettingsScreen(),
+        builder: (context, state) => const SystemSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/system/devices',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const DevicesSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/system/data',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const DataFilesSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/system/diagnostics',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const DiagnosticsSettingsScreen(),
+      ),
+      GoRoute(
+        path: '/settings/system/about',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const AboutSettingsScreen(),
+      ),
+
+      // Rutas antiguas: se conservan como redirección para no romper accesos
+      // directos ya existentes.
+      GoRoute(
+        path: '/settings/theme',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) => '/settings/appearance',
+      ),
+      GoRoute(
+        path: '/settings/widgets',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) => '/settings/widget',
+      ),
+      GoRoute(
+        path: '/settings/control',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) => '/settings/controls',
+      ),
+      GoRoute(
+        path: '/settings/control/layout',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) => '/settings/controls/layout',
+      ),
+      GoRoute(
+        path: '/settings/audio',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) => '/settings/playback',
+      ),
+      GoRoute(
+        path: '/settings/data',
+        parentNavigatorKey: rootNavigatorKey,
+        redirect: (context, state) => '/settings/system/data',
       ),
       GoRoute(
         path: '/settings/excluded-folders',

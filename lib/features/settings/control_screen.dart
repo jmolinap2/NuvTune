@@ -34,7 +34,7 @@ class ControlSettingsScreen extends ConsumerWidget {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-            child: _ControlPreview(
+            child: ControlPreview(
               layout: layout,
               preset: preset,
               handedness: ControlHandedness.byId(
@@ -213,7 +213,7 @@ class ControlSettingsScreen extends ConsumerWidget {
                   sync: const {SettingsSyncTarget.audio},
                 ),
               ),
-              _CrossfadeSetting(seconds: settings.crossfadeSeconds),
+              CrossfadeSetting(seconds: settings.crossfadeSeconds),
               SwitchListTile(
                 secondary: const Icon(Icons.blur_on_rounded),
                 title: const Text(AppStrings.fadeOnPause),
@@ -318,7 +318,7 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
         children: [
           Padding(
             padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
-            child: _ControlPreview(
+            child: ControlPreview(
               layout: _layout,
               preset: PlayerControlPreset.custom,
               handedness: ControlHandedness.byId(
@@ -615,16 +615,16 @@ class _ReorderSection extends StatelessWidget {
   );
 }
 
-class _CrossfadeSetting extends ConsumerStatefulWidget {
-  const _CrossfadeSetting({required this.seconds});
+class CrossfadeSetting extends ConsumerStatefulWidget {
+  const CrossfadeSetting({required this.seconds, super.key});
 
   final int seconds;
 
   @override
-  ConsumerState<_CrossfadeSetting> createState() => _CrossfadeSettingState();
+  ConsumerState<CrossfadeSetting> createState() => CrossfadeSettingState();
 }
 
-class _CrossfadeSettingState extends ConsumerState<_CrossfadeSetting> {
+class CrossfadeSettingState extends ConsumerState<CrossfadeSetting> {
   double? _dragValue;
 
   @override
@@ -663,11 +663,12 @@ class _CrossfadeSettingState extends ConsumerState<_CrossfadeSetting> {
   }
 }
 
-class _ControlPreview extends StatelessWidget {
-  const _ControlPreview({
+class ControlPreview extends StatelessWidget {
+  const ControlPreview({
     required this.layout,
     required this.preset,
     required this.handedness,
+    super.key,
   });
 
   final PlayerControlLayout layout;
@@ -831,7 +832,6 @@ class _PreviewControlRow extends StatelessWidget {
 
 extension PlayerControlPresentation on PlayerControlId {
   IconData get icon => switch (this) {
-    PlayerControlId.favorite => Icons.favorite_border_rounded,
     PlayerControlId.shuffle => Icons.shuffle_rounded,
     PlayerControlId.previous => Icons.skip_previous_rounded,
     PlayerControlId.playPause => Icons.play_arrow_rounded,

@@ -1547,7 +1547,6 @@ class _PlayerAppBar extends ConsumerWidget {
     PlaybackState state,
     bool isFavorite,
   ) => switch (control) {
-    PlayerControlId.favorite => isFavorite,
     PlayerControlId.shuffle => state.snapshot.shuffleEnabled,
     PlayerControlId.repeat => state.snapshot.repeatMode != RepeatMode.off,
     PlayerControlId.sleepTimer => state.snapshot.sleepTimerRemainingMs != null,
@@ -1559,8 +1558,6 @@ class _PlayerAppBar extends ConsumerWidget {
     PlaybackState state,
     bool isFavorite,
   ) => switch (control) {
-    PlayerControlId.favorite =>
-      isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
     PlayerControlId.shuffle => Icons.shuffle_rounded,
     PlayerControlId.previous => Icons.skip_previous_rounded,
     PlayerControlId.playPause =>
@@ -1581,8 +1578,6 @@ class _PlayerAppBar extends ConsumerWidget {
     PlaybackState state,
     bool isFavorite,
   ) => switch (control) {
-    PlayerControlId.favorite =>
-      isFavorite ? 'Quitar de favoritos' : AppStrings.favorite,
     PlayerControlId.shuffle => AppStrings.shuffle,
     PlayerControlId.previous => 'Anterior',
     PlayerControlId.playPause => state.isPlaying ? 'Pausar' : 'Reproducir',
@@ -1601,8 +1596,6 @@ class _PlayerAppBar extends ConsumerWidget {
     PlaybackController controller,
   ) {
     switch (control) {
-      case PlayerControlId.favorite:
-        controller.toggleFavorite(song.id);
       case PlayerControlId.shuffle:
         controller.toggleShuffle();
       case PlayerControlId.previous:
@@ -2317,10 +2310,24 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                   ],
                 ),
               ),
-              // Zona «junto al título»: las acciones que el usuario coloque
-              // aquí acompañan a la canción en lugar de vivir en la fila de
-              // transporte. El título ya está dentro de un Expanded, así que
-              // estos botones se llevan solo el ancho que necesitan.
+              // Favorito pertenece al bloque de información de la canción, no
+              // a la fila de transporte: es una propiedad de la pista, así que
+              // vive fijo aquí y no se configura como un control más.
+              IconButton(
+                tooltip: isFavorite
+                    ? 'Quitar de favoritos'
+                    : AppStrings.favorite,
+                color: isFavorite ? scheme.primary : scheme.onSurfaceVariant,
+                icon: Icon(
+                  isFavorite
+                      ? Icons.favorite_rounded
+                      : Icons.favorite_border_rounded,
+                ),
+                onPressed: () => controller.toggleFavorite(displaySong.id),
+              ),
+              // Zona «junto al título»: acciones adicionales que el usuario
+              // coloque aquí acompañan a la canción en lugar de vivir en la
+              // fila de transporte.
               for (final control in controlLayout.metadata)
                 IconButton(
                   tooltip: _metadataControlTooltip(
@@ -2398,7 +2405,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     PlaybackState state,
     bool isFavorite,
   ) => switch (control) {
-    PlayerControlId.favorite => isFavorite,
     PlayerControlId.shuffle => state.snapshot.shuffleEnabled,
     PlayerControlId.repeat => state.snapshot.repeatMode != RepeatMode.off,
     PlayerControlId.sleepTimer => state.snapshot.sleepTimerRemainingMs != null,
@@ -2410,8 +2416,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     PlaybackState state,
     bool isFavorite,
   ) => switch (control) {
-    PlayerControlId.favorite =>
-      isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
     PlayerControlId.shuffle => Icons.shuffle_rounded,
     PlayerControlId.previous => Icons.skip_previous_rounded,
     PlayerControlId.playPause =>
@@ -2432,8 +2436,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     PlaybackState state,
     bool isFavorite,
   ) => switch (control) {
-    PlayerControlId.favorite =>
-      isFavorite ? 'Quitar de favoritos' : AppStrings.favorite,
     PlayerControlId.shuffle => AppStrings.shuffle,
     PlayerControlId.previous => 'Anterior',
     PlayerControlId.playPause => state.isPlaying ? 'Pausar' : 'Reproducir',
@@ -2454,8 +2456,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     PlaybackController controller,
   ) {
     switch (control) {
-      case PlayerControlId.favorite:
-        controller.toggleFavorite(displaySong.id);
       case PlayerControlId.shuffle:
         controller.toggleShuffle();
       case PlayerControlId.previous:

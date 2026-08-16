@@ -7,28 +7,12 @@ import 'package:nuvtune/features/settings/player_control_layout.dart';
 import 'package:nuvtune/features/settings/player_density.dart';
 
 void main() {
-  group('CustomizablePlayerControls favorito', () {
-    testWidgets('se dibuja una sola vez en la fila primaria', (tester) async {
-      await _pumpControls(
-        tester,
-        layout: PlayerControlLayout(
-          primary: const [
-            PlayerControlId.favorite,
-            PlayerControlId.previous,
-            PlayerControlId.playPause,
-            PlayerControlId.next,
-          ],
-          secondary: const [PlayerControlId.queue],
-        ),
-      );
-
-      expect(find.byIcon(Icons.favorite_border_rounded), findsOneWidget);
-      expect(find.byTooltip('Favorito'), findsOneWidget);
-    });
-
-    testWidgets('permanece oculto cuando no forma parte del layout', (
+  group('CustomizablePlayerControls', () {
+    testWidgets('la fila de transporte ya no dibuja el favorito', (
       tester,
     ) async {
+      // Favorito pertenece al bloque de información de la canción. Si volviera
+      // a aparecer aquí habría dos sitios para la misma acción.
       await _pumpControls(
         tester,
         layout: PlayerControlLayout(
@@ -42,10 +26,25 @@ void main() {
       );
 
       expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+      expect(find.byIcon(Icons.favorite_rounded), findsNothing);
       expect(find.byTooltip('Favorito'), findsNothing);
     });
 
-    testWidgets('queda centrado cuando el usuario lo coloca abajo', (
+    testWidgets('un diseño guardado que nombre favorito no lo resucita', (
+      tester,
+    ) async {
+      final layout = PlayerControlLayout.fromJsonString(
+        '{"primary":["previous","playPause","next"],'
+        '"secondary":["queue"],"footer":["favorite"]}',
+      );
+
+      await _pumpControls(tester, layout: layout);
+
+      expect(layout.footer, isEmpty);
+      expect(find.byIcon(Icons.favorite_border_rounded), findsNothing);
+    });
+
+    testWidgets('dibuja los controles que sí siguen siendo configurables', (
       tester,
     ) async {
       await _pumpControls(
@@ -56,37 +55,13 @@ void main() {
             PlayerControlId.playPause,
             PlayerControlId.next,
           ],
-          secondary: const [
-            PlayerControlId.seekBackward,
-            PlayerControlId.queue,
-          ],
-          footer: const [PlayerControlId.favorite],
+          secondary: const [PlayerControlId.queue],
         ),
       );
 
-      final favorite = find.byIcon(Icons.favorite_border_rounded);
-      final favoriteCenter = tester.getCenter(favorite);
-      final controlsBounds = tester.getRect(
-        find.byType(CustomizablePlayerControls),
-      );
-      final otherIcons = find.byType(Icon).evaluate().where((element) {
-        final icon = element.widget as Icon;
-        return icon.icon != Icons.favorite_border_rounded;
-      });
-      final lowestOtherControl = otherIcons
-          .map(
-            (element) => tester
-                .getBottomRight(
-                  find.byElementPredicate(
-                    (candidate) => identical(candidate, element),
-                  ),
-                )
-                .dy,
-          )
-          .reduce((a, b) => a > b ? a : b);
-
-      expect(favoriteCenter.dx, closeTo(controlsBounds.center.dx, 0.01));
-      expect(tester.getTopLeft(favorite).dy, greaterThan(lowestOtherControl));
+      expect(find.byIcon(Icons.skip_previous_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
+      expect(find.byIcon(Icons.queue_music_rounded), findsOneWidget);
     });
   });
 }

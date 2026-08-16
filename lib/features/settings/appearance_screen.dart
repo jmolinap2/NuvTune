@@ -16,7 +16,9 @@ import 'package:nuvtune/features/player/visualizer_color_map.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
 import 'package:nuvtune/features/player/visualizer_quality.dart';
 import 'package:nuvtune/features/settings/visualizer_color_map_screen.dart';
+import 'package:nuvtune/features/player/audio_visualizer.dart';
 import 'package:nuvtune/features/player/visualization_picker.dart';
+import 'package:nuvtune/features/settings/player_density.dart';
 import 'package:nuvtune/features/settings/settings_components.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 import 'package:nuvtune/features/settings/personalization_models.dart';
@@ -222,6 +224,9 @@ class _PlayerAppearancePanel extends ConsumerWidget {
       settings.playerVisualizerQuality,
     );
 
+    // Estructura del documento de reorganización: Diseño, Fondo y ambiente,
+    // Visualizador. La densidad vive aquí porque es composición visual del
+    // reproductor, no interacción, y por eso salió de «Control».
     return ListView(
       padding: const EdgeInsets.only(bottom: Tokens.space6),
       children: [
@@ -230,14 +235,56 @@ class _PlayerAppearancePanel extends ConsumerWidget {
         SettingsGroup(
           children: [
             SettingsNavigationRow(
-              icon: Icons.dashboard_customize_outlined,
-              title: 'Diseño y controles',
-              subtitle: 'Posición, orden, visibilidad y densidad',
-              onTap: () => context.push('/settings/control'),
+              icon: scene.icon,
+              title: 'Escenario',
+              subtitle: scene.showsVisualizer
+                  ? '${scene.label} · ${visualizer.label}'
+                  : '${scene.label} · el estilo no se aplica en esta escena',
+              onTap: () => showVisualizationPicker(context, ref),
+            ),
+            SettingsNavigationRow(
+              icon: ratio.icon,
+              title: 'Relación de aspecto',
+              subtitle: '${ratio.label} · ${ratio.description}',
+              onTap: () => _selectRatio(context, ref, ratio),
             ),
           ],
         ),
-        const SettingsSectionLabel('Color y fondo'),
+        Padding(
+          padding: const EdgeInsets.fromLTRB(
+            Tokens.gutter,
+            Tokens.space3,
+            Tokens.gutter,
+            0,
+          ),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Densidad', style: Theme.of(context).textTheme.titleSmall),
+              const SizedBox(height: Tokens.space2),
+              SegmentedButton<PlayerDensity>(
+                segments: [
+                  for (final option in PlayerDensity.values)
+                    ButtonSegment(value: option, label: Text(option.label)),
+                ],
+                selected: {PlayerDensity.byId(settings.playerDensity)},
+                onSelectionChanged: (selection) => mutation.save(
+                  AppSettingsCompanion(
+                    playerDensity: Value(selection.first.id),
+                  ),
+                ),
+              ),
+              const SizedBox(height: Tokens.space2),
+              Text(
+                'Cuánto aire deja el reproductor alrededor de sus elementos.',
+                style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
+              ),
+            ],
+          ),
+        ),
+        const SettingsSectionLabel('Fondo y ambiente'),
         SettingsGroup(
           children: [
             SwitchListTile(
@@ -260,22 +307,20 @@ class _PlayerAppearancePanel extends ConsumerWidget {
             ),
           ],
         ),
-        const SettingsSectionLabel('Escena visual'),
+        const SettingsSectionLabel('Visualizador'),
         SettingsGroup(
           children: [
             SettingsNavigationRow(
-              icon: scene.icon,
-              title: 'Escenario y estilo',
-              subtitle: scene.showsVisualizer
-                  ? '${scene.label} · ${visualizer.label}'
-                  : '${scene.label} · el estilo no se aplica en esta escena',
-              onTap: () => showVisualizationPicker(context, ref),
+              icon: visualizer.icon,
+              title: 'Estilo',
+              subtitle: visualizer.label,
+              onTap: () => showVisualizerStylePicker(context, ref),
             ),
             SettingsNavigationRow(
-              icon: ratio.icon,
-              title: 'Relación de aspecto',
-              subtitle: '${ratio.label} · ${ratio.description}',
-              onTap: () => _selectRatio(context, ref, ratio),
+              icon: Icons.gradient_rounded,
+              title: 'Color reactivo',
+              subtitle: 'Mapa de colores por intensidad y modo de aplicación',
+              onTap: () => context.push('/settings/player/visualizer/colors'),
             ),
           ],
         ),
@@ -309,10 +354,11 @@ class _PlayerAppearancePanel extends ConsumerWidget {
         ),
         const SizedBox(height: Tokens.space3),
         const SettingsInfoPanel(
-          icon: Icons.animation_rounded,
-          title: 'Movimiento configurable',
+          icon: Icons.speed_rounded,
+          title: 'La calidad no cambia el color',
           message:
-              'La intensidad, la respuesta al ritmo, las partículas y sus colores se ajustan en la pestaña Movimiento.',
+              'Eco, Normal y Ultra solo ajustan rendimiento: bandas, FPS y '
+              'partículas. El mapa de colores elegido se respeta siempre.',
         ),
       ],
     );

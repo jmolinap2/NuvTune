@@ -111,7 +111,6 @@ class CustomizablePlayerControls extends StatelessWidget {
 
     final scheme = Theme.of(context).colorScheme;
     final active = switch (control) {
-      PlayerControlId.favorite => isFavorite,
       PlayerControlId.shuffle => state.snapshot.shuffleEnabled,
       PlayerControlId.repeat => state.snapshot.repeatMode != RepeatMode.off,
       PlayerControlId.sleepTimer =>
@@ -134,8 +133,6 @@ class CustomizablePlayerControls extends StatelessWidget {
 
   void _invoke(BuildContext context, PlayerControlId control) {
     switch (control) {
-      case PlayerControlId.favorite:
-        controller.toggleFavorite(song.id);
       case PlayerControlId.shuffle:
         controller.toggleShuffle();
       case PlayerControlId.previous:
@@ -158,8 +155,6 @@ class CustomizablePlayerControls extends StatelessWidget {
   }
 
   String _tooltip(PlayerControlId control) => switch (control) {
-    PlayerControlId.favorite =>
-      isFavorite ? 'Quitar de favoritos' : AppStrings.favorite,
     PlayerControlId.shuffle =>
       state.snapshot.shuffleEnabled ? 'Aleatorio activado' : AppStrings.shuffle,
     PlayerControlId.previous => 'Anterior',
@@ -177,8 +172,6 @@ class CustomizablePlayerControls extends StatelessWidget {
   };
 
   IconData _icon(PlayerControlId control) => switch (control) {
-    PlayerControlId.favorite =>
-      isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
     PlayerControlId.shuffle => Icons.shuffle_rounded,
     PlayerControlId.previous => Icons.skip_previous_rounded,
     PlayerControlId.playPause =>

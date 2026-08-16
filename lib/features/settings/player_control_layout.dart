@@ -34,8 +34,12 @@ enum ControlHandedness {
 }
 
 /// Acciones que pueden formar parte del bloque personalizable.
+///
+/// `favorite` ya no está aquí: pertenece al bloque de información de la
+/// canción y se dibuja fijo a la derecha del título. Tenerlo además como
+/// control movible creaba dos sitios distintos para la misma acción. Un
+/// diseño guardado que aún lo mencione simplemente lo ignora al leerse.
 enum PlayerControlId {
-  favorite('favorite', 'Favorito'),
   shuffle('shuffle', 'Aleatorio'),
   previous('previous', 'Anterior'),
   playPause('playPause', 'Reproducir o pausar'),
@@ -162,7 +166,6 @@ class PlayerControlLayout {
             PlayerControlId.next,
           ],
           secondary: const [],
-          footer: const [PlayerControlId.favorite],
         ),
         PlayerControlPreset.oneHanded => PlayerControlLayout(
           primary: const [
@@ -175,7 +178,6 @@ class PlayerControlLayout {
             PlayerControlId.repeat,
             PlayerControlId.queue,
           ],
-          footer: const [PlayerControlId.favorite],
         ),
         PlayerControlPreset.complete ||
         PlayerControlPreset.custom => PlayerControlLayout(
@@ -192,29 +194,23 @@ class PlayerControlLayout {
             PlayerControlId.queue,
             PlayerControlId.sleepTimer,
           ],
-          footer: const [PlayerControlId.favorite],
         ),
       };
 
+  /// Los identificadores desconocidos se descartan, así que un diseño guardado
+  /// que todavía nombre `favorite` se lee sin él y sin dejar huecos.
   static PlayerControlLayout fromJsonString(String source) {
     try {
       final decoded = jsonDecode(source);
       if (decoded is! Map<String, dynamic>) return complete;
-      final hasZones =
-          decoded.containsKey('top') || decoded.containsKey('footer');
-      final legacySecondary = _decodeList(decoded['secondary']).toList();
-      final legacyFavorite =
-          !hasZones && legacySecondary.remove(PlayerControlId.favorite);
       return PlayerControlLayout(
         top: _decodeList(decoded['top']),
         // Una preferencia guardada antes de existir esta zona simplemente no
         // trae la clave: se lee vacía y el resto del diseño no se altera.
         metadata: _decodeList(decoded['metadata']),
         primary: _decodeList(decoded['primary']),
-        secondary: legacySecondary,
-        footer: hasZones
-            ? _decodeList(decoded['footer'])
-            : [if (legacyFavorite) PlayerControlId.favorite],
+        secondary: _decodeList(decoded['secondary']),
+        footer: _decodeList(decoded['footer']),
       );
     } on FormatException {
       return complete;
