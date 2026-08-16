@@ -65,7 +65,7 @@ class SettingsScreen extends ConsumerWidget {
                     Expanded(
                       child: SettingsFeatureCard(
                         icon: Icons.palette_outlined,
-                        title: 'Apariencia',
+                        title: 'Personalización',
                         subtitle: '${accent.name} · ${background.label}',
                         warm: true,
                         onTap: () => context.push('/settings/appearance'),
@@ -164,8 +164,8 @@ const _settingsDestinations = <_SettingsDestination>[
     keywords: ['crossfade', 'gapless', 'bluetooth', 'android auto'],
   ),
   _SettingsDestination(
-    title: 'Apariencia de la aplicación',
-    subtitle: 'Color, AMOLED, fondo y efecto de vidrio',
+    title: 'Temas y color',
+    subtitle: 'Sistema, claro, oscuro, AMOLED, paleta y énfasis',
     route: '/settings/appearance?tab=app',
     icon: Icons.palette_outlined,
     keywords: ['tema', 'acento', 'nocturno', 'violeta'],
@@ -176,6 +176,13 @@ const _settingsDestinations = <_SettingsDestination>[
     route: '/settings/appearance?tab=player',
     icon: Icons.smart_display_outlined,
     keywords: ['portada', 'letras', 'fondo'],
+  ),
+  _SettingsDestination(
+    title: 'Movimiento y efectos',
+    subtitle: 'Animaciones, intensidad, ritmo, partículas y color',
+    route: '/settings/appearance?tab=motion',
+    icon: Icons.animation_rounded,
+    keywords: ['calmada', 'enérgica', 'reducir movimiento', 'visualizador'],
   ),
   _SettingsDestination(
     title: 'Widget de inicio',

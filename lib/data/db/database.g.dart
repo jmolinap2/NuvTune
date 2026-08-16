@@ -5787,6 +5787,18 @@ class $AppSettingsTable extends AppSettings
     requiredDuringInsert: false,
     defaultValue: const Constant('nebula'),
   );
+  static const VerificationMeta _themeModeMeta = const VerificationMeta(
+    'themeMode',
+  );
+  @override
+  late final GeneratedColumn<String> themeMode = GeneratedColumn<String>(
+    'theme_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('dark'),
+  );
   static const VerificationMeta _backgroundDepthMeta = const VerificationMeta(
     'backgroundDepth',
   );
@@ -6276,6 +6288,77 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _motionProfileMeta = const VerificationMeta(
+    'motionProfile',
+  );
+  @override
+  late final GeneratedColumn<String> motionProfile = GeneratedColumn<String>(
+    'motion_profile',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('balanced'),
+  );
+  static const VerificationMeta _motionIntensityMeta = const VerificationMeta(
+    'motionIntensity',
+  );
+  @override
+  late final GeneratedColumn<int> motionIntensity = GeneratedColumn<int>(
+    'motion_intensity',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(2),
+  );
+  static const VerificationMeta _motionSmoothnessMeta = const VerificationMeta(
+    'motionSmoothness',
+  );
+  @override
+  late final GeneratedColumn<int> motionSmoothness = GeneratedColumn<int>(
+    'motion_smoothness',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(2),
+  );
+  static const VerificationMeta _motionBeatResponseMeta =
+      const VerificationMeta('motionBeatResponse');
+  @override
+  late final GeneratedColumn<int> motionBeatResponse = GeneratedColumn<int>(
+    'motion_beat_response',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(2),
+  );
+  static const VerificationMeta _motionParticlesMeta = const VerificationMeta(
+    'motionParticles',
+  );
+  @override
+  late final GeneratedColumn<int> motionParticles = GeneratedColumn<int>(
+    'motion_particles',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(2),
+  );
+  static const VerificationMeta _visualizerColorSourceMeta =
+      const VerificationMeta('visualizerColorSource');
+  @override
+  late final GeneratedColumn<String> visualizerColorSource =
+      GeneratedColumn<String>(
+        'visualizer_color_source',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('cover'),
+      );
   static const VerificationMeta _playerVisualSceneMeta = const VerificationMeta(
     'playerVisualScene',
   );
@@ -6322,8 +6405,9 @@ class $AppSettingsTable extends AppSettings
     type: DriftSqlType.string,
     requiredDuringInsert: false,
     defaultValue: const Constant(
-      '{"primary":["shuffle","previous","playPause","next","repeat"],'
-      '"secondary":["favorite","seekBackward","seekForward","queue","sleepTimer"]}',
+      '{"top":[],"primary":["shuffle","previous","playPause","next","repeat"],'
+      '"secondary":["seekBackward","seekForward","queue","sleepTimer"],'
+      '"footer":["favorite"]}',
     ),
   );
   static const VerificationMeta _playerControlHandednessMeta =
@@ -6418,6 +6502,7 @@ class $AppSettingsTable extends AppSettings
     useDynamicColor,
     pureBlackBackground,
     accentId,
+    themeMode,
     backgroundDepth,
     glassIntensity,
     restoreQueueOnStart,
@@ -6454,6 +6539,12 @@ class $AppSettingsTable extends AppSettings
     playerVisualizerStyle,
     playerVisualizerQuality,
     reduceVisualizerEffects,
+    motionProfile,
+    motionIntensity,
+    motionSmoothness,
+    motionBeatResponse,
+    motionParticles,
+    visualizerColorSource,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -6520,6 +6611,12 @@ class $AppSettingsTable extends AppSettings
       context.handle(
         _accentIdMeta,
         accentId.isAcceptableOrUnknown(data['accent_id']!, _accentIdMeta),
+      );
+    }
+    if (data.containsKey('theme_mode')) {
+      context.handle(
+        _themeModeMeta,
+        themeMode.isAcceptableOrUnknown(data['theme_mode']!, _themeModeMeta),
       );
     }
     if (data.containsKey('background_depth')) {
@@ -6840,6 +6937,60 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('motion_profile')) {
+      context.handle(
+        _motionProfileMeta,
+        motionProfile.isAcceptableOrUnknown(
+          data['motion_profile']!,
+          _motionProfileMeta,
+        ),
+      );
+    }
+    if (data.containsKey('motion_intensity')) {
+      context.handle(
+        _motionIntensityMeta,
+        motionIntensity.isAcceptableOrUnknown(
+          data['motion_intensity']!,
+          _motionIntensityMeta,
+        ),
+      );
+    }
+    if (data.containsKey('motion_smoothness')) {
+      context.handle(
+        _motionSmoothnessMeta,
+        motionSmoothness.isAcceptableOrUnknown(
+          data['motion_smoothness']!,
+          _motionSmoothnessMeta,
+        ),
+      );
+    }
+    if (data.containsKey('motion_beat_response')) {
+      context.handle(
+        _motionBeatResponseMeta,
+        motionBeatResponse.isAcceptableOrUnknown(
+          data['motion_beat_response']!,
+          _motionBeatResponseMeta,
+        ),
+      );
+    }
+    if (data.containsKey('motion_particles')) {
+      context.handle(
+        _motionParticlesMeta,
+        motionParticles.isAcceptableOrUnknown(
+          data['motion_particles']!,
+          _motionParticlesMeta,
+        ),
+      );
+    }
+    if (data.containsKey('visualizer_color_source')) {
+      context.handle(
+        _visualizerColorSourceMeta,
+        visualizerColorSource.isAcceptableOrUnknown(
+          data['visualizer_color_source']!,
+          _visualizerColorSourceMeta,
+        ),
+      );
+    }
     if (data.containsKey('player_visual_scene')) {
       context.handle(
         _playerVisualSceneMeta,
@@ -6962,6 +7113,10 @@ class $AppSettingsTable extends AppSettings
       accentId: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
         data['${effectivePrefix}accent_id'],
+      )!,
+      themeMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}theme_mode'],
       )!,
       backgroundDepth: attachedDatabase.typeMapping.read(
         DriftSqlType.string,
@@ -7107,6 +7262,30 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}reduce_visualizer_effects'],
       )!,
+      motionProfile: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}motion_profile'],
+      )!,
+      motionIntensity: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}motion_intensity'],
+      )!,
+      motionSmoothness: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}motion_smoothness'],
+      )!,
+      motionBeatResponse: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}motion_beat_response'],
+      )!,
+      motionParticles: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}motion_particles'],
+      )!,
+      visualizerColorSource: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}visualizer_color_source'],
+      )!,
       playerVisualScene: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}player_visual_scene'],
@@ -7166,6 +7345,10 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// Identidad cromatica elegida (`AccentIdentity.id`).
   final String accentId;
 
+  /// Modo global de tema (`AppThemePreference.id`). Las instalaciones previas
+  /// migran a oscuro para conservar exactamente su apariencia.
+  final String themeMode;
+
   /// Profundidad del fondo (`BackgroundDepth.id`).
   final String backgroundDepth;
 
@@ -7224,6 +7407,14 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// del ajuste de accesibilidad global de Android.
   final bool reduceVisualizerEffects;
 
+  /// Personalidad global del movimiento y ajustes avanzados (niveles 0..3).
+  final String motionProfile;
+  final int motionIntensity;
+  final int motionSmoothness;
+  final int motionBeatResponse;
+  final int motionParticles;
+  final String visualizerColorSource;
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -7254,6 +7445,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.useDynamicColor,
     required this.pureBlackBackground,
     required this.accentId,
+    required this.themeMode,
     required this.backgroundDepth,
     required this.glassIntensity,
     required this.restoreQueueOnStart,
@@ -7290,6 +7482,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.playerVisualizerStyle,
     required this.playerVisualizerQuality,
     required this.reduceVisualizerEffects,
+    required this.motionProfile,
+    required this.motionIntensity,
+    required this.motionSmoothness,
+    required this.motionBeatResponse,
+    required this.motionParticles,
+    required this.visualizerColorSource,
     required this.playerVisualScene,
     required this.playerSceneAspectRatio,
     required this.playerControlPreset,
@@ -7312,6 +7510,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['use_dynamic_color'] = Variable<bool>(useDynamicColor);
     map['pure_black_background'] = Variable<bool>(pureBlackBackground);
     map['accent_id'] = Variable<String>(accentId);
+    map['theme_mode'] = Variable<String>(themeMode);
     map['background_depth'] = Variable<String>(backgroundDepth);
     map['glass_intensity'] = Variable<String>(glassIntensity);
     map['restore_queue_on_start'] = Variable<bool>(restoreQueueOnStart);
@@ -7350,6 +7549,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerVisualizerQuality,
     );
     map['reduce_visualizer_effects'] = Variable<bool>(reduceVisualizerEffects);
+    map['motion_profile'] = Variable<String>(motionProfile);
+    map['motion_intensity'] = Variable<int>(motionIntensity);
+    map['motion_smoothness'] = Variable<int>(motionSmoothness);
+    map['motion_beat_response'] = Variable<int>(motionBeatResponse);
+    map['motion_particles'] = Variable<int>(motionParticles);
+    map['visualizer_color_source'] = Variable<String>(visualizerColorSource);
     map['player_visual_scene'] = Variable<int>(playerVisualScene);
     map['player_scene_aspect_ratio'] = Variable<int>(playerSceneAspectRatio);
     map['player_control_preset'] = Variable<String>(playerControlPreset);
@@ -7381,6 +7586,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       useDynamicColor: Value(useDynamicColor),
       pureBlackBackground: Value(pureBlackBackground),
       accentId: Value(accentId),
+      themeMode: Value(themeMode),
       backgroundDepth: Value(backgroundDepth),
       glassIntensity: Value(glassIntensity),
       restoreQueueOnStart: Value(restoreQueueOnStart),
@@ -7417,6 +7623,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerVisualizerStyle: Value(playerVisualizerStyle),
       playerVisualizerQuality: Value(playerVisualizerQuality),
       reduceVisualizerEffects: Value(reduceVisualizerEffects),
+      motionProfile: Value(motionProfile),
+      motionIntensity: Value(motionIntensity),
+      motionSmoothness: Value(motionSmoothness),
+      motionBeatResponse: Value(motionBeatResponse),
+      motionParticles: Value(motionParticles),
+      visualizerColorSource: Value(visualizerColorSource),
       playerVisualScene: Value(playerVisualScene),
       playerSceneAspectRatio: Value(playerSceneAspectRatio),
       playerControlPreset: Value(playerControlPreset),
@@ -7444,6 +7656,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         json['pureBlackBackground'],
       ),
       accentId: serializer.fromJson<String>(json['accentId']),
+      themeMode: serializer.fromJson<String>(json['themeMode']),
       backgroundDepth: serializer.fromJson<String>(json['backgroundDepth']),
       glassIntensity: serializer.fromJson<String>(json['glassIntensity']),
       restoreQueueOnStart: serializer.fromJson<bool>(
@@ -7498,6 +7711,14 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       reduceVisualizerEffects: serializer.fromJson<bool>(
         json['reduceVisualizerEffects'],
       ),
+      motionProfile: serializer.fromJson<String>(json['motionProfile']),
+      motionIntensity: serializer.fromJson<int>(json['motionIntensity']),
+      motionSmoothness: serializer.fromJson<int>(json['motionSmoothness']),
+      motionBeatResponse: serializer.fromJson<int>(json['motionBeatResponse']),
+      motionParticles: serializer.fromJson<int>(json['motionParticles']),
+      visualizerColorSource: serializer.fromJson<String>(
+        json['visualizerColorSource'],
+      ),
       playerVisualScene: serializer.fromJson<int>(json['playerVisualScene']),
       playerSceneAspectRatio: serializer.fromJson<int>(
         json['playerSceneAspectRatio'],
@@ -7536,6 +7757,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'useDynamicColor': serializer.toJson<bool>(useDynamicColor),
       'pureBlackBackground': serializer.toJson<bool>(pureBlackBackground),
       'accentId': serializer.toJson<String>(accentId),
+      'themeMode': serializer.toJson<String>(themeMode),
       'backgroundDepth': serializer.toJson<String>(backgroundDepth),
       'glassIntensity': serializer.toJson<String>(glassIntensity),
       'restoreQueueOnStart': serializer.toJson<bool>(restoreQueueOnStart),
@@ -7578,6 +7800,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'reduceVisualizerEffects': serializer.toJson<bool>(
         reduceVisualizerEffects,
       ),
+      'motionProfile': serializer.toJson<String>(motionProfile),
+      'motionIntensity': serializer.toJson<int>(motionIntensity),
+      'motionSmoothness': serializer.toJson<int>(motionSmoothness),
+      'motionBeatResponse': serializer.toJson<int>(motionBeatResponse),
+      'motionParticles': serializer.toJson<int>(motionParticles),
+      'visualizerColorSource': serializer.toJson<String>(visualizerColorSource),
       'playerVisualScene': serializer.toJson<int>(playerVisualScene),
       'playerSceneAspectRatio': serializer.toJson<int>(playerSceneAspectRatio),
       'playerControlPreset': serializer.toJson<String>(playerControlPreset),
@@ -7608,6 +7836,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? useDynamicColor,
     bool? pureBlackBackground,
     String? accentId,
+    String? themeMode,
     String? backgroundDepth,
     String? glassIntensity,
     bool? restoreQueueOnStart,
@@ -7644,6 +7873,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     int? playerVisualizerStyle,
     String? playerVisualizerQuality,
     bool? reduceVisualizerEffects,
+    String? motionProfile,
+    int? motionIntensity,
+    int? motionSmoothness,
+    int? motionBeatResponse,
+    int? motionParticles,
+    String? visualizerColorSource,
     int? playerVisualScene,
     int? playerSceneAspectRatio,
     String? playerControlPreset,
@@ -7661,6 +7896,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     useDynamicColor: useDynamicColor ?? this.useDynamicColor,
     pureBlackBackground: pureBlackBackground ?? this.pureBlackBackground,
     accentId: accentId ?? this.accentId,
+    themeMode: themeMode ?? this.themeMode,
     backgroundDepth: backgroundDepth ?? this.backgroundDepth,
     glassIntensity: glassIntensity ?? this.glassIntensity,
     restoreQueueOnStart: restoreQueueOnStart ?? this.restoreQueueOnStart,
@@ -7701,6 +7937,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         playerVisualizerQuality ?? this.playerVisualizerQuality,
     reduceVisualizerEffects:
         reduceVisualizerEffects ?? this.reduceVisualizerEffects,
+    motionProfile: motionProfile ?? this.motionProfile,
+    motionIntensity: motionIntensity ?? this.motionIntensity,
+    motionSmoothness: motionSmoothness ?? this.motionSmoothness,
+    motionBeatResponse: motionBeatResponse ?? this.motionBeatResponse,
+    motionParticles: motionParticles ?? this.motionParticles,
+    visualizerColorSource: visualizerColorSource ?? this.visualizerColorSource,
     playerVisualScene: playerVisualScene ?? this.playerVisualScene,
     playerSceneAspectRatio:
         playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -7735,6 +7977,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ? data.pureBlackBackground.value
           : this.pureBlackBackground,
       accentId: data.accentId.present ? data.accentId.value : this.accentId,
+      themeMode: data.themeMode.present ? data.themeMode.value : this.themeMode,
       backgroundDepth: data.backgroundDepth.present
           ? data.backgroundDepth.value
           : this.backgroundDepth,
@@ -7843,6 +8086,24 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       reduceVisualizerEffects: data.reduceVisualizerEffects.present
           ? data.reduceVisualizerEffects.value
           : this.reduceVisualizerEffects,
+      motionProfile: data.motionProfile.present
+          ? data.motionProfile.value
+          : this.motionProfile,
+      motionIntensity: data.motionIntensity.present
+          ? data.motionIntensity.value
+          : this.motionIntensity,
+      motionSmoothness: data.motionSmoothness.present
+          ? data.motionSmoothness.value
+          : this.motionSmoothness,
+      motionBeatResponse: data.motionBeatResponse.present
+          ? data.motionBeatResponse.value
+          : this.motionBeatResponse,
+      motionParticles: data.motionParticles.present
+          ? data.motionParticles.value
+          : this.motionParticles,
+      visualizerColorSource: data.visualizerColorSource.present
+          ? data.visualizerColorSource.value
+          : this.visualizerColorSource,
       playerVisualScene: data.playerVisualScene.present
           ? data.playerVisualScene.value
           : this.playerVisualScene,
@@ -7885,6 +8146,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('useDynamicColor: $useDynamicColor, ')
           ..write('pureBlackBackground: $pureBlackBackground, ')
           ..write('accentId: $accentId, ')
+          ..write('themeMode: $themeMode, ')
           ..write('backgroundDepth: $backgroundDepth, ')
           ..write('glassIntensity: $glassIntensity, ')
           ..write('restoreQueueOnStart: $restoreQueueOnStart, ')
@@ -7921,6 +8183,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
           ..write('playerVisualizerQuality: $playerVisualizerQuality, ')
           ..write('reduceVisualizerEffects: $reduceVisualizerEffects, ')
+          ..write('motionProfile: $motionProfile, ')
+          ..write('motionIntensity: $motionIntensity, ')
+          ..write('motionSmoothness: $motionSmoothness, ')
+          ..write('motionBeatResponse: $motionBeatResponse, ')
+          ..write('motionParticles: $motionParticles, ')
+          ..write('visualizerColorSource: $visualizerColorSource, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -7943,6 +8211,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     useDynamicColor,
     pureBlackBackground,
     accentId,
+    themeMode,
     backgroundDepth,
     glassIntensity,
     restoreQueueOnStart,
@@ -7979,6 +8248,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     playerVisualizerStyle,
     playerVisualizerQuality,
     reduceVisualizerEffects,
+    motionProfile,
+    motionIntensity,
+    motionSmoothness,
+    motionBeatResponse,
+    motionParticles,
+    visualizerColorSource,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -8000,6 +8275,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.useDynamicColor == this.useDynamicColor &&
           other.pureBlackBackground == this.pureBlackBackground &&
           other.accentId == this.accentId &&
+          other.themeMode == this.themeMode &&
           other.backgroundDepth == this.backgroundDepth &&
           other.glassIntensity == this.glassIntensity &&
           other.restoreQueueOnStart == this.restoreQueueOnStart &&
@@ -8036,6 +8312,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.playerVisualizerStyle == this.playerVisualizerStyle &&
           other.playerVisualizerQuality == this.playerVisualizerQuality &&
           other.reduceVisualizerEffects == this.reduceVisualizerEffects &&
+          other.motionProfile == this.motionProfile &&
+          other.motionIntensity == this.motionIntensity &&
+          other.motionSmoothness == this.motionSmoothness &&
+          other.motionBeatResponse == this.motionBeatResponse &&
+          other.motionParticles == this.motionParticles &&
+          other.visualizerColorSource == this.visualizerColorSource &&
           other.playerVisualScene == this.playerVisualScene &&
           other.playerSceneAspectRatio == this.playerSceneAspectRatio &&
           other.playerControlPreset == this.playerControlPreset &&
@@ -8055,6 +8337,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> useDynamicColor;
   final Value<bool> pureBlackBackground;
   final Value<String> accentId;
+  final Value<String> themeMode;
   final Value<String> backgroundDepth;
   final Value<String> glassIntensity;
   final Value<bool> restoreQueueOnStart;
@@ -8091,6 +8374,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<int> playerVisualizerStyle;
   final Value<String> playerVisualizerQuality;
   final Value<bool> reduceVisualizerEffects;
+  final Value<String> motionProfile;
+  final Value<int> motionIntensity;
+  final Value<int> motionSmoothness;
+  final Value<int> motionBeatResponse;
+  final Value<int> motionParticles;
+  final Value<String> visualizerColorSource;
   final Value<int> playerVisualScene;
   final Value<int> playerSceneAspectRatio;
   final Value<String> playerControlPreset;
@@ -8108,6 +8397,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.useDynamicColor = const Value.absent(),
     this.pureBlackBackground = const Value.absent(),
     this.accentId = const Value.absent(),
+    this.themeMode = const Value.absent(),
     this.backgroundDepth = const Value.absent(),
     this.glassIntensity = const Value.absent(),
     this.restoreQueueOnStart = const Value.absent(),
@@ -8144,6 +8434,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerVisualizerStyle = const Value.absent(),
     this.playerVisualizerQuality = const Value.absent(),
     this.reduceVisualizerEffects = const Value.absent(),
+    this.motionProfile = const Value.absent(),
+    this.motionIntensity = const Value.absent(),
+    this.motionSmoothness = const Value.absent(),
+    this.motionBeatResponse = const Value.absent(),
+    this.motionParticles = const Value.absent(),
+    this.visualizerColorSource = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8162,6 +8458,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.useDynamicColor = const Value.absent(),
     this.pureBlackBackground = const Value.absent(),
     this.accentId = const Value.absent(),
+    this.themeMode = const Value.absent(),
     this.backgroundDepth = const Value.absent(),
     this.glassIntensity = const Value.absent(),
     this.restoreQueueOnStart = const Value.absent(),
@@ -8198,6 +8495,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerVisualizerStyle = const Value.absent(),
     this.playerVisualizerQuality = const Value.absent(),
     this.reduceVisualizerEffects = const Value.absent(),
+    this.motionProfile = const Value.absent(),
+    this.motionIntensity = const Value.absent(),
+    this.motionSmoothness = const Value.absent(),
+    this.motionBeatResponse = const Value.absent(),
+    this.motionParticles = const Value.absent(),
+    this.visualizerColorSource = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8216,6 +8519,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? useDynamicColor,
     Expression<bool>? pureBlackBackground,
     Expression<String>? accentId,
+    Expression<String>? themeMode,
     Expression<String>? backgroundDepth,
     Expression<String>? glassIntensity,
     Expression<bool>? restoreQueueOnStart,
@@ -8252,6 +8556,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<int>? playerVisualizerStyle,
     Expression<String>? playerVisualizerQuality,
     Expression<bool>? reduceVisualizerEffects,
+    Expression<String>? motionProfile,
+    Expression<int>? motionIntensity,
+    Expression<int>? motionSmoothness,
+    Expression<int>? motionBeatResponse,
+    Expression<int>? motionParticles,
+    Expression<String>? visualizerColorSource,
     Expression<int>? playerVisualScene,
     Expression<int>? playerSceneAspectRatio,
     Expression<String>? playerControlPreset,
@@ -8271,6 +8581,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       if (pureBlackBackground != null)
         'pure_black_background': pureBlackBackground,
       if (accentId != null) 'accent_id': accentId,
+      if (themeMode != null) 'theme_mode': themeMode,
       if (backgroundDepth != null) 'background_depth': backgroundDepth,
       if (glassIntensity != null) 'glass_intensity': glassIntensity,
       if (restoreQueueOnStart != null)
@@ -8319,6 +8630,14 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'player_visualizer_quality': playerVisualizerQuality,
       if (reduceVisualizerEffects != null)
         'reduce_visualizer_effects': reduceVisualizerEffects,
+      if (motionProfile != null) 'motion_profile': motionProfile,
+      if (motionIntensity != null) 'motion_intensity': motionIntensity,
+      if (motionSmoothness != null) 'motion_smoothness': motionSmoothness,
+      if (motionBeatResponse != null)
+        'motion_beat_response': motionBeatResponse,
+      if (motionParticles != null) 'motion_particles': motionParticles,
+      if (visualizerColorSource != null)
+        'visualizer_color_source': visualizerColorSource,
       if (playerVisualScene != null) 'player_visual_scene': playerVisualScene,
       if (playerSceneAspectRatio != null)
         'player_scene_aspect_ratio': playerSceneAspectRatio,
@@ -8347,6 +8666,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? useDynamicColor,
     Value<bool>? pureBlackBackground,
     Value<String>? accentId,
+    Value<String>? themeMode,
     Value<String>? backgroundDepth,
     Value<String>? glassIntensity,
     Value<bool>? restoreQueueOnStart,
@@ -8383,6 +8703,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<int>? playerVisualizerStyle,
     Value<String>? playerVisualizerQuality,
     Value<bool>? reduceVisualizerEffects,
+    Value<String>? motionProfile,
+    Value<int>? motionIntensity,
+    Value<int>? motionSmoothness,
+    Value<int>? motionBeatResponse,
+    Value<int>? motionParticles,
+    Value<String>? visualizerColorSource,
     Value<int>? playerVisualScene,
     Value<int>? playerSceneAspectRatio,
     Value<String>? playerControlPreset,
@@ -8401,6 +8727,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       useDynamicColor: useDynamicColor ?? this.useDynamicColor,
       pureBlackBackground: pureBlackBackground ?? this.pureBlackBackground,
       accentId: accentId ?? this.accentId,
+      themeMode: themeMode ?? this.themeMode,
       backgroundDepth: backgroundDepth ?? this.backgroundDepth,
       glassIntensity: glassIntensity ?? this.glassIntensity,
       restoreQueueOnStart: restoreQueueOnStart ?? this.restoreQueueOnStart,
@@ -8445,6 +8772,13 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           playerVisualizerQuality ?? this.playerVisualizerQuality,
       reduceVisualizerEffects:
           reduceVisualizerEffects ?? this.reduceVisualizerEffects,
+      motionProfile: motionProfile ?? this.motionProfile,
+      motionIntensity: motionIntensity ?? this.motionIntensity,
+      motionSmoothness: motionSmoothness ?? this.motionSmoothness,
+      motionBeatResponse: motionBeatResponse ?? this.motionBeatResponse,
+      motionParticles: motionParticles ?? this.motionParticles,
+      visualizerColorSource:
+          visualizerColorSource ?? this.visualizerColorSource,
       playerVisualScene: playerVisualScene ?? this.playerVisualScene,
       playerSceneAspectRatio:
           playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -8485,6 +8819,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     }
     if (accentId.present) {
       map['accent_id'] = Variable<String>(accentId.value);
+    }
+    if (themeMode.present) {
+      map['theme_mode'] = Variable<String>(themeMode.value);
     }
     if (backgroundDepth.present) {
       map['background_depth'] = Variable<String>(backgroundDepth.value);
@@ -8610,6 +8947,26 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         reduceVisualizerEffects.value,
       );
     }
+    if (motionProfile.present) {
+      map['motion_profile'] = Variable<String>(motionProfile.value);
+    }
+    if (motionIntensity.present) {
+      map['motion_intensity'] = Variable<int>(motionIntensity.value);
+    }
+    if (motionSmoothness.present) {
+      map['motion_smoothness'] = Variable<int>(motionSmoothness.value);
+    }
+    if (motionBeatResponse.present) {
+      map['motion_beat_response'] = Variable<int>(motionBeatResponse.value);
+    }
+    if (motionParticles.present) {
+      map['motion_particles'] = Variable<int>(motionParticles.value);
+    }
+    if (visualizerColorSource.present) {
+      map['visualizer_color_source'] = Variable<String>(
+        visualizerColorSource.value,
+      );
+    }
     if (playerVisualScene.present) {
       map['player_visual_scene'] = Variable<int>(playerVisualScene.value);
     }
@@ -8668,6 +9025,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('useDynamicColor: $useDynamicColor, ')
           ..write('pureBlackBackground: $pureBlackBackground, ')
           ..write('accentId: $accentId, ')
+          ..write('themeMode: $themeMode, ')
           ..write('backgroundDepth: $backgroundDepth, ')
           ..write('glassIntensity: $glassIntensity, ')
           ..write('restoreQueueOnStart: $restoreQueueOnStart, ')
@@ -8704,6 +9062,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('playerVisualizerStyle: $playerVisualizerStyle, ')
           ..write('playerVisualizerQuality: $playerVisualizerQuality, ')
           ..write('reduceVisualizerEffects: $reduceVisualizerEffects, ')
+          ..write('motionProfile: $motionProfile, ')
+          ..write('motionIntensity: $motionIntensity, ')
+          ..write('motionSmoothness: $motionSmoothness, ')
+          ..write('motionBeatResponse: $motionBeatResponse, ')
+          ..write('motionParticles: $motionParticles, ')
+          ..write('visualizerColorSource: $visualizerColorSource, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -12622,6 +12986,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> useDynamicColor,
       Value<bool> pureBlackBackground,
       Value<String> accentId,
+      Value<String> themeMode,
       Value<String> backgroundDepth,
       Value<String> glassIntensity,
       Value<bool> restoreQueueOnStart,
@@ -12658,6 +13023,12 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<int> playerVisualizerStyle,
       Value<String> playerVisualizerQuality,
       Value<bool> reduceVisualizerEffects,
+      Value<String> motionProfile,
+      Value<int> motionIntensity,
+      Value<int> motionSmoothness,
+      Value<int> motionBeatResponse,
+      Value<int> motionParticles,
+      Value<String> visualizerColorSource,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -12677,6 +13048,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> useDynamicColor,
       Value<bool> pureBlackBackground,
       Value<String> accentId,
+      Value<String> themeMode,
       Value<String> backgroundDepth,
       Value<String> glassIntensity,
       Value<bool> restoreQueueOnStart,
@@ -12713,6 +13085,12 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<int> playerVisualizerStyle,
       Value<String> playerVisualizerQuality,
       Value<bool> reduceVisualizerEffects,
+      Value<String> motionProfile,
+      Value<int> motionIntensity,
+      Value<int> motionSmoothness,
+      Value<int> motionBeatResponse,
+      Value<int> motionParticles,
+      Value<String> visualizerColorSource,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -12761,6 +13139,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get accentId => $composableBuilder(
     column: $table.accentId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get themeMode => $composableBuilder(
+    column: $table.themeMode,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -12944,6 +13327,36 @@ class $$AppSettingsTableFilterComposer
     builder: (column) => ColumnFilters(column),
   );
 
+  ColumnFilters<String> get motionProfile => $composableBuilder(
+    column: $table.motionProfile,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get motionIntensity => $composableBuilder(
+    column: $table.motionIntensity,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get motionSmoothness => $composableBuilder(
+    column: $table.motionSmoothness,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get motionBeatResponse => $composableBuilder(
+    column: $table.motionBeatResponse,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get motionParticles => $composableBuilder(
+    column: $table.motionParticles,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get visualizerColorSource => $composableBuilder(
+    column: $table.visualizerColorSource,
+    builder: (column) => ColumnFilters(column),
+  );
+
   ColumnFilters<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => ColumnFilters(column),
@@ -13031,6 +13444,11 @@ class $$AppSettingsTableOrderingComposer
 
   ColumnOrderings<String> get accentId => $composableBuilder(
     column: $table.accentId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get themeMode => $composableBuilder(
+    column: $table.themeMode,
     builder: (column) => ColumnOrderings(column),
   );
 
@@ -13214,6 +13632,36 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<String> get motionProfile => $composableBuilder(
+    column: $table.motionProfile,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get motionIntensity => $composableBuilder(
+    column: $table.motionIntensity,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get motionSmoothness => $composableBuilder(
+    column: $table.motionSmoothness,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get motionBeatResponse => $composableBuilder(
+    column: $table.motionBeatResponse,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get motionParticles => $composableBuilder(
+    column: $table.motionParticles,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get visualizerColorSource => $composableBuilder(
+    column: $table.visualizerColorSource,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => ColumnOrderings(column),
@@ -13299,6 +13747,9 @@ class $$AppSettingsTableAnnotationComposer
 
   GeneratedColumn<String> get accentId =>
       $composableBuilder(column: $table.accentId, builder: (column) => column);
+
+  GeneratedColumn<String> get themeMode =>
+      $composableBuilder(column: $table.themeMode, builder: (column) => column);
 
   GeneratedColumn<String> get backgroundDepth => $composableBuilder(
     column: $table.backgroundDepth,
@@ -13480,6 +13931,36 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<String> get motionProfile => $composableBuilder(
+    column: $table.motionProfile,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get motionIntensity => $composableBuilder(
+    column: $table.motionIntensity,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get motionSmoothness => $composableBuilder(
+    column: $table.motionSmoothness,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get motionBeatResponse => $composableBuilder(
+    column: $table.motionBeatResponse,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get motionParticles => $composableBuilder(
+    column: $table.motionParticles,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get visualizerColorSource => $composableBuilder(
+    column: $table.visualizerColorSource,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => column,
@@ -13568,6 +14049,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> useDynamicColor = const Value.absent(),
                 Value<bool> pureBlackBackground = const Value.absent(),
                 Value<String> accentId = const Value.absent(),
+                Value<String> themeMode = const Value.absent(),
                 Value<String> backgroundDepth = const Value.absent(),
                 Value<String> glassIntensity = const Value.absent(),
                 Value<bool> restoreQueueOnStart = const Value.absent(),
@@ -13604,6 +14086,12 @@ class $$AppSettingsTableTableManager
                 Value<int> playerVisualizerStyle = const Value.absent(),
                 Value<String> playerVisualizerQuality = const Value.absent(),
                 Value<bool> reduceVisualizerEffects = const Value.absent(),
+                Value<String> motionProfile = const Value.absent(),
+                Value<int> motionIntensity = const Value.absent(),
+                Value<int> motionSmoothness = const Value.absent(),
+                Value<int> motionBeatResponse = const Value.absent(),
+                Value<int> motionParticles = const Value.absent(),
+                Value<String> visualizerColorSource = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -13621,6 +14109,7 @@ class $$AppSettingsTableTableManager
                 useDynamicColor: useDynamicColor,
                 pureBlackBackground: pureBlackBackground,
                 accentId: accentId,
+                themeMode: themeMode,
                 backgroundDepth: backgroundDepth,
                 glassIntensity: glassIntensity,
                 restoreQueueOnStart: restoreQueueOnStart,
@@ -13657,6 +14146,12 @@ class $$AppSettingsTableTableManager
                 playerVisualizerStyle: playerVisualizerStyle,
                 playerVisualizerQuality: playerVisualizerQuality,
                 reduceVisualizerEffects: reduceVisualizerEffects,
+                motionProfile: motionProfile,
+                motionIntensity: motionIntensity,
+                motionSmoothness: motionSmoothness,
+                motionBeatResponse: motionBeatResponse,
+                motionParticles: motionParticles,
+                visualizerColorSource: visualizerColorSource,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,
@@ -13676,6 +14171,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> useDynamicColor = const Value.absent(),
                 Value<bool> pureBlackBackground = const Value.absent(),
                 Value<String> accentId = const Value.absent(),
+                Value<String> themeMode = const Value.absent(),
                 Value<String> backgroundDepth = const Value.absent(),
                 Value<String> glassIntensity = const Value.absent(),
                 Value<bool> restoreQueueOnStart = const Value.absent(),
@@ -13712,6 +14208,12 @@ class $$AppSettingsTableTableManager
                 Value<int> playerVisualizerStyle = const Value.absent(),
                 Value<String> playerVisualizerQuality = const Value.absent(),
                 Value<bool> reduceVisualizerEffects = const Value.absent(),
+                Value<String> motionProfile = const Value.absent(),
+                Value<int> motionIntensity = const Value.absent(),
+                Value<int> motionSmoothness = const Value.absent(),
+                Value<int> motionBeatResponse = const Value.absent(),
+                Value<int> motionParticles = const Value.absent(),
+                Value<String> visualizerColorSource = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -13729,6 +14231,7 @@ class $$AppSettingsTableTableManager
                 useDynamicColor: useDynamicColor,
                 pureBlackBackground: pureBlackBackground,
                 accentId: accentId,
+                themeMode: themeMode,
                 backgroundDepth: backgroundDepth,
                 glassIntensity: glassIntensity,
                 restoreQueueOnStart: restoreQueueOnStart,
@@ -13765,6 +14268,12 @@ class $$AppSettingsTableTableManager
                 playerVisualizerStyle: playerVisualizerStyle,
                 playerVisualizerQuality: playerVisualizerQuality,
                 reduceVisualizerEffects: reduceVisualizerEffects,
+                motionProfile: motionProfile,
+                motionIntensity: motionIntensity,
+                motionSmoothness: motionSmoothness,
+                motionBeatResponse: motionBeatResponse,
+                motionParticles: motionParticles,
+                visualizerColorSource: visualizerColorSource,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,

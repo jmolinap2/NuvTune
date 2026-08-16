@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:nuvtune/app/theme/design_tokens.dart';
+import 'package:nuvtune/features/settings/personalization_models.dart';
 
 /// Apariencia efectiva de la aplicacion en un punto del arbol.
 ///
@@ -13,6 +14,8 @@ class Appearance {
     required this.depth,
     required this.glass,
     required this.dynamicFromCover,
+    required this.themePreference,
+    required this.motion,
   });
 
   final AccentIdentity accent;
@@ -21,28 +24,30 @@ class Appearance {
 
   /// Si el acento se toma de la portada de la cancion en reproduccion.
   final bool dynamicFromCover;
+  final AppThemePreference themePreference;
+  final MotionPreferences motion;
 
   Appearance withAccent(AccentIdentity value) => Appearance(
-        accent: value,
-        depth: depth,
-        glass: glass,
-        dynamicFromCover: dynamicFromCover,
-      );
+    accent: value,
+    depth: depth,
+    glass: glass,
+    dynamicFromCover: dynamicFromCover,
+    themePreference: themePreference,
+    motion: motion,
+  );
 
   static const fallback = Appearance(
     accent: AccentIdentity.nebula,
     depth: BackgroundDepth.night,
     glass: GlassIntensity.medium,
     dynamicFromCover: true,
+    themePreference: AppThemePreference.dark,
+    motion: MotionPreferences.fallback,
   );
 }
 
 class ThemeScope extends InheritedWidget {
-  const ThemeScope({
-    super.key,
-    required this.appearance,
-    required super.child,
-  });
+  const ThemeScope({super.key, required this.appearance, required super.child});
 
   final Appearance appearance;
 
@@ -59,5 +64,7 @@ class ThemeScope extends InheritedWidget {
       oldWidget.appearance.accent.middle != appearance.accent.middle ||
       oldWidget.appearance.depth != appearance.depth ||
       oldWidget.appearance.glass != appearance.glass ||
-      oldWidget.appearance.dynamicFromCover != appearance.dynamicFromCover;
+      oldWidget.appearance.dynamicFromCover != appearance.dynamicFromCover ||
+      oldWidget.appearance.themePreference != appearance.themePreference ||
+      oldWidget.appearance.motion != appearance.motion;
 }

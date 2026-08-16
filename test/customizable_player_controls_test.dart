@@ -8,9 +8,7 @@ import 'package:nuvtune/features/settings/player_density.dart';
 
 void main() {
   group('CustomizablePlayerControls favorito', () {
-    testWidgets('se dibuja una sola vez aunque provenga de la fila primaria', (
-      tester,
-    ) async {
+    testWidgets('se dibuja una sola vez en la fila primaria', (tester) async {
       await _pumpControls(
         tester,
         layout: PlayerControlLayout(
@@ -47,14 +45,13 @@ void main() {
       expect(find.byTooltip('Favorito'), findsNothing);
     });
 
-    testWidgets('queda centrado y debajo de las dos filas de controles', (
+    testWidgets('queda centrado cuando el usuario lo coloca abajo', (
       tester,
     ) async {
       await _pumpControls(
         tester,
         layout: PlayerControlLayout(
           primary: const [
-            PlayerControlId.favorite,
             PlayerControlId.previous,
             PlayerControlId.playPause,
             PlayerControlId.next,
@@ -63,6 +60,7 @@ void main() {
             PlayerControlId.seekBackward,
             PlayerControlId.queue,
           ],
+          footer: const [PlayerControlId.favorite],
         ),
       );
 

@@ -30,7 +30,9 @@ import 'package:nuvtune/features/player/customizable_player_controls.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
+import 'package:nuvtune/features/player/sleep_timer_sheet.dart';
 import 'package:nuvtune/features/player/system_volume.dart';
+import 'package:nuvtune/features/player/visualization_picker.dart';
 import 'package:nuvtune/features/queue/queue_list.dart';
 import 'package:nuvtune/features/settings/player_control_layout.dart';
 import 'package:nuvtune/features/settings/player_density.dart';
@@ -181,8 +183,6 @@ String _onlineLyricsArtist(String value) {
   }
   return artist;
 }
-
-enum _VisualizationAction { fullscreen, scene, style }
 
 Future<void> _openFullscreenPlayer(
   BuildContext context,
@@ -1459,10 +1459,19 @@ class _PlayerAppBar extends ConsumerWidget {
     final outputName = ref.watch(playbackProvider.select((s) => s.outputName));
     final queue = ref.watch(playbackProvider.select((s) => s.queue));
     final settings = ref.watch(settingsProvider).valueOrNull;
-    final visualScene = PlayerVisualScene.fromIndex(
-      settings?.playerVisualScene ?? 0,
+    final playback = ref.watch(playbackProvider);
+    final controller = ref.read(playbackProvider.notifier);
+    final preset = PlayerControlPreset.byId(
+      settings?.playerControlPreset ?? PlayerControlPreset.complete.id,
     );
-
+    final layout = preset == PlayerControlPreset.custom
+        ? PlayerControlLayout.fromJsonString(
+            settings?.playerControlLayoutJson ??
+                PlayerControlLayout.complete.toJsonString(),
+          )
+        : PlayerControlLayout.forPreset(preset);
+    final favoriteIds = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
+    final isFavorite = favoriteIds.contains(song.id);
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 4, 4, 0),
       child: Row(
@@ -1496,64 +1505,24 @@ class _PlayerAppBar extends ConsumerWidget {
               ],
             ),
           ),
-          PopupMenuButton<_VisualizationAction>(
+          for (final control in layout.top)
+            IconButton(
+              tooltip: _topControlTooltip(control, playback, isFavorite),
+              color: _topControlActive(control, playback, isFavorite)
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+              icon: Icon(_topControlIcon(control, playback, isFavorite)),
+              onPressed: () =>
+                  _invokeTopControl(context, control, playback, controller),
+            ),
+          IconButton(
             tooltip: 'Visualización',
             icon: const Icon(Icons.graphic_eq_rounded),
-            onSelected: (action) async {
-              switch (action) {
-                case _VisualizationAction.fullscreen:
-                  await onOpenFullscreen(visualScene);
-                  break;
-                case _VisualizationAction.scene:
-                  final choice = await showPlayerVisualScenePicker(
-                    context,
-                    selected: visualScene,
-                  );
-                  if (choice != null) {
-                    await ref
-                        .read(settingsRepositoryProvider)
-                        .update(
-                          AppSettingsCompanion(
-                            playerVisualScene: Value(choice.index),
-                          ),
-                        );
-                  }
-                  break;
-                case _VisualizationAction.style:
-                  if (context.mounted) {
-                    await showVisualizerStylePicker(context, ref);
-                  }
-                  break;
-              }
-            },
-            itemBuilder: (context) => [
-              PopupMenuItem(
-                value: _VisualizationAction.fullscreen,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: const Icon(Icons.fullscreen_rounded),
-                  title: const Text('Pantalla completa'),
-                  subtitle: Text(visualScene.label),
-                ),
-              ),
-              const PopupMenuItem(
-                value: _VisualizationAction.style,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(Icons.auto_awesome_rounded),
-                  title: Text('Cambiar estilo'),
-                ),
-              ),
-              PopupMenuItem(
-                value: _VisualizationAction.scene,
-                child: ListTile(
-                  contentPadding: EdgeInsets.zero,
-                  leading: Icon(visualScene.icon),
-                  title: const Text('Escenario'),
-                  subtitle: Text(visualScene.label),
-                ),
-              ),
-            ],
+            onPressed: () => showVisualizationPicker(
+              context,
+              ref,
+              onOpenFullscreen: onOpenFullscreen,
+            ),
           ),
           IconButton(
             tooltip: 'Más opciones',
@@ -1564,6 +1533,88 @@ class _PlayerAppBar extends ConsumerWidget {
         ],
       ),
     );
+  }
+
+  bool _topControlActive(
+    PlayerControlId control,
+    PlaybackState state,
+    bool isFavorite,
+  ) => switch (control) {
+    PlayerControlId.favorite => isFavorite,
+    PlayerControlId.shuffle => state.snapshot.shuffleEnabled,
+    PlayerControlId.repeat => state.snapshot.repeatMode != RepeatMode.off,
+    PlayerControlId.sleepTimer => state.snapshot.sleepTimerRemainingMs != null,
+    _ => false,
+  };
+
+  IconData _topControlIcon(
+    PlayerControlId control,
+    PlaybackState state,
+    bool isFavorite,
+  ) => switch (control) {
+    PlayerControlId.favorite =>
+      isFavorite ? Icons.favorite_rounded : Icons.favorite_border_rounded,
+    PlayerControlId.shuffle => Icons.shuffle_rounded,
+    PlayerControlId.previous => Icons.skip_previous_rounded,
+    PlayerControlId.playPause =>
+      state.isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
+    PlayerControlId.next => Icons.skip_next_rounded,
+    PlayerControlId.repeat =>
+      state.snapshot.repeatMode == RepeatMode.one
+          ? Icons.repeat_one_rounded
+          : Icons.repeat_rounded,
+    PlayerControlId.seekBackward => Icons.replay_10_rounded,
+    PlayerControlId.seekForward => Icons.forward_30_rounded,
+    PlayerControlId.queue => Icons.queue_music_rounded,
+    PlayerControlId.sleepTimer => Icons.bedtime_outlined,
+  };
+
+  String _topControlTooltip(
+    PlayerControlId control,
+    PlaybackState state,
+    bool isFavorite,
+  ) => switch (control) {
+    PlayerControlId.favorite =>
+      isFavorite ? 'Quitar de favoritos' : AppStrings.favorite,
+    PlayerControlId.shuffle => AppStrings.shuffle,
+    PlayerControlId.previous => 'Anterior',
+    PlayerControlId.playPause => state.isPlaying ? 'Pausar' : 'Reproducir',
+    PlayerControlId.next => 'Siguiente',
+    PlayerControlId.repeat => 'Repetición',
+    PlayerControlId.seekBackward => 'Retroceder 10 segundos',
+    PlayerControlId.seekForward => 'Avanzar 30 segundos',
+    PlayerControlId.queue => AppStrings.queue,
+    PlayerControlId.sleepTimer => AppStrings.sleepTimer,
+  };
+
+  void _invokeTopControl(
+    BuildContext context,
+    PlayerControlId control,
+    PlaybackState state,
+    PlaybackController controller,
+  ) {
+    switch (control) {
+      case PlayerControlId.favorite:
+        controller.toggleFavorite(song.id);
+      case PlayerControlId.shuffle:
+        controller.toggleShuffle();
+      case PlayerControlId.previous:
+        controller.skipPrevious();
+      case PlayerControlId.playPause:
+        controller.togglePlayPause();
+      case PlayerControlId.next:
+        controller.skipNext();
+      case PlayerControlId.repeat:
+        controller.cycleRepeatMode();
+      case PlayerControlId.seekBackward:
+        controller.seekRelative(-10000);
+      case PlayerControlId.seekForward:
+        controller.seekRelative(30000);
+      case PlayerControlId.queue:
+        context.push('/queue');
+      case PlayerControlId.sleepTimer:
+        showSleepTimerSheet(context);
+    }
   }
 }
 
@@ -1976,6 +2027,8 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
         : state.queue[safePreviewIndex];
     final controller = ref.read(playbackProvider.notifier);
     final scheme = Theme.of(context).colorScheme;
+    final motionPreferences = ThemeScope.of(context).motion;
+    final reduceSystemMotion = MediaQuery.disableAnimationsOf(context);
     final favorites = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
     final isFavorite = favorites.contains(displaySong.id);
     final appSettings = ref.watch(settingsProvider).valueOrNull;
@@ -2012,12 +2065,7 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     // contenido fuera de la vista y obligaban a desplazar -que era justo lo
     // que dejaba los controles pegados a la barra de navegacion del sistema.
     return Padding(
-      padding: EdgeInsets.fromLTRB(
-        24,
-        density.gap(16),
-        24,
-        density.gap(20),
-      ),
+      padding: EdgeInsets.fromLTRB(24, density.gap(16), 24, density.gap(20)),
       child: Column(
         children: [
           Expanded(
@@ -2036,9 +2084,12 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                   onUpdate: (dy) => _updateVolumeDrag(dy, stageHeight),
                   onEnd: _endVolumeDrag,
                   child: AnimatedSwitcher(
-                    duration: Tokens.durationMedium,
-                    switchInCurve: Curves.easeOutCubic,
-                    switchOutCurve: Curves.easeInCubic,
+                    duration: motionPreferences.scale(
+                      Tokens.durationMedium,
+                      systemReduceMotion: reduceSystemMotion,
+                    ),
+                    switchInCurve: motionPreferences.curve,
+                    switchOutCurve: motionPreferences.curve,
                     child: showCleanVideo
                         ? const SizedBox.expand(
                             key: ValueKey('clean-video-stage'),
@@ -2213,9 +2264,7 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
                             (titleStyle?.fontSize ?? 22) *
                             (titleStyle?.height ?? 1.2);
                         final reserved =
-                            MediaQuery.textScalerOf(
-                              context,
-                            ).scale(lineHeight) *
+                            MediaQuery.textScalerOf(context).scale(lineHeight) *
                             2;
                         return SizedBox(
                           height: reserved,
@@ -2280,8 +2329,10 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
             onOpenQueue: () => context.push('/queue'),
           ),
 
-          if ((controlLayout.primary.contains(PlayerControlId.queue) ||
-                  controlLayout.secondary.contains(PlayerControlId.queue)) &&
+          if ((controlLayout.top.contains(PlayerControlId.queue) ||
+                  controlLayout.primary.contains(PlayerControlId.queue) ||
+                  controlLayout.secondary.contains(PlayerControlId.queue) ||
+                  controlLayout.footer.contains(PlayerControlId.queue)) &&
               engineIndex >= 0 &&
               engineIndex + 1 < state.queue.length)
             Padding(
@@ -2357,10 +2408,7 @@ class _VolumeDragTarget extends StatelessWidget {
               duration: Tokens.durationFast,
               child: Align(
                 alignment: Alignment.centerRight,
-                child: _VolumeIndicator(
-                  value: value ?? 0,
-                  scheme: scheme,
-                ),
+                child: _VolumeIndicator(value: value ?? 0, scheme: scheme),
               ),
             ),
           ),

@@ -10,6 +10,7 @@ import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
+import 'package:nuvtune/features/settings/personalization_models.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) => createRouter());
 
@@ -24,13 +25,18 @@ final appearanceProvider = Provider<Appearance>((ref) {
 
   return Appearance(
     accent: AccentIdentity.byId(settings.accentId),
-    // `pureBlackBackground` es de Fase 1 y sigue mandando: quien lo tuviera
-    // activado no debe perder su preferencia al aparecer el ajuste nuevo.
-    depth: settings.pureBlackBackground
-        ? BackgroundDepth.pureBlack
-        : BackgroundDepth.byId(settings.backgroundDepth),
+    depth: BackgroundDepth.byId(settings.backgroundDepth),
     glass: GlassIntensity.byId(settings.glassIntensity),
     dynamicFromCover: settings.useDynamicColor,
+    themePreference: AppThemePreference.byId(settings.themeMode),
+    motion: MotionPreferences(
+      profile: MotionProfile.byId(settings.motionProfile),
+      intensity: settings.motionIntensity,
+      smoothness: settings.motionSmoothness,
+      beatResponse: settings.motionBeatResponse,
+      particles: settings.motionParticles,
+      colorSource: VisualizerColorSource.byId(settings.visualizerColorSource),
+    ),
   );
 });
 
@@ -59,7 +65,13 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
   Widget build(BuildContext context) {
     final bootstrap = ref.watch(bootstrapProvider);
     final appearance = ref.watch(appearanceProvider);
-    final theme = AppTheme.dark(
+    final darkTheme = AppTheme.dark(
+      accent: appearance.accent,
+      depth: appearance.themePreference == AppThemePreference.amoled
+          ? BackgroundDepth.pureBlack
+          : appearance.depth,
+    );
+    final lightTheme = AppTheme.light(
       accent: appearance.accent,
       depth: appearance.depth,
     );
@@ -70,14 +82,18 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
           ? MaterialApp.router(
               title: AppStrings.appName,
               debugShowCheckedModeBanner: false,
-              theme: theme,
+              theme: lightTheme,
+              darkTheme: darkTheme,
+              themeMode: appearance.themePreference.themeMode,
               routerConfig: ref.watch(_routerProvider),
               builder: _wrapErrors,
             )
           : MaterialApp(
               title: AppStrings.appName,
               debugShowCheckedModeBanner: false,
-              theme: theme,
+              theme: lightTheme,
+              darkTheme: darkTheme,
+              themeMode: appearance.themePreference.themeMode,
               home: _BootstrapScreen(state: bootstrap),
               builder: _wrapErrors,
             ),
@@ -127,8 +143,8 @@ class _SectionErrorCard extends StatelessWidget {
                   'El resto de la aplicación sigue funcionando.',
                   textAlign: TextAlign.center,
                   style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                        color: Theme.of(context).colorScheme.onSurfaceVariant,
-                      ),
+                    color: Theme.of(context).colorScheme.onSurfaceVariant,
+                  ),
                 ),
               ],
             ),
@@ -155,10 +171,9 @@ class _BootstrapScreen extends ConsumerWidget {
           icon: Icons.lock_outline_rounded,
           title: AppStrings.permissionTitle,
           message: AppStrings.permissionBody,
-          actionLabel:
-              state.stage == BootstrapStage.permissionPermanentlyDenied
-                  ? AppStrings.openSystemSettings
-                  : AppStrings.grantPermission,
+          actionLabel: state.stage == BootstrapStage.permissionPermanentlyDenied
+              ? AppStrings.openSystemSettings
+              : AppStrings.grantPermission,
           onAction: state.stage == BootstrapStage.permissionPermanentlyDenied
               ? controller.openSystemSettings
               : controller.retry,
@@ -201,8 +216,8 @@ class _BootstrapScreen extends ConsumerWidget {
             Text(
               AppStrings.tagline,
               style: Theme.of(context).textTheme.bodyMedium?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
             const SizedBox(height: Tokens.space6),
             SizedBox(
@@ -220,8 +235,8 @@ class _BootstrapScreen extends ConsumerWidget {
                 _ => 'Preparando el motor de audio…',
               },
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    color: Theme.of(context).colorScheme.onSurfaceVariant,
-                  ),
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
             ),
           ],
         ),

@@ -66,15 +66,35 @@ enum PlayerControlId {
 /// reproducir/pausar nunca desaparezca. Así una preferencia antigua o dañada
 /// no puede dejar el reproductor sin su acción esencial.
 class PlayerControlLayout {
-  const PlayerControlLayout._({required this.primary, required this.secondary});
+  const PlayerControlLayout._({
+    required this.top,
+    required this.primary,
+    required this.secondary,
+    required this.footer,
+  });
 
   factory PlayerControlLayout({
+    Iterable<PlayerControlId> top = const [],
     required Iterable<PlayerControlId> primary,
     required Iterable<PlayerControlId> secondary,
+    Iterable<PlayerControlId> footer = const [],
   }) {
     final seen = <PlayerControlId>{};
+    final normalizedTop = <PlayerControlId>[];
+    final topOverflow = <PlayerControlId>[];
     final normalizedPrimary = <PlayerControlId>[];
     final normalizedSecondary = <PlayerControlId>[];
+    final normalizedFooter = <PlayerControlId>[];
+
+    for (final control in top) {
+      if (control == PlayerControlId.playPause) continue;
+      if (!seen.add(control)) continue;
+      if (normalizedTop.length < 2) {
+        normalizedTop.add(control);
+      } else {
+        topOverflow.add(control);
+      }
+    }
 
     for (final control in primary) {
       if (seen.add(control)) normalizedPrimary.add(control);
@@ -82,13 +102,18 @@ class PlayerControlLayout {
     for (final control in secondary) {
       if (seen.add(control)) normalizedSecondary.add(control);
     }
+    normalizedSecondary.insertAll(0, topOverflow);
+    for (final control in footer) {
+      if (seen.add(control)) normalizedFooter.add(control);
+    }
 
     if (!seen.contains(PlayerControlId.playPause)) {
       normalizedPrimary.insert(
         normalizedPrimary.length ~/ 2,
         PlayerControlId.playPause,
       );
-    } else if (normalizedSecondary.remove(PlayerControlId.playPause)) {
+    } else if (normalizedSecondary.remove(PlayerControlId.playPause) ||
+        normalizedFooter.remove(PlayerControlId.playPause)) {
       normalizedPrimary.insert(
         normalizedPrimary.length ~/ 2,
         PlayerControlId.playPause,
@@ -96,13 +121,17 @@ class PlayerControlLayout {
     }
 
     return PlayerControlLayout._(
+      top: List.unmodifiable(normalizedTop),
       primary: List.unmodifiable(normalizedPrimary),
       secondary: List.unmodifiable(normalizedSecondary),
+      footer: List.unmodifiable(normalizedFooter),
     );
   }
 
+  final List<PlayerControlId> top;
   final List<PlayerControlId> primary;
   final List<PlayerControlId> secondary;
+  final List<PlayerControlId> footer;
 
   static PlayerControlLayout forPreset(PlayerControlPreset preset) =>
       switch (preset) {
@@ -112,7 +141,8 @@ class PlayerControlLayout {
             PlayerControlId.playPause,
             PlayerControlId.next,
           ],
-          secondary: const [PlayerControlId.favorite],
+          secondary: const [],
+          footer: const [PlayerControlId.favorite],
         ),
         PlayerControlPreset.oneHanded => PlayerControlLayout(
           primary: const [
@@ -121,11 +151,11 @@ class PlayerControlLayout {
             PlayerControlId.next,
           ],
           secondary: const [
-            PlayerControlId.favorite,
             PlayerControlId.shuffle,
             PlayerControlId.repeat,
             PlayerControlId.queue,
           ],
+          footer: const [PlayerControlId.favorite],
         ),
         PlayerControlPreset.complete ||
         PlayerControlPreset.custom => PlayerControlLayout(
@@ -137,12 +167,12 @@ class PlayerControlLayout {
             PlayerControlId.repeat,
           ],
           secondary: const [
-            PlayerControlId.favorite,
             PlayerControlId.seekBackward,
             PlayerControlId.seekForward,
             PlayerControlId.queue,
             PlayerControlId.sleepTimer,
           ],
+          footer: const [PlayerControlId.favorite],
         ),
       };
 
@@ -150,9 +180,18 @@ class PlayerControlLayout {
     try {
       final decoded = jsonDecode(source);
       if (decoded is! Map<String, dynamic>) return complete;
+      final hasZones =
+          decoded.containsKey('top') || decoded.containsKey('footer');
+      final legacySecondary = _decodeList(decoded['secondary']).toList();
+      final legacyFavorite =
+          !hasZones && legacySecondary.remove(PlayerControlId.favorite);
       return PlayerControlLayout(
+        top: _decodeList(decoded['top']),
         primary: _decodeList(decoded['primary']),
-        secondary: _decodeList(decoded['secondary']),
+        secondary: legacySecondary,
+        footer: hasZones
+            ? _decodeList(decoded['footer'])
+            : [if (legacyFavorite) PlayerControlId.favorite],
       );
     } on FormatException {
       return complete;
@@ -170,26 +209,42 @@ class PlayerControlLayout {
   static final complete = forPreset(PlayerControlPreset.complete);
 
   String toJsonString() => jsonEncode({
+    'top': top.map((control) => control.id).toList(),
     'primary': primary.map((control) => control.id).toList(),
     'secondary': secondary.map((control) => control.id).toList(),
+    'footer': footer.map((control) => control.id).toList(),
   });
 
   PlayerControlLayout copyWith({
+    Iterable<PlayerControlId>? top,
     Iterable<PlayerControlId>? primary,
     Iterable<PlayerControlId>? secondary,
+    Iterable<PlayerControlId>? footer,
   }) => PlayerControlLayout(
+    top: top ?? this.top,
     primary: primary ?? this.primary,
     secondary: secondary ?? this.secondary,
+    footer: footer ?? this.footer,
   );
 
   @override
   bool operator ==(Object other) =>
       other is PlayerControlLayout &&
+      _same(top, other.top) &&
       _same(primary, other.primary) &&
-      _same(secondary, other.secondary);
+      _same(secondary, other.secondary) &&
+      _same(footer, other.footer);
 
   @override
-  int get hashCode => Object.hashAll([...primary, null, ...secondary]);
+  int get hashCode => Object.hashAll([
+    ...top,
+    null,
+    ...primary,
+    null,
+    ...secondary,
+    null,
+    ...footer,
+  ]);
 
   static bool _same(List<PlayerControlId> a, List<PlayerControlId> b) {
     if (a.length != b.length) return false;

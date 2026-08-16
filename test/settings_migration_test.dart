@@ -3,49 +3,53 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nuvtune/data/db/database.dart';
 
 void main() {
-  test(
-    'migración 10 a 14 conserva ajustes y añade preferencias nuevas',
-    () async {
-      final executor = NativeDatabase.memory(
-        setup: (raw) {
-          raw.execute(_appSettingsV10);
-          raw.execute(_playlistsV10);
-          raw.execute('''
+  test('migración 10 a 15 conserva ajustes y añade personalización', () async {
+    final executor = NativeDatabase.memory(
+      setup: (raw) {
+        raw.execute(_appSettingsV10);
+        raw.execute(_playlistsV10);
+        raw.execute('''
           INSERT INTO app_settings (
             id, accent_id, background_depth, gapless_enabled,
             widget_pause_on_disconnect, widget_resume_on_connect
           ) VALUES (0, 'solar', 'black', 0, 0, 1)
         ''');
-          raw.execute('PRAGMA user_version = 10');
-        },
-      );
-      final database = NuvTuneDatabase.forTesting(executor);
-      addTearDown(database.close);
+        raw.execute('PRAGMA user_version = 10');
+      },
+    );
+    final database = NuvTuneDatabase.forTesting(executor);
+    addTearDown(database.close);
 
-      final settings = await database.select(database.appSettings).getSingle();
+    final settings = await database.select(database.appSettings).getSingle();
 
-      expect(settings.accentId, 'solar');
-      expect(settings.backgroundDepth, 'black');
-      expect(settings.gaplessEnabled, isFalse);
-      expect(settings.widgetPauseOnDisconnect, isFalse);
-      expect(settings.widgetResumeOnConnect, isTrue);
-      expect(settings.playerControlPreset, 'complete');
-      expect(settings.playerControlHandedness, 'right');
-      expect(settings.playerGestureDoubleTap, isTrue);
-      expect(settings.playerGestureSwipeTrack, isTrue);
-      expect(settings.playerGestureSwipeVolume, isTrue);
-      expect(settings.playerGestureSwipeDismiss, isTrue);
-      // La densidad llega con la migración 13. Un reproductor sin este valor
-      // no sabría repartir la altura, así que el defecto tiene que existir
-      // para una base de datos que nunca lo vio.
-      expect(settings.playerDensity, 'normal');
-      expect(settings.playerVisualizerQuality, 'normal');
-      expect(settings.reduceVisualizerEffects, isFalse);
-      final playlist = await database.select(database.playlists).getSingle();
-      expect(playlist.name, 'Sin perder');
-      expect(playlist.giftId, isNull);
-    },
-  );
+    expect(settings.accentId, 'solar');
+      expect(settings.backgroundDepth, 'night');
+    expect(settings.gaplessEnabled, isFalse);
+    expect(settings.widgetPauseOnDisconnect, isFalse);
+    expect(settings.widgetResumeOnConnect, isTrue);
+    expect(settings.playerControlPreset, 'complete');
+    expect(settings.playerControlHandedness, 'right');
+    expect(settings.playerGestureDoubleTap, isTrue);
+    expect(settings.playerGestureSwipeTrack, isTrue);
+    expect(settings.playerGestureSwipeVolume, isTrue);
+    expect(settings.playerGestureSwipeDismiss, isTrue);
+    // La densidad llega con la migración 13. Un reproductor sin este valor
+    // no sabría repartir la altura, así que el defecto tiene que existir
+    // para una base de datos que nunca lo vio.
+    expect(settings.playerDensity, 'normal');
+    expect(settings.playerVisualizerQuality, 'normal');
+    expect(settings.reduceVisualizerEffects, isFalse);
+      expect(settings.themeMode, 'amoled');
+    expect(settings.motionProfile, 'balanced');
+    expect(settings.motionIntensity, 2);
+    expect(settings.motionSmoothness, 2);
+    expect(settings.motionBeatResponse, 2);
+    expect(settings.motionParticles, 2);
+    expect(settings.visualizerColorSource, 'cover');
+    final playlist = await database.select(database.playlists).getSingle();
+    expect(playlist.name, 'Sin perder');
+    expect(playlist.giftId, isNull);
+  });
 }
 
 const _playlistsV10 = '''

@@ -39,15 +39,9 @@ class CustomizablePlayerControls extends StatelessWidget {
               ? WrapAlignment.start
               : WrapAlignment.end
         : WrapAlignment.center;
-    final primaryControls = layout.primary
-        .where((control) => control != PlayerControlId.favorite)
-        .toList(growable: false);
-    final secondaryControls = layout.secondary
-        .where((control) => control != PlayerControlId.favorite)
-        .toList(growable: false);
-    final showFavorite =
-        layout.primary.contains(PlayerControlId.favorite) ||
-        layout.secondary.contains(PlayerControlId.favorite);
+    final primaryControls = layout.primary.toList(growable: false);
+    final secondaryControls = layout.secondary.toList(growable: false);
+    final footerControls = layout.footer.toList(growable: false);
 
     return Column(
       children: [
@@ -79,13 +73,15 @@ class CustomizablePlayerControls extends StatelessWidget {
             ),
           ),
         ],
-        // La referencia visual coloca Favoritos como una acción afectiva y
-        // separada del transporte. Se respeta que el usuario pueda ocultarla,
-        // pero cuando está presente siempre ocupa este cierre centrado.
-        if (showFavorite) ...[
+        if (footerControls.isNotEmpty) ...[
           SizedBox(height: density.gap(Tokens.space2)),
-          Center(
-            child: _button(context, PlayerControlId.favorite, primary: false),
+          Wrap(
+            alignment: WrapAlignment.center,
+            spacing: 2,
+            children: [
+              for (final control in footerControls)
+                _button(context, control, primary: false),
+            ],
           ),
         ],
       ],

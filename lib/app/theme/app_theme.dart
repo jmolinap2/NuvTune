@@ -11,6 +11,195 @@ abstract final class AppTheme {
   /// Acento por omision, para el codigo que todavía no lee la configuracion.
   static const seed = Color(0xFFB14BFF);
 
+  static ThemeData light({
+    AccentIdentity accent = AccentIdentity.nebula,
+    BackgroundDepth depth = BackgroundDepth.night,
+  }) {
+    final background = switch (depth) {
+      BackgroundDepth.violet => const Color(0xFFFAF5FF),
+      BackgroundDepth.warm => const Color(0xFFFFF7F3),
+      BackgroundDepth.monochrome ||
+      BackgroundDepth.pureBlack => const Color(0xFFF6F6F6),
+      BackgroundDepth.night => const Color(0xFFF8F6FB),
+    };
+    final surface = switch (depth) {
+      BackgroundDepth.violet => const Color(0xFFFFFBFF),
+      BackgroundDepth.warm => const Color(0xFFFFFCFA),
+      _ => Colors.white,
+    };
+    final scheme =
+        ColorScheme.fromSeed(
+          seedColor: accent.middle,
+          brightness: Brightness.light,
+          surface: background,
+        ).copyWith(
+          primary: accent.middle,
+          onPrimary: _onColor(accent.middle),
+          secondary: accent.end,
+          onSecondary: _onColor(accent.end),
+          tertiary: accent.start,
+          surface: background,
+          surfaceContainerLowest: surface,
+          surfaceContainerLow: surface,
+          surfaceContainer: surface,
+          surfaceContainerHigh: Color.alphaBlend(
+            accent.middle.withValues(alpha: 0.045),
+            surface,
+          ),
+          surfaceContainerHighest: Color.alphaBlend(
+            accent.middle.withValues(alpha: 0.08),
+            surface,
+          ),
+          outline: const Color(0xFF77707F),
+          outlineVariant: const Color(0xFFDDD5E3),
+        );
+    final base = ThemeData(
+      useMaterial3: true,
+      brightness: Brightness.light,
+      colorScheme: scheme,
+      scaffoldBackgroundColor: background,
+      fontFamily: Tokens.fontFamily,
+      splashFactory: InkSparkle.splashFactory,
+      visualDensity: VisualDensity.standard,
+      textTheme: _textTheme,
+    );
+    return base.copyWith(
+      appBarTheme: base.appBarTheme.copyWith(
+        backgroundColor: Colors.transparent,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+        centerTitle: false,
+        titleTextStyle: _textTheme.headlineSmall?.copyWith(
+          color: scheme.onSurface,
+        ),
+      ),
+      cardTheme: CardThemeData(
+        color: surface,
+        surfaceTintColor: Colors.transparent,
+        elevation: 0,
+        margin: EdgeInsets.zero,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Tokens.radiusLarge),
+        ),
+      ),
+      navigationBarTheme: NavigationBarThemeData(
+        backgroundColor: surface.withValues(alpha: 0.96),
+        surfaceTintColor: Colors.transparent,
+        indicatorColor: accent.middle.withValues(alpha: 0.16),
+        indicatorShape: const StadiumBorder(),
+        elevation: 0,
+        height: 70,
+        labelBehavior: NavigationDestinationLabelBehavior.alwaysShow,
+      ),
+      sliderTheme: base.sliderTheme.copyWith(
+        activeTrackColor: accent.middle,
+        inactiveTrackColor: scheme.outlineVariant,
+        thumbColor: accent.middle,
+        overlayColor: accent.middle.withValues(alpha: 0.12),
+        showValueIndicator: ShowValueIndicator.onDrag,
+      ),
+      chipTheme: base.chipTheme.copyWith(
+        backgroundColor: scheme.surfaceContainerHigh,
+        selectedColor: accent.middle.withValues(alpha: 0.20),
+        side: BorderSide(color: scheme.outlineVariant),
+        shape: const StadiumBorder(),
+        showCheckmark: false,
+      ),
+      inputDecorationTheme: InputDecorationTheme(
+        filled: true,
+        fillColor: scheme.surfaceContainerHigh,
+        border: _inputBorder(Colors.transparent),
+        enabledBorder: _inputBorder(scheme.outlineVariant),
+        focusedBorder: _inputBorder(accent.middle, width: 1.6),
+        contentPadding: const EdgeInsets.symmetric(
+          horizontal: Tokens.space4,
+          vertical: Tokens.space4,
+        ),
+      ),
+      dialogTheme: DialogThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        shape: RoundedRectangleBorder(
+          borderRadius: BorderRadius.circular(Tokens.radiusXLarge),
+        ),
+      ),
+      bottomSheetTheme: BottomSheetThemeData(
+        backgroundColor: surface,
+        surfaceTintColor: Colors.transparent,
+        showDragHandle: true,
+        dragHandleColor: scheme.outline,
+        shape: const RoundedRectangleBorder(
+          borderRadius: BorderRadius.vertical(
+            top: Radius.circular(Tokens.radiusXLarge),
+          ),
+        ),
+      ),
+      segmentedButtonTheme: SegmentedButtonThemeData(
+        style: ButtonStyle(
+          backgroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? accent.middle
+                : Colors.transparent,
+          ),
+          foregroundColor: WidgetStateProperty.resolveWith(
+            (states) => states.contains(WidgetState.selected)
+                ? _onColor(accent.middle)
+                : scheme.onSurfaceVariant,
+          ),
+          side: WidgetStatePropertyAll(
+            BorderSide(color: scheme.outlineVariant),
+          ),
+          shape: const WidgetStatePropertyAll(StadiumBorder()),
+        ),
+      ),
+      switchTheme: SwitchThemeData(
+        thumbColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? scheme.onPrimary
+              : scheme.outline,
+        ),
+        trackColor: WidgetStateProperty.resolveWith(
+          (states) => states.contains(WidgetState.selected)
+              ? accent.middle
+              : scheme.surfaceContainerHighest,
+        ),
+        trackOutlineColor: const WidgetStatePropertyAll(Colors.transparent),
+      ),
+      outlinedButtonTheme: OutlinedButtonThemeData(
+        style: OutlinedButton.styleFrom(
+          shape: const StadiumBorder(),
+          side: BorderSide(color: scheme.outlineVariant),
+          padding: const EdgeInsets.symmetric(
+            horizontal: Tokens.space5,
+            vertical: Tokens.space3,
+          ),
+        ),
+      ),
+      tabBarTheme: TabBarThemeData(
+        labelColor: accent.middle,
+        unselectedLabelColor: scheme.onSurfaceVariant,
+        indicatorColor: accent.middle,
+        indicatorSize: TabBarIndicatorSize.label,
+        dividerColor: Colors.transparent,
+      ),
+      progressIndicatorTheme: ProgressIndicatorThemeData(
+        color: accent.middle,
+        linearTrackColor: scheme.outlineVariant,
+      ),
+      dividerTheme: DividerThemeData(
+        color: scheme.outlineVariant,
+        thickness: 1,
+        space: Tokens.space5,
+      ),
+      pageTransitionsTheme: const PageTransitionsTheme(
+        builders: {
+          TargetPlatform.android: FadeForwardsPageTransitionsBuilder(),
+        },
+      ),
+    );
+  }
+
   static ThemeData dark({
     AccentIdentity accent = AccentIdentity.nebula,
     BackgroundDepth depth = BackgroundDepth.night,

@@ -295,19 +295,18 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
       _layout = PlayerControlLayout.fromJsonString(_source!);
     }
 
-    final visible = {..._layout.primary, ..._layout.secondary};
-    final favoriteVisible = visible.contains(PlayerControlId.favorite);
-    final primaryControls = _layout.primary
-        .where((control) => control != PlayerControlId.favorite)
-        .toList(growable: false);
-    final secondaryControls = _layout.secondary
-        .where((control) => control != PlayerControlId.favorite)
-        .toList(growable: false);
+    final visible = {
+      ..._layout.top,
+      ..._layout.primary,
+      ..._layout.secondary,
+      ..._layout.footer,
+    };
+    final topControls = _layout.top.toList(growable: false);
+    final primaryControls = _layout.primary.toList(growable: false);
+    final secondaryControls = _layout.secondary.toList(growable: false);
+    final footerControls = _layout.footer.toList(growable: false);
     final hidden = PlayerControlId.values
-        .where(
-          (control) =>
-              control != PlayerControlId.favorite && !visible.contains(control),
-        )
+        .where((control) => !visible.contains(control))
         .toList();
 
     return Scaffold(
@@ -325,19 +324,18 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
               ),
             ),
           ),
-          const SettingsSectionLabel('Acción fija'),
-          SettingsGroup(
-            children: [
-              SwitchListTile.adaptive(
-                secondary: const Icon(Icons.favorite_border_rounded),
-                title: const Text('Favorito'),
-                subtitle: const Text(
-                  'Centrado debajo de los controles de reproducción',
-                ),
-                value: favoriteVisible,
-                onChanged: _setFavoriteVisible,
-              ),
-            ],
+          const SettingsSectionLabel('Barra superior'),
+          _ReorderSection(
+            controls: topControls,
+            destination: _ControlDestination.top,
+            emptyLabel: 'Sin acciones · admite hasta dos',
+            onReorder: (oldIndex, newIndex) {
+              final next = [...topControls];
+              final item = next.removeAt(oldIndex);
+              next.insert(newIndex, item);
+              _commit(_layout.copyWith(top: next));
+            },
+            onAction: _handleAction,
           ),
           const SettingsSectionLabel('Controles principales'),
           _ReorderSection(
@@ -349,9 +347,10 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
               next.insert(newIndex, item);
               _commit(
                 _composeLayout(
+                  top: topControls,
                   primary: next,
                   secondary: secondaryControls,
-                  favoriteVisible: favoriteVisible,
+                  footer: footerControls,
                 ),
               );
             },
@@ -367,11 +366,25 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
               next.insert(newIndex, item);
               _commit(
                 _composeLayout(
+                  top: topControls,
                   primary: primaryControls,
                   secondary: next,
-                  favoriteVisible: favoriteVisible,
+                  footer: footerControls,
                 ),
               );
+            },
+            onAction: _handleAction,
+          ),
+          const SettingsSectionLabel('Acciones inferiores'),
+          _ReorderSection(
+            controls: footerControls,
+            destination: _ControlDestination.footer,
+            emptyLabel: 'Sin acciones inferiores',
+            onReorder: (oldIndex, newIndex) {
+              final next = [...footerControls];
+              final item = next.removeAt(oldIndex);
+              next.insert(newIndex, item);
+              _commit(_layout.copyWith(footer: next));
             },
             onAction: _handleAction,
           ),
@@ -397,9 +410,9 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
             icon: Icons.lock_outline_rounded,
             title: 'Reproducir o pausar siempre está visible',
             message:
-                'Favorito puede ocultarse, pero cuando está activo permanece '
-                'centrado debajo. Los demás controles sí pueden moverse entre '
-                'los bloques principal y secundario.',
+                'Puedes mover Favorito y las demás acciones libremente. La '
+                'barra superior admite dos; Reproducir o pausar permanece en '
+                'el bloque principal.',
           ),
         ],
       ),
@@ -407,60 +420,47 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
   }
 
   void _handleAction(PlayerControlId control, _ControlDestination target) {
-    if (control == PlayerControlId.favorite) return;
-    final favoriteVisible = _hasFavorite;
-    final primary =
-        _layout.primary
-            .where((item) => item != PlayerControlId.favorite)
-            .toList()
-          ..remove(control);
-    final secondary =
-        _layout.secondary
-            .where((item) => item != PlayerControlId.favorite)
-            .toList()
-          ..remove(control);
+    if (control == PlayerControlId.playPause &&
+        target != _ControlDestination.primary) {
+      return;
+    }
+    final top = [..._layout.top]..remove(control);
+    final primary = _layout.primary.toList()..remove(control);
+    final secondary = _layout.secondary.toList()..remove(control);
+    final footer = [..._layout.footer]..remove(control);
     switch (target) {
+      case _ControlDestination.top:
+        if (top.length >= 2) return;
+        top.add(control);
       case _ControlDestination.primary:
         primary.add(control);
       case _ControlDestination.secondary:
         secondary.add(control);
+      case _ControlDestination.footer:
+        footer.add(control);
       case _ControlDestination.hidden:
         if (control == PlayerControlId.playPause) return;
     }
     _commit(
       _composeLayout(
+        top: top,
         primary: primary,
         secondary: secondary,
-        favoriteVisible: favoriteVisible,
-      ),
-    );
-  }
-
-  bool get _hasFavorite =>
-      _layout.primary.contains(PlayerControlId.favorite) ||
-      _layout.secondary.contains(PlayerControlId.favorite);
-
-  void _setFavoriteVisible(bool visible) {
-    _commit(
-      _composeLayout(
-        primary: _layout.primary.where(
-          (control) => control != PlayerControlId.favorite,
-        ),
-        secondary: _layout.secondary.where(
-          (control) => control != PlayerControlId.favorite,
-        ),
-        favoriteVisible: visible,
+        footer: footer,
       ),
     );
   }
 
   PlayerControlLayout _composeLayout({
+    required Iterable<PlayerControlId> top,
     required Iterable<PlayerControlId> primary,
     required Iterable<PlayerControlId> secondary,
-    required bool favoriteVisible,
+    required Iterable<PlayerControlId> footer,
   }) => PlayerControlLayout(
+    top: top,
     primary: primary,
-    secondary: [if (favoriteVisible) PlayerControlId.favorite, ...secondary],
+    secondary: secondary,
+    footer: footer,
   );
 
   void _commit(PlayerControlLayout next) {
@@ -479,7 +479,7 @@ class _ControlLayoutScreenState extends ConsumerState<ControlLayoutScreen> {
   }
 }
 
-enum _ControlDestination { primary, secondary, hidden }
+enum _ControlDestination { top, primary, secondary, footer, hidden }
 
 class _ReorderSection extends StatelessWidget {
   const _ReorderSection({
@@ -487,12 +487,14 @@ class _ReorderSection extends StatelessWidget {
     required this.destination,
     required this.onReorder,
     required this.onAction,
+    this.emptyLabel,
   });
 
   final List<PlayerControlId> controls;
   final _ControlDestination destination;
   final ReorderCallback onReorder;
   final void Function(PlayerControlId, _ControlDestination) onAction;
+  final String? emptyLabel;
 
   @override
   Widget build(BuildContext context) => Container(
@@ -503,45 +505,65 @@ class _ReorderSection extends StatelessWidget {
       color: Theme.of(context).colorScheme.surface.withValues(alpha: 0.72),
       border: Border.all(color: Theme.of(context).colorScheme.outlineVariant),
     ),
-    child: ReorderableListView.builder(
-      shrinkWrap: true,
-      physics: const NeverScrollableScrollPhysics(),
-      buildDefaultDragHandles: false,
-      itemCount: controls.length,
-      onReorderItem: onReorder,
-      itemBuilder: (context, index) {
-        final control = controls[index];
-        return ListTile(
-          key: ValueKey('${destination.name}-${control.id}'),
-          leading: ReorderableDragStartListener(
-            index: index,
-            child: const Icon(Icons.drag_indicator_rounded),
+    child: controls.isEmpty
+        ? Padding(
+            padding: const EdgeInsets.all(Tokens.space4),
+            child: Text(
+              emptyLabel ?? 'Sin controles',
+              style: Theme.of(context).textTheme.bodySmall?.copyWith(
+                color: Theme.of(context).colorScheme.onSurfaceVariant,
+              ),
+            ),
+          )
+        : ReorderableListView.builder(
+            shrinkWrap: true,
+            physics: const NeverScrollableScrollPhysics(),
+            buildDefaultDragHandles: false,
+            itemCount: controls.length,
+            onReorderItem: onReorder,
+            itemBuilder: (context, index) {
+              final control = controls[index];
+              return ListTile(
+                key: ValueKey('${destination.name}-${control.id}'),
+                leading: ReorderableDragStartListener(
+                  index: index,
+                  child: const Icon(Icons.drag_indicator_rounded),
+                ),
+                title: Text(control.label),
+                trailing: PopupMenuButton<_ControlDestination>(
+                  tooltip: 'Mover ${control.label}',
+                  onSelected: (target) => onAction(control, target),
+                  itemBuilder: (context) => [
+                    if (destination != _ControlDestination.top)
+                      const PopupMenuItem(
+                        value: _ControlDestination.top,
+                        child: Text('Mover a barra superior'),
+                      ),
+                    if (destination != _ControlDestination.primary)
+                      const PopupMenuItem(
+                        value: _ControlDestination.primary,
+                        child: Text('Mover a principales'),
+                      ),
+                    if (destination != _ControlDestination.secondary)
+                      const PopupMenuItem(
+                        value: _ControlDestination.secondary,
+                        child: Text('Mover a secundarios'),
+                      ),
+                    if (destination != _ControlDestination.footer)
+                      const PopupMenuItem(
+                        value: _ControlDestination.footer,
+                        child: Text('Mover a inferiores'),
+                      ),
+                    if (control != PlayerControlId.playPause)
+                      const PopupMenuItem(
+                        value: _ControlDestination.hidden,
+                        child: Text('Ocultar'),
+                      ),
+                  ],
+                ),
+              );
+            },
           ),
-          title: Text(control.label),
-          trailing: PopupMenuButton<_ControlDestination>(
-            tooltip: 'Mover ${control.label}',
-            onSelected: (target) => onAction(control, target),
-            itemBuilder: (context) => [
-              if (destination != _ControlDestination.primary)
-                const PopupMenuItem(
-                  value: _ControlDestination.primary,
-                  child: Text('Mover a principales'),
-                ),
-              if (destination != _ControlDestination.secondary)
-                const PopupMenuItem(
-                  value: _ControlDestination.secondary,
-                  child: Text('Mover a secundarios'),
-                ),
-              if (control != PlayerControlId.playPause)
-                const PopupMenuItem(
-                  value: _ControlDestination.hidden,
-                  child: Text('Ocultar'),
-                ),
-            ],
-          ),
-        );
-      },
-    ),
   );
 }
 
@@ -606,15 +628,9 @@ class _ControlPreview extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final primary = layout.primary
-        .where((control) => control != PlayerControlId.favorite)
-        .toList(growable: false);
-    final secondary = layout.secondary
-        .where((control) => control != PlayerControlId.favorite)
-        .toList(growable: false);
-    final showFavorite =
-        layout.primary.contains(PlayerControlId.favorite) ||
-        layout.secondary.contains(PlayerControlId.favorite);
+    final primary = layout.primary.toList(growable: false);
+    final secondary = layout.secondary.toList(growable: false);
+    final footer = layout.footer.toList(growable: false);
     final alignment = preset == PlayerControlPreset.oneHanded
         ? handedness == ControlHandedness.left
               ? MainAxisAlignment.start
@@ -636,6 +652,26 @@ class _ControlPreview extends StatelessWidget {
       ),
       child: Column(
         children: [
+          Row(
+            children: [
+              const Icon(Icons.keyboard_arrow_down_rounded),
+              const Expanded(
+                child: Text(
+                  'REPRODUCIENDO',
+                  textAlign: TextAlign.center,
+                  style: TextStyle(fontSize: 10, letterSpacing: 1.1),
+                ),
+              ),
+              for (final control in layout.top)
+                Padding(
+                  padding: const EdgeInsets.only(left: 8),
+                  child: Icon(control.icon, size: 20),
+                ),
+              const SizedBox(width: 4),
+              const Icon(Icons.more_vert_rounded, size: 20),
+            ],
+          ),
+          const SizedBox(height: Tokens.space3),
           Container(
             width: 80,
             height: 80,
@@ -678,11 +714,13 @@ class _ControlPreview extends StatelessWidget {
               emphasizePlayPause: false,
             ),
           ],
-          if (showFavorite) ...[
+          if (footer.isNotEmpty) ...[
             const SizedBox(height: Tokens.space2),
-            const Align(
-              alignment: Alignment.center,
-              child: Icon(Icons.favorite_border_rounded, size: 23),
+            _PreviewControlRow(
+              controls: footer,
+              alignment: MainAxisAlignment.center,
+              expand: false,
+              emphasizePlayPause: false,
             ),
           ],
         ],

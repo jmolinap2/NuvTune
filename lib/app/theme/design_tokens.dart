@@ -192,6 +192,22 @@ enum BackgroundDepth {
     Color(0xFF1F1638),
     Color(0xFF2E1A55),
   ),
+  warm(
+    'warm',
+    'Cálido',
+    Color(0xFF160D0D),
+    Color(0xFF241515),
+    Color(0xFF342020),
+    Color(0xFF4A2926),
+  ),
+  monochrome(
+    'mono',
+    'Monocromo',
+    Color(0xFF101010),
+    Color(0xFF1A1A1A),
+    Color(0xFF252525),
+    Color(0xFF303030),
+  ),
   pureBlack(
     'black',
     'AMOLED',

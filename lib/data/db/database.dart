@@ -283,6 +283,10 @@ class AppSettings extends Table {
   /// Identidad cromatica elegida (`AccentIdentity.id`).
   TextColumn get accentId => text().withDefault(const Constant('nebula'))();
 
+  /// Modo global de tema (`AppThemePreference.id`). Las instalaciones previas
+  /// migran a oscuro para conservar exactamente su apariencia.
+  TextColumn get themeMode => text().withDefault(const Constant('dark'))();
+
   /// Profundidad del fondo (`BackgroundDepth.id`).
   TextColumn get backgroundDepth =>
       text().withDefault(const Constant('night'))();
@@ -379,6 +383,17 @@ class AppSettings extends Table {
   BoolColumn get reduceVisualizerEffects =>
       boolean().withDefault(const Constant(false))();
 
+  /// Personalidad global del movimiento y ajustes avanzados (niveles 0..3).
+  TextColumn get motionProfile =>
+      text().withDefault(const Constant('balanced'))();
+  IntColumn get motionIntensity => integer().withDefault(const Constant(2))();
+  IntColumn get motionSmoothness => integer().withDefault(const Constant(2))();
+  IntColumn get motionBeatResponse =>
+      integer().withDefault(const Constant(2))();
+  IntColumn get motionParticles => integer().withDefault(const Constant(2))();
+  TextColumn get visualizerColorSource =>
+      text().withDefault(const Constant('cover'))();
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -396,8 +411,9 @@ class AppSettings extends Table {
       text().withDefault(const Constant('complete'))();
   TextColumn get playerControlLayoutJson => text().withDefault(
     const Constant(
-      '{"primary":["shuffle","previous","playPause","next","repeat"],'
-      '"secondary":["favorite","seekBackward","seekForward","queue","sleepTimer"]}',
+      '{"top":[],"primary":["shuffle","previous","playPause","next","repeat"],'
+      '"secondary":["seekBackward","seekForward","queue","sleepTimer"],'
+      '"footer":["favorite"]}',
     ),
   )();
   TextColumn get playerControlHandedness =>
@@ -452,7 +468,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 14;
+  int get schemaVersion => 15;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -474,6 +490,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   /// - Version 12: identificador estable de regalos para importacion idempotente.
   /// - Version 13: densidad del reproductor.
   /// - Version 14: perfil de calidad y reducción de efectos del visualizador.
+  /// - Version 15: tema real, perfiles de movimiento y color del visualizador.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -594,6 +611,30 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
           appSettings,
           appSettings.reduceVisualizerEffects,
         );
+      }
+      if (from < 15) {
+        await migrator.addColumn(appSettings, appSettings.themeMode);
+        await migrator.addColumn(appSettings, appSettings.motionProfile);
+        await migrator.addColumn(appSettings, appSettings.motionIntensity);
+        await migrator.addColumn(appSettings, appSettings.motionSmoothness);
+        await migrator.addColumn(appSettings, appSettings.motionBeatResponse);
+        await migrator.addColumn(appSettings, appSettings.motionParticles);
+        await migrator.addColumn(
+          appSettings,
+          appSettings.visualizerColorSource,
+        );
+        await customStatement('''
+          UPDATE app_settings
+          SET motion_profile = 'calm', reduce_visualizer_effects = 0
+          WHERE reduce_visualizer_effects = 1
+        ''');
+        await customStatement('''
+          UPDATE app_settings
+          SET theme_mode = 'amoled',
+              pure_black_background = 0,
+              background_depth = 'night'
+          WHERE pure_black_background = 1 OR background_depth = 'black'
+        ''');
       }
     },
   );

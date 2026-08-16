@@ -6,12 +6,15 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/platform/visualizer_power_monitor.dart';
 import 'package:nuvtune/core/providers.dart';
+import 'package:nuvtune/app/theme/theme_scope.dart';
+import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/visualizer_dynamics.dart';
 import 'package:nuvtune/features/player/visualizer_quality.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
+import 'package:nuvtune/features/settings/personalization_models.dart';
 import 'package:nuvtune/shared/widgets/option_picker.dart';
 
 final Stopwatch _sharedVisualizerClock = Stopwatch()..start();
@@ -70,6 +73,7 @@ class _ReactiveAudioVisualizerState
   // valores con umbrales distintos. Ver visualizer_dynamics.dart.
   VisualizerDynamicsEngine _dynamicsEngine = VisualizerDynamicsEngine();
   int _engineBandCount = const VisualizerDynamicsConfig().bandCount;
+  String _engineMotionKey = '';
   VisualizerDynamicsState? _lastDynamics;
   int _lastFrameBucket = -1;
   bool? _lastHadLiveAnalysis;
@@ -128,11 +132,23 @@ class _ReactiveAudioVisualizerState
     final requestedQuality = VisualizerQuality.byId(
       settings?.playerVisualizerQuality,
     );
-    _userReduceEffects = settings?.reduceVisualizerEffects ?? false;
+    final motion = settings == null
+        ? MotionPreferences.fallback
+        : MotionPreferences(
+            profile: MotionProfile.byId(settings.motionProfile),
+            intensity: settings.motionIntensity,
+            smoothness: settings.motionSmoothness,
+            beatResponse: settings.motionBeatResponse,
+            particles: settings.motionParticles,
+            colorSource: VisualizerColorSource.byId(
+              settings.visualizerColorSource,
+            ),
+          );
+    _userReduceEffects = motion.effectiveIntensity == 0;
     final reduceMotion = _systemReduceMotion || _userReduceEffects;
     final forceEco = reduceMotion || powerState.shouldReduceEffects;
     final quality = forceEco ? VisualizerQuality.eco : requestedQuality;
-    _configureDynamics(quality.bandCount);
+    _configureDynamics(quality.bandCount, motion);
     if (_reduceMotion != reduceMotion) {
       _reduceMotion = reduceMotion;
       WidgetsBinding.instance.addPostFrameCallback((_) {
@@ -148,7 +164,24 @@ class _ReactiveAudioVisualizerState
         widget.styleOverride ?? VisualizerStyle.fromIndex(settingIndex);
     final seed = _stableSongSeed(widget.song);
     final style = requested.resolveFor(seed);
-    final colors = _palette(seed);
+    final colors = _palette(
+      seed,
+      motion.colorSource,
+      ThemeScope.of(context).accent,
+      Theme.of(context).colorScheme,
+    );
+    final motionScale = switch (motion.effectiveIntensity) {
+      0 => 0.0,
+      1 => 0.62,
+      2 => 1.0,
+      _ => 1.35,
+    };
+    final particleScale = switch (motion.effectiveParticles) {
+      0 => 0.0,
+      1 => 0.5,
+      2 => 1.0,
+      _ => 1.45,
+    };
 
     return Semantics(
       image: true,
@@ -195,6 +228,8 @@ class _ReactiveAudioVisualizerState
                     hasLiveAnalysis: hasLiveAnalysis,
                     reduceMotion: _reduceMotion,
                     quality: quality,
+                    motionScale: motionScale,
+                    motionParticleScale: particleScale,
                   ),
                 );
               },
@@ -205,11 +240,36 @@ class _ReactiveAudioVisualizerState
     );
   }
 
-  void _configureDynamics(int bandCount) {
-    if (_engineBandCount == bandCount) return;
+  void _configureDynamics(int bandCount, MotionPreferences motion) {
+    final key =
+        '${motion.effectiveSmoothness}:'
+        '${motion.effectiveBeatResponse}:${motion.effectiveIntensity}';
+    if (_engineBandCount == bandCount && _engineMotionKey == key) return;
     _engineBandCount = bandCount;
+    _engineMotionKey = key;
+    final responsiveness = switch (motion.effectiveBeatResponse) {
+      0 => 0.65,
+      1 => 0.82,
+      2 => 1.0,
+      _ => 1.22,
+    };
+    final smoothness = switch (motion.effectiveSmoothness) {
+      0 => 1.22,
+      1 => 1.08,
+      2 => 1.0,
+      _ => 0.82,
+    };
     _dynamicsEngine = VisualizerDynamicsEngine(
-      config: VisualizerDynamicsConfig(bandCount: bandCount),
+      config: VisualizerDynamicsConfig(
+        bandCount: bandCount,
+        attack: (0.55 * responsiveness).clamp(0.0, 1.0).toDouble(),
+        release: (0.12 / smoothness).clamp(0.01, 1.0).toDouble(),
+        levelBoost: responsiveness,
+        bassBoost: responsiveness,
+        midBoost: 0.92 + (responsiveness - 0.82) * 0.45,
+        trebleBoost: 0.9 + (responsiveness - 0.82) * 0.35,
+        beatImpulseDuration: Duration(milliseconds: (160 * smoothness).round()),
+      ),
     );
     _lastDynamics = null;
     _lastFrameBucket = -1;
@@ -252,7 +312,23 @@ class _ReactiveAudioVisualizerState
     );
   }
 
-  static List<Color> _palette(int seed) {
+  static List<Color> _palette(
+    int seed,
+    VisualizerColorSource source,
+    AccentIdentity accent,
+    ColorScheme scheme,
+  ) {
+    if (source == VisualizerColorSource.accent) {
+      return [accent.start, accent.middle, accent.end];
+    }
+    if (source == VisualizerColorSource.neutral ||
+        source == VisualizerColorSource.off) {
+      return [
+        scheme.surfaceContainerHighest,
+        scheme.onSurfaceVariant,
+        scheme.onSurface,
+      ];
+    }
     final shift = ((seed.abs() % 41) - 20).toDouble();
     final darkBlue = HSLColor.fromAHSL(
       1,
@@ -332,6 +408,8 @@ class _VisualizerPainter extends CustomPainter {
     required this.hasLiveAnalysis,
     required this.reduceMotion,
     required this.quality,
+    required this.motionScale,
+    required this.motionParticleScale,
   });
 
   final VisualizerStyle style;
@@ -344,6 +422,8 @@ class _VisualizerPainter extends CustomPainter {
   final bool hasLiveAnalysis;
   final bool reduceMotion;
   final VisualizerQuality quality;
+  final double motionScale;
+  final double motionParticleScale;
 
   double get phase => time * math.pi * 2;
 
@@ -363,10 +443,14 @@ class _VisualizerPainter extends CustomPainter {
 
   double get visualPresence => 0.06 + visualActivity * 0.94;
 
-  double get visualMotion => reduceMotion ? 0 : 0.05 + visualActivity * 0.95;
+  double get visualMotion => reduceMotion
+      ? 0
+      : ((0.05 + visualActivity * 0.95) * motionScale)
+            .clamp(0.0, 1.35)
+            .toDouble();
 
   double get renderGlow =>
-      (dynamics.glow * quality.glowScale * (reduceMotion ? 0.42 : 1))
+      (dynamics.glow * quality.glowScale * (reduceMotion ? 0.42 : motionScale))
           .clamp(0.0, 1.0)
           .toDouble();
 
@@ -375,15 +459,17 @@ class _VisualizerPainter extends CustomPainter {
   // fallos nativos de RenderThread y era el mayor coste de rasterización.
 
   double get renderParticleIntensity =>
-      (dynamics.particleIntensity * (reduceMotion ? 0 : 1))
+      (dynamics.particleIntensity * (reduceMotion ? 0 : motionParticleScale))
           .clamp(0.0, 1.0)
           .toDouble();
 
-  int particleBudget(int normalBudget) =>
-      math.max(0, (normalBudget * quality.particleScale).round());
+  int particleBudget(int normalBudget) => math.max(
+    0,
+    (normalBudget * quality.particleScale * motionParticleScale).round(),
+  );
 
   double get renderBeatImpulse =>
-      dynamics.beatImpulse * (reduceMotion ? 0.28 : 1);
+      dynamics.beatImpulse * (reduceMotion ? 0.28 : motionScale);
 
   @override
   void paint(Canvas canvas, Size size) {
