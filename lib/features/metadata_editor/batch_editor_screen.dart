@@ -53,7 +53,9 @@ class _BatchEditorScreenState extends ConsumerState<BatchEditorScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final songs = ref.watch(libraryRepositoryProvider).songsByIds(widget.songIds);
+    final songs = ref
+        .watch(libraryRepositoryProvider)
+        .songsByIds(widget.songIds);
 
     if (songs.isEmpty) {
       return Scaffold(
@@ -65,12 +67,11 @@ class _BatchEditorScreenState extends ConsumerState<BatchEditorScreen> {
       );
     }
 
-    final hasSomething = _enabled.values.any((value) => value) || _cover != null;
+    final hasSomething =
+        _enabled.values.any((value) => value) || _cover != null;
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text('${songs.length} canciones'),
-      ),
+      appBar: AppBar(title: Text('${songs.length} canciones')),
       body: AbsorbPointer(
         absorbing: _saving,
         child: ListView(
@@ -99,7 +100,11 @@ class _BatchEditorScreenState extends ConsumerState<BatchEditorScreen> {
             const SizedBox(height: 16),
 
             _batchField(AppStrings.fieldArtist, 'artist', _artist),
-            _batchField(AppStrings.fieldAlbumArtist, 'albumArtist', _albumArtist),
+            _batchField(
+              AppStrings.fieldAlbumArtist,
+              'albumArtist',
+              _albumArtist,
+            ),
             _batchField(AppStrings.fieldAlbum, 'álbum', _album),
             _batchField(AppStrings.fieldGenre, 'genre', _genre),
             _batchField(
@@ -175,7 +180,8 @@ class _BatchEditorScreenState extends ConsumerState<BatchEditorScreen> {
         children: [
           Checkbox(
             value: _enabled[key],
-            onChanged: (value) => setState(() => _enabled[key] = value ?? false),
+            onChanged: (value) =>
+                setState(() => _enabled[key] = value ?? false),
           ),
           Expanded(
             child: TextField(
@@ -226,8 +232,9 @@ class _BatchEditorScreenState extends ConsumerState<BatchEditorScreen> {
       final anyField = _enabled.values.any((value) => value);
       if (anyField) {
         final results = await engine.api.editMetadataBatch(edits);
-        failures +=
-            results.where((r) => r.outcome != WriteOutcome.success).length;
+        failures += results
+            .where((r) => r.outcome != WriteOutcome.success)
+            .length;
         setState(() => _progress = _cover == null ? 1 : 0.5);
       }
 
@@ -238,8 +245,9 @@ class _BatchEditorScreenState extends ConsumerState<BatchEditorScreen> {
           cover.bytes,
           cover.mimeType,
         );
-        failures +=
-            results.where((r) => r.outcome != WriteOutcome.success).length;
+        failures += results
+            .where((r) => r.outcome != WriteOutcome.success)
+            .length;
         for (final song in songs) {
           ref.read(coverCacheProvider).invalidate(song.id);
         }
@@ -252,8 +260,8 @@ class _BatchEditorScreenState extends ConsumerState<BatchEditorScreen> {
             failures == 0
                 ? 'Se actualizaron ${songs.length} canciones'
                 : 'Se actualizaron ${songs.length - failures} de '
-                    '${songs.length} canciones. $failures no se pudieron '
-                    'modificar.',
+                      '${songs.length} canciones. $failures no se pudieron '
+                      'modificar.',
           ),
         ),
       );

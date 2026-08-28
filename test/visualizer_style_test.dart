@@ -6,7 +6,8 @@ void main() {
     expect(VisualizerStyle.fromIndex(0), VisualizerStyle.automatic);
     expect(VisualizerStyle.fromIndex(1), VisualizerStyle.ribbons);
     expect(VisualizerStyle.fromIndex(2), VisualizerStyle.prism);
-    expect(VisualizerStyle.fromIndex(3), VisualizerStyle.minimalSpectrum);
+    expect(VisualizerStyle.fromIndex(3), VisualizerStyle.dynamicSpectrum);
+    expect(VisualizerStyle.dynamicSpectrum.label, 'Espectro dinámico');
     expect(VisualizerStyle.fromIndex(4), VisualizerStyle.electricWaves);
     expect(VisualizerStyle.fromIndex(5), VisualizerStyle.cosmicOrbs);
     expect(

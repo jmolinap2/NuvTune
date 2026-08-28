@@ -103,13 +103,14 @@ class QueueList extends ConsumerWidget {
       title: AppStrings.saveQueueAsPlaylist,
     );
     if (name == null) return;
-    await ref.read(playlistRepositoryProvider).create(
-          name,
-          songIds: queue.map((song) => song.id).toList(),
-        );
+    await ref
+        .read(playlistRepositoryProvider)
+        .create(name, songIds: queue.map((song) => song.id).toList());
     if (!context.mounted) return;
     ScaffoldMessenger.of(context).showSnackBar(
-      SnackBar(content: Text('Lista "$name" creada con ${queue.length} canciones')),
+      SnackBar(
+        content: Text('Lista "$name" creada con ${queue.length} canciones'),
+      ),
     );
   }
 }

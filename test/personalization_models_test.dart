@@ -63,6 +63,32 @@ void main() {
     );
   });
 
+  test('Extrema y Personalizada admiten el nivel cuatro', () {
+    const extreme = MotionPreferences(
+      profile: MotionProfile.extreme,
+      intensity: 0,
+      smoothness: 3,
+      beatResponse: 0,
+      particles: 0,
+      colorSource: VisualizerColorSource.cover,
+    );
+    expect(extreme.effectiveIntensity, 4);
+    expect(extreme.effectiveSmoothness, 0);
+    expect(extreme.effectiveBeatResponse, 4);
+    expect(extreme.effectiveParticles, 4);
+
+    const custom = MotionPreferences(
+      profile: MotionProfile.custom,
+      intensity: 9,
+      smoothness: 9,
+      beatResponse: 9,
+      particles: 9,
+      colorSource: VisualizerColorSource.cover,
+    );
+    expect(custom.effectiveIntensity, 4);
+    expect(custom.effectiveSmoothness, 4);
+  });
+
   test('preferencias de tema se traducen a ThemeMode', () {
     expect(AppThemePreference.system.themeMode, ThemeMode.system);
     expect(AppThemePreference.light.themeMode, ThemeMode.light);

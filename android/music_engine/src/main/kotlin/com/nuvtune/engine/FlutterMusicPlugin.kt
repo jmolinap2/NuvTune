@@ -258,7 +258,12 @@ internal class FlutterMusicPlugin(
     }
 
     override fun setShuffle(enabled: Boolean) {
-        controller?.shuffleModeEnabled = enabled
+        val service = MusicPlayerService.instance
+        if (service != null) {
+            service.handleEngineCommand(EngineCommand.SetShuffle(enabled))
+        } else {
+            controller?.shuffleModeEnabled = enabled
+        }
     }
 
     override fun setRepeatMode(mode: RepeatMode) {

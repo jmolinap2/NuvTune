@@ -21,8 +21,7 @@ class YouTubeLoginScreen extends ConsumerStatefulWidget {
   const YouTubeLoginScreen({super.key});
 
   @override
-  ConsumerState<YouTubeLoginScreen> createState() =>
-      _YouTubeLoginScreenState();
+  ConsumerState<YouTubeLoginScreen> createState() => _YouTubeLoginScreenState();
 }
 
 class _YouTubeLoginScreenState extends ConsumerState<YouTubeLoginScreen> {

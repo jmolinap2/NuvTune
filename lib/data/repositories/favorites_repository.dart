@@ -7,10 +7,10 @@ class FavoritesRepository {
 
   final NuvTuneDatabase _database;
 
-  Stream<Set<int>> watchFavoriteIds() =>
-      _database.select(_database.favorites).watch().map(
-            (rows) => rows.map((row) => row.songId).toSet(),
-          );
+  Stream<Set<int>> watchFavoriteIds() => _database
+      .select(_database.favorites)
+      .watch()
+      .map((rows) => rows.map((row) => row.songId).toSet());
 
   Future<Set<int>> favoriteIds() async {
     final rows = await _database.select(_database.favorites).get();
@@ -18,9 +18,9 @@ class FavoritesRepository {
   }
 
   Future<bool> isFavorite(int songId) async {
-    final row = await (_database.select(_database.favorites)
-          ..where((table) => table.songId.equals(songId)))
-        .getSingleOrNull();
+    final row = await (_database.select(
+      _database.favorites,
+    )..where((table) => table.songId.equals(songId))).getSingleOrNull();
     return row != null;
   }
 
@@ -40,27 +40,29 @@ class FavoritesRepository {
       .into(_database.favorites)
       .insertOnConflictUpdate(FavoritesCompanion.insert(songId: Value(songId)));
 
-  Future<void> remove(int songId) => (_database.delete(_database.favorites)
-        ..where((table) => table.songId.equals(songId)))
-      .go();
+  Future<void> remove(int songId) => (_database.delete(
+    _database.favorites,
+  )..where((table) => table.songId.equals(songId))).go();
 
   Future<void> addAll(Iterable<int> songIds) => _database.batch((batch) {
-        batch.insertAllOnConflictUpdate(
-          _database.favorites,
-          songIds
-              .map((id) => FavoritesCompanion.insert(songId: Value(id)))
-              .toList(),
-        );
-      });
+    batch.insertAllOnConflictUpdate(
+      _database.favorites,
+      songIds
+          .map((id) => FavoritesCompanion.insert(songId: Value(id)))
+          .toList(),
+    );
+  });
 
   /// Los favoritos se guardan en orden de agregado, el mas reciente primero.
   Future<List<int>> orderedFavoriteIds() async {
-    final rows = await (_database.select(_database.favorites)
-          ..orderBy([
-            (table) =>
-                OrderingTerm(expression: table.addedAt, mode: OrderingMode.desc),
-          ]))
-        .get();
+    final rows =
+        await (_database.select(_database.favorites)..orderBy([
+              (table) => OrderingTerm(
+                expression: table.addedAt,
+                mode: OrderingMode.desc,
+              ),
+            ]))
+            .get();
     return rows.map((row) => row.songId).toList();
   }
 }

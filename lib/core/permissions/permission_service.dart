@@ -31,12 +31,12 @@ class PermissionService {
   Future<void> openSettings() => openAppSettings();
 
   MusicPermissionStatus _map(PermissionStatus status) => switch (status) {
-        PermissionStatus.granted => MusicPermissionStatus.granted,
-        PermissionStatus.limited => MusicPermissionStatus.granted,
-        PermissionStatus.provisional => MusicPermissionStatus.granted,
-        PermissionStatus.permanentlyDenied =>
-          MusicPermissionStatus.permanentlyDenied,
-        PermissionStatus.restricted => MusicPermissionStatus.permanentlyDenied,
-        PermissionStatus.denied => MusicPermissionStatus.denied,
-      };
+    PermissionStatus.granted => MusicPermissionStatus.granted,
+    PermissionStatus.limited => MusicPermissionStatus.granted,
+    PermissionStatus.provisional => MusicPermissionStatus.granted,
+    PermissionStatus.permanentlyDenied =>
+      MusicPermissionStatus.permanentlyDenied,
+    PermissionStatus.restricted => MusicPermissionStatus.permanentlyDenied,
+    PermissionStatus.denied => MusicPermissionStatus.denied,
+  };
 }

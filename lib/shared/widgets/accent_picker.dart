@@ -77,8 +77,8 @@ class AccentSwatch extends StatelessWidget {
             Text(
               identity.name,
               style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                    fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-                  ),
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+              ),
             ),
           ],
         ),

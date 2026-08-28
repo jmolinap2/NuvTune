@@ -10,15 +10,15 @@ class SettingsRepository {
 
   final NuvTuneDatabase _database;
 
-  Stream<AppSetting> watchSettings() =>
-      _database.select(_database.appSettings).watchSingleOrNull().asyncMap(
-            (row) async => row ?? await _ensureRow(),
-          );
+  Stream<AppSetting> watchSettings() => _database
+      .select(_database.appSettings)
+      .watchSingleOrNull()
+      .asyncMap((row) async => row ?? await _ensureRow());
 
   Future<AppSetting> settings() async {
-    final row = await (_database.select(_database.appSettings)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final row = await (_database.select(
+      _database.appSettings,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
     return row ?? await _ensureRow();
   }
 
@@ -28,22 +28,22 @@ class SettingsRepository {
 
   Future<void> update(AppSettingsCompanion companion) async {
     await _ensureRow();
-    await (_database.update(_database.appSettings)
-          ..where((table) => table.id.equals(0)))
-        .write(companion);
+    await (_database.update(
+      _database.appSettings,
+    )..where((table) => table.id.equals(0))).write(companion);
   }
 
   Future<AppSetting> _ensureRow() async {
-    final existing = await (_database.select(_database.appSettings)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final existing = await (_database.select(
+      _database.appSettings,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
     if (existing != null) return existing;
     await _database
         .into(_database.appSettings)
         .insert(const AppSettingsCompanion(id: Value(0)));
-    return (_database.select(_database.appSettings)
-          ..where((table) => table.id.equals(0)))
-        .getSingle();
+    return (_database.select(
+      _database.appSettings,
+    )..where((table) => table.id.equals(0))).getSingle();
   }
 
   // -- Carpetas excluidas (requerimiento 4.1) ------------------------------
@@ -59,32 +59,29 @@ class SettingsRepository {
     return rows.map((row) => row.path).toList();
   }
 
-  Future<void> excludeFolder(String path) =>
-      _database.into(_database.excludedFolders).insertOnConflictUpdate(
-            ExcludedFoldersCompanion.insert(path: path),
-          );
+  Future<void> excludeFolder(String path) => _database
+      .into(_database.excludedFolders)
+      .insertOnConflictUpdate(ExcludedFoldersCompanion.insert(path: path));
 
-  Future<void> includeFolder(String path) =>
-      (_database.delete(_database.excludedFolders)
-            ..where((table) => table.path.equals(path)))
-          .go();
+  Future<void> includeFolder(String path) => (_database.delete(
+    _database.excludedFolders,
+  )..where((table) => table.path.equals(path))).go();
 
   // -- Carpetas de origen concedidas por SAF (requerimiento 10) ------------
 
-  Stream<List<SourceFolder>> watchSourceFolders() =>
-      (_database.select(_database.sourceFolders)
-            ..orderBy([(table) => OrderingTerm(expression: table.displayPath)]))
-          .watch();
+  Stream<List<SourceFolder>> watchSourceFolders() => (_database.select(
+    _database.sourceFolders,
+  )..orderBy([(table) => OrderingTerm(expression: table.displayPath)])).watch();
 
-  Future<void> addSourceFolder(String uri, String displayPath) =>
-      _database.into(_database.sourceFolders).insertOnConflictUpdate(
-            SourceFoldersCompanion.insert(uri: uri, displayPath: displayPath),
-          );
+  Future<void> addSourceFolder(String uri, String displayPath) => _database
+      .into(_database.sourceFolders)
+      .insertOnConflictUpdate(
+        SourceFoldersCompanion.insert(uri: uri, displayPath: displayPath),
+      );
 
-  Future<void> removeSourceFolder(String uri) =>
-      (_database.delete(_database.sourceFolders)
-            ..where((table) => table.uri.equals(uri)))
-          .go();
+  Future<void> removeSourceFolder(String uri) => (_database.delete(
+    _database.sourceFolders,
+  )..where((table) => table.uri.equals(uri))).go();
 
   // -- Orden y filtro recordados por seccion (requerimiento 4.1) ----------
 
@@ -104,6 +101,7 @@ class SettingsRepository {
     return decoded.whereType<String>().toList();
   }
 
-  Future<void> saveHomeSections(List<String> sections) =>
-      update(AppSettingsCompanion(homeSectionsJson: Value(jsonEncode(sections))));
+  Future<void> saveHomeSections(List<String> sections) => update(
+    AppSettingsCompanion(homeSectionsJson: Value(jsonEncode(sections))),
+  );
 }

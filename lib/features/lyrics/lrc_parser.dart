@@ -78,7 +78,9 @@ abstract final class LrcParser {
 
     if (timed.isEmpty) {
       return ParsedLyrics(
-        lines: plain.map((text) => LyricLine(timeMs: null, text: text)).toList(),
+        lines: plain
+            .map((text) => LyricLine(timeMs: null, text: text))
+            .toList(),
         synchronized: false,
       );
     }
@@ -102,11 +104,7 @@ abstract final class LrcParser {
       );
     }
 
-    return ParsedLyrics(
-      lines: lines,
-      synchronized: true,
-      offsetMs: offsetMs,
-    );
+    return ParsedLyrics(lines: lines, synchronized: true, offsetMs: offsetMs);
   }
 
   /// Indice de la linea que corresponde a [positionMs], o -1 si aun no empieza.
@@ -140,7 +138,8 @@ abstract final class LrcParser {
       }
       final minutes = timeMs ~/ 60000;
       final seconds = (timeMs % 60000) / 1000;
-      final stamp = '[${minutes.toString().padLeft(2, '0')}:'
+      final stamp =
+          '[${minutes.toString().padLeft(2, '0')}:'
           '${seconds.toStringAsFixed(2).padLeft(5, '0')}]';
       buffer.writeln('$stamp${line.text}');
       if (line.translation != null) {

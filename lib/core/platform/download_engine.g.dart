@@ -10,9 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:meta/meta.dart' show immutable, protected, visibleForTesting;
 
 Object? _extractReplyValueOrThrow(
-    List<Object?>? replyList,
-    String channelName, {
-    required bool isNullValid,
+  List<Object?>? replyList,
+  String channelName, {
+  required bool isNullValid,
 }) {
   if (replyList == null) {
     throw PlatformException(
@@ -34,8 +34,11 @@ Object? _extractReplyValueOrThrow(
   return replyList.firstOrNull;
 }
 
-
-List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty = false}) {
+List<Object?> wrapResponse({
+  Object? result,
+  PlatformException? error,
+  bool empty = false,
+}) {
   if (empty) {
     return <Object?>[];
   }
@@ -44,6 +47,7 @@ List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty
   }
   return <Object?>[error.code, error.message, error.details];
 }
+
 bool _deepEquals(Object? a, Object? b) {
   if (identical(a, b)) {
     return true;
@@ -56,8 +60,9 @@ bool _deepEquals(Object? a, Object? b) {
   }
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed
-            .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+        a.indexed.every(
+          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
+        );
   }
   if (a is Map && b is Map) {
     if (a.length != b.length) {
@@ -106,7 +111,6 @@ int _deepHash(Object? value) {
   return value.hashCode;
 }
 
-
 enum SourcePlatform {
   tiktok,
   instagram,
@@ -128,6 +132,7 @@ enum DownloadErrorCode {
   insufficientStorage,
   cancelled,
   networkLost,
+
   /// El ajuste "Solo con Wi-Fi" esta activo y no hay una red Wi-Fi disponible
   /// al momento de iniciar la descarga.
   wifiRequired,
@@ -165,7 +170,8 @@ class VideoFormatOption {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static VideoFormatOption decode(Object result) {
     result as List<Object?>;
@@ -187,7 +193,11 @@ class VideoFormatOption {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(formatId, other.formatId) && _deepEquals(qualityLabel, other.qualityLabel) && _deepEquals(fileExtension, other.fileExtension) && _deepEquals(height, other.height) && _deepEquals(approxSizeBytes, other.approxSizeBytes);
+    return _deepEquals(formatId, other.formatId) &&
+        _deepEquals(qualityLabel, other.qualityLabel) &&
+        _deepEquals(fileExtension, other.fileExtension) &&
+        _deepEquals(height, other.height) &&
+        _deepEquals(approxSizeBytes, other.approxSizeBytes);
   }
 
   @override
@@ -245,7 +255,8 @@ class VideoAnalysis {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static VideoAnalysis decode(Object result) {
     result as List<Object?>;
@@ -270,7 +281,14 @@ class VideoAnalysis {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUrl, other.sourceUrl) && _deepEquals(platform, other.platform) && _deepEquals(title, other.title) && _deepEquals(author, other.author) && _deepEquals(thumbnailUrl, other.thumbnailUrl) && _deepEquals(durationSeconds, other.durationSeconds) && _deepEquals(formats, other.formats) && _deepEquals(audioFormats, other.audioFormats);
+    return _deepEquals(sourceUrl, other.sourceUrl) &&
+        _deepEquals(platform, other.platform) &&
+        _deepEquals(title, other.title) &&
+        _deepEquals(author, other.author) &&
+        _deepEquals(thumbnailUrl, other.thumbnailUrl) &&
+        _deepEquals(durationSeconds, other.durationSeconds) &&
+        _deepEquals(formats, other.formats) &&
+        _deepEquals(audioFormats, other.audioFormats);
   }
 
   @override
@@ -286,11 +304,7 @@ class VideoAnalysis {
 /// Union por nulabilidad: si [errorCode] es nulo, [video] esta presente y la
 /// operacion tuvo exito; si no, [video] es nulo.
 class AnalysisResult {
-  AnalysisResult({
-    this.video,
-    this.errorCode,
-    this.errorDetail,
-  });
+  AnalysisResult({this.video, this.errorCode, this.errorDetail});
 
   VideoAnalysis? video;
 
@@ -301,15 +315,12 @@ class AnalysisResult {
   String? errorDetail;
 
   List<Object?> _toList() {
-    return <Object?>[
-      video,
-      errorCode,
-      errorDetail,
-    ];
+    return <Object?>[video, errorCode, errorDetail];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static AnalysisResult decode(Object result) {
     result as List<Object?>;
@@ -329,7 +340,9 @@ class AnalysisResult {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(video, other.video) && _deepEquals(errorCode, other.errorCode) && _deepEquals(errorDetail, other.errorDetail);
+    return _deepEquals(video, other.video) &&
+        _deepEquals(errorCode, other.errorCode) &&
+        _deepEquals(errorDetail, other.errorDetail);
   }
 
   @override
@@ -383,7 +396,8 @@ class SearchResultItem {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static SearchResultItem decode(Object result) {
     result as List<Object?>;
@@ -406,7 +420,12 @@ class SearchResultItem {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(sourceUrl, other.sourceUrl) && _deepEquals(platform, other.platform) && _deepEquals(title, other.title) && _deepEquals(author, other.author) && _deepEquals(thumbnailUrl, other.thumbnailUrl) && _deepEquals(durationSeconds, other.durationSeconds);
+    return _deepEquals(sourceUrl, other.sourceUrl) &&
+        _deepEquals(platform, other.platform) &&
+        _deepEquals(title, other.title) &&
+        _deepEquals(author, other.author) &&
+        _deepEquals(thumbnailUrl, other.thumbnailUrl) &&
+        _deepEquals(durationSeconds, other.durationSeconds);
   }
 
   @override
@@ -485,7 +504,8 @@ class DownloadRequest {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static DownloadRequest decode(Object result) {
     result as List<Object?>;
@@ -513,7 +533,17 @@ class DownloadRequest {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(downloadId, other.downloadId) && _deepEquals(sourceUrl, other.sourceUrl) && _deepEquals(platform, other.platform) && _deepEquals(formatId, other.formatId) && _deepEquals(suggestedFileName, other.suggestedFileName) && _deepEquals(wifiOnly, other.wifiOnly) && _deepEquals(audioOnly, other.audioOnly) && _deepEquals(approxTotalBytes, other.approxTotalBytes) && _deepEquals(songTitle, other.songTitle) && _deepEquals(songArtist, other.songArtist) && _deepEquals(songAlbum, other.songAlbum);
+    return _deepEquals(downloadId, other.downloadId) &&
+        _deepEquals(sourceUrl, other.sourceUrl) &&
+        _deepEquals(platform, other.platform) &&
+        _deepEquals(formatId, other.formatId) &&
+        _deepEquals(suggestedFileName, other.suggestedFileName) &&
+        _deepEquals(wifiOnly, other.wifiOnly) &&
+        _deepEquals(audioOnly, other.audioOnly) &&
+        _deepEquals(approxTotalBytes, other.approxTotalBytes) &&
+        _deepEquals(songTitle, other.songTitle) &&
+        _deepEquals(songArtist, other.songArtist) &&
+        _deepEquals(songAlbum, other.songAlbum);
   }
 
   @override
@@ -527,10 +557,7 @@ class DownloadRequest {
 }
 
 class ExtractorUpdateResult {
-  ExtractorUpdateResult({
-    required this.updated,
-    this.versionName,
-  });
+  ExtractorUpdateResult({required this.updated, this.versionName});
 
   /// true = se actualizo a una version nueva; false = ya estaba al dia.
   bool updated;
@@ -538,14 +565,12 @@ class ExtractorUpdateResult {
   String? versionName;
 
   List<Object?> _toList() {
-    return <Object?>[
-      updated,
-      versionName,
-    ];
+    return <Object?>[updated, versionName];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static ExtractorUpdateResult decode(Object result) {
     result as List<Object?>;
@@ -564,7 +589,8 @@ class ExtractorUpdateResult {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(updated, other.updated) && _deepEquals(versionName, other.versionName);
+    return _deepEquals(updated, other.updated) &&
+        _deepEquals(versionName, other.versionName);
   }
 
   @override
@@ -577,7 +603,6 @@ class ExtractorUpdateResult {
   }
 }
 
-
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -585,28 +610,28 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is SourcePlatform) {
+    } else if (value is SourcePlatform) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    }    else if (value is DownloadErrorCode) {
+    } else if (value is DownloadErrorCode) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    }    else if (value is VideoFormatOption) {
+    } else if (value is VideoFormatOption) {
       buffer.putUint8(131);
       writeValue(buffer, value.encode());
-    }    else if (value is VideoAnalysis) {
+    } else if (value is VideoAnalysis) {
       buffer.putUint8(132);
       writeValue(buffer, value.encode());
-    }    else if (value is AnalysisResult) {
+    } else if (value is AnalysisResult) {
       buffer.putUint8(133);
       writeValue(buffer, value.encode());
-    }    else if (value is SearchResultItem) {
+    } else if (value is SearchResultItem) {
       buffer.putUint8(134);
       writeValue(buffer, value.encode());
-    }    else if (value is DownloadRequest) {
+    } else if (value is DownloadRequest) {
       buffer.putUint8(135);
       writeValue(buffer, value.encode());
-    }    else if (value is ExtractorUpdateResult) {
+    } else if (value is ExtractorUpdateResult) {
       buffer.putUint8(136);
       writeValue(buffer, value.encode());
     } else {
@@ -645,9 +670,13 @@ class DownloadEngineHostApi {
   /// Constructor for [DownloadEngineHostApi]. The [binaryMessenger] named argument is
   /// available for dependency injection. If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  DownloadEngineHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
-      : pigeonVar_binaryMessenger = binaryMessenger,
-        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  DownloadEngineHostApi({
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) : pigeonVar_binaryMessenger = binaryMessenger,
+       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
+           ? '.$messageChannelSuffix'
+           : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -658,7 +687,8 @@ class DownloadEngineHostApi {
   /// antes de cualquier otro metodo; es costosa (extrae binarios la primera
   /// vez) por lo que se ejecuta en el arranque de la app, sin bloquearlo.
   Future<void> initialize() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.initialize$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.initialize$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -668,51 +698,54 @@ class DownloadEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Busca por texto libre (p. ej. "titulo artista"). Antepone `ytsearchN:`
   /// internamente; no pasa por el filtro de dominios permitidos porque no es
   /// un enlace. El resultado elegido se analiza despues con [analyzeUrl].
   Future<List<SearchResultItem>> search(String query, int limit) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.search$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.search$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[query, limit]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[query, limit],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<SearchResultItem>();
   }
 
   Future<AnalysisResult> analyzeUrl(String url) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.analyzeUrl$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.analyzeUrl$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[url]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[url],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as AnalysisResult;
   }
 
@@ -721,25 +754,28 @@ class DownloadEngineHostApi {
   /// principal, para que escuchar un resultado de busqueda no destruya la
   /// cola de reproduccion del usuario.
   Future<void> startPreview(String sourceUrl) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.startPreview$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.startPreview$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[sourceUrl]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[sourceUrl],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> stopPreview() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.stopPreview$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.stopPreview$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -749,54 +785,58 @@ class DownloadEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// No bloquea: encola la descarga en el servicio en primer plano y
   /// retorna. El resultado llega despues por
   /// onDownloadCompleted/onDownloadFailed.
   Future<void> startDownload(DownloadRequest request) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.startDownload$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.startDownload$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[request]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[request],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> cancelDownload(String downloadId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.cancelDownload$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.cancelDownload$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[downloadId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[downloadId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<ExtractorUpdateResult> updateExtractor() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.updateExtractor$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.updateExtractor$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -806,16 +846,16 @@ class DownloadEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as ExtractorUpdateResult;
   }
 
   Future<String?> currentExtractorVersion() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.currentExtractorVersion$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.currentExtractorVersion$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -825,11 +865,10 @@ class DownloadEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as String?;
   }
 
@@ -837,7 +876,8 @@ class DownloadEngineHostApi {
   /// ella, YouTube exige "confirma que no eres un robot" y bloquea el audio
   /// real de casi todos los videos, medido en el dispositivo).
   Future<bool> hasYouTubeLogin() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.hasYouTubeLogin$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.hasYouTubeLogin$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -847,11 +887,10 @@ class DownloadEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as bool;
   }
 
@@ -861,7 +900,8 @@ class DownloadEngineHostApi {
   /// Devuelve true solo si encontro cookies de autenticacion reales (no basta
   /// con que el usuario haya abierto la pagina).
   Future<bool> saveYouTubeCookies() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.saveYouTubeCookies$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.saveYouTubeCookies$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -871,18 +911,18 @@ class DownloadEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as bool;
   }
 
   /// Borra la sesion guardada y las cookies del WebView, para que un
   /// siguiente inicio de sesion vuelva a pedir usuario y contrasena.
   Future<void> clearYouTubeLogin() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.clearYouTubeLogin$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.DownloadEngineHostApi.clearYouTubeLogin$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -892,29 +932,51 @@ class DownloadEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 }
 
 abstract class DownloadEngineFlutterApi {
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
 
-  void onDownloadProgress(String downloadId, double percent, int? etaSeconds, int downloadedBytes, int? totalBytes);
+  void onDownloadProgress(
+    String downloadId,
+    double percent,
+    int? etaSeconds,
+    int downloadedBytes,
+    int? totalBytes,
+  );
 
-  void onDownloadCompleted(String downloadId, String savedUri, String fileName, int sizeBytes);
+  void onDownloadCompleted(
+    String downloadId,
+    String savedUri,
+    String fileName,
+    int sizeBytes,
+  );
 
-  void onDownloadFailed(String downloadId, DownloadErrorCode errorCode, String? errorDetail);
+  void onDownloadFailed(
+    String downloadId,
+    DownloadErrorCode errorCode,
+    String? errorDetail,
+  );
 
-  static void setUp(DownloadEngineFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
-    messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  static void setUp(
+    DownloadEngineFlutterApi? api, {
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) {
+    messageChannelSuffix = messageChannelSuffix.isNotEmpty
+        ? '.$messageChannelSuffix'
+        : '';
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.DownloadEngineFlutterApi.onDownloadProgress$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.DownloadEngineFlutterApi.onDownloadProgress$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -926,20 +988,30 @@ abstract class DownloadEngineFlutterApi {
           final int arg_downloadedBytes = args[3]! as int;
           final int? arg_totalBytes = args[4] as int?;
           try {
-            api.onDownloadProgress(arg_downloadId, arg_percent, arg_etaSeconds, arg_downloadedBytes, arg_totalBytes);
+            api.onDownloadProgress(
+              arg_downloadId,
+              arg_percent,
+              arg_etaSeconds,
+              arg_downloadedBytes,
+              arg_totalBytes,
+            );
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.DownloadEngineFlutterApi.onDownloadCompleted$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.DownloadEngineFlutterApi.onDownloadCompleted$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -950,20 +1022,29 @@ abstract class DownloadEngineFlutterApi {
           final String arg_fileName = args[2]! as String;
           final int arg_sizeBytes = args[3]! as int;
           try {
-            api.onDownloadCompleted(arg_downloadId, arg_savedUri, arg_fileName, arg_sizeBytes);
+            api.onDownloadCompleted(
+              arg_downloadId,
+              arg_savedUri,
+              arg_fileName,
+              arg_sizeBytes,
+            );
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.DownloadEngineFlutterApi.onDownloadFailed$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.DownloadEngineFlutterApi.onDownloadFailed$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -973,12 +1054,18 @@ abstract class DownloadEngineFlutterApi {
           final DownloadErrorCode arg_errorCode = args[1]! as DownloadErrorCode;
           final String? arg_errorDetail = args[2] as String?;
           try {
-            api.onDownloadFailed(arg_downloadId, arg_errorCode, arg_errorDetail);
+            api.onDownloadFailed(
+              arg_downloadId,
+              arg_errorCode,
+              arg_errorDetail,
+            );
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }

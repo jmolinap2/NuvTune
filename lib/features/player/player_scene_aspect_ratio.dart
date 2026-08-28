@@ -11,10 +11,10 @@ enum PlayerSceneAspectRatio {
         'fiesta o visualizador.',
     Icons.crop_free_rounded,
   ),
-  large(
-    4 / 5,
-    'Grande',
-    '4:5 · video amplio sin ocultar título, progreso ni controles.',
+  portrait(
+    9 / 16,
+    'Vertical',
+    '9:16 · llena un marco vertical como la pantalla de un teléfono.',
     Icons.crop_portrait_rounded,
   ),
   balanced(
@@ -58,8 +58,8 @@ Future<PlayerSceneAspectRatio?> showPlayerSceneAspectRatioPicker(
   title: 'Relación de aspecto de la escena',
   selected: selected,
   helperText:
-      'El video siempre se muestra completo en 16:9, sin recortes; el '
-      'espacio sobrante se rellena con la portada ampliada y desenfocada.',
+      'El video llena el formato elegido. Cuando la fuente es 16:9, los '
+      'bordes se recortan de forma proporcional para no dejar franjas.',
   options: [
     for (final ratio in PlayerSceneAspectRatio.values)
       OptionPickerItem(

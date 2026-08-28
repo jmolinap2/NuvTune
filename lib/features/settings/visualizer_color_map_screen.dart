@@ -50,9 +50,7 @@ class VisualizerColorMapScreen extends ConsumerWidget {
               ref
                   .read(settingsMutationProvider.notifier)
                   .save(
-                    AppSettingsCompanion(
-                      visualizerColorMode: Value(value.id),
-                    ),
+                    AppSettingsCompanion(visualizerColorMode: Value(value.id)),
                   );
             },
             child: Column(
@@ -115,10 +113,7 @@ class VisualizerColorMapScreen extends ConsumerWidget {
                       final position = map.suggestedPosition();
                       save(
                         map.withStop(
-                          VisualizerColorStop(
-                            position,
-                            map.colorAt(position),
-                          ),
+                          VisualizerColorStop(position, map.colorAt(position)),
                         ),
                       );
                     },

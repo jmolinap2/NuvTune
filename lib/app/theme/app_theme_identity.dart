@@ -82,10 +82,7 @@ enum LayoutDensity {
   VisualDensity get visualDensity => switch (this) {
     LayoutDensity.compact => VisualDensity.compact,
     LayoutDensity.balanced => VisualDensity.standard,
-    LayoutDensity.airy => const VisualDensity(
-      horizontal: 1,
-      vertical: 1,
-    ),
+    LayoutDensity.airy => const VisualDensity(horizontal: 1, vertical: 1),
   };
 
   /// Factor de separación para los espacios que se calculan a mano.

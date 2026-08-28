@@ -31,11 +31,8 @@ void main() {
       // cambiaban el fondo. Cada identidad debe diferir en más de un eje.
       final combinations = AppThemeIdentity.values
           .map(
-            (identity) => (
-              identity.surface,
-              identity.typography,
-              identity.density,
-            ),
+            (identity) =>
+                (identity.surface, identity.typography, identity.density),
           )
           .toSet();
       expect(combinations.length, AppThemeIdentity.values.length);

@@ -50,10 +50,7 @@ void main() {
     });
 
     test('el color reactivo tiene su propia ruta', () {
-      expect(
-        paths().toSet(),
-        contains('/settings/player/visualizer/colors'),
-      );
+      expect(paths().toSet(), contains('/settings/player/visualizer/colors'));
     });
 
     test('los accesos directos antiguos siguen registrados', () {

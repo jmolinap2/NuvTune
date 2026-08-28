@@ -44,7 +44,8 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Configurar secciones',
             icon: const Icon(Icons.tune_rounded),
-            onPressed: () => _showSectionSettings(context, ref, enabledSections),
+            onPressed: () =>
+                _showSectionSettings(context, ref, enabledSections),
           ),
           const SizedBox(width: Tokens.space1),
         ],
@@ -96,7 +97,8 @@ class HomeScreen extends ConsumerWidget {
         );
 
       case HomeSection.recentlyPlayed:
-        final ids = ref.watch(recentlyPlayedIdsProvider).valueOrNull ?? const [];
+        final ids =
+            ref.watch(recentlyPlayedIdsProvider).valueOrNull ?? const [];
         return _SongRow(
           title: AppStrings.homeRecentlyPlayed,
           route: '/collection/recently-played',
@@ -140,9 +142,7 @@ class HomeScreen extends ConsumerWidget {
                   icon: Icons.queue_music_rounded,
                 ),
                 title: Text(playlist.name),
-                subtitle: Text(
-                  Formatters.trackCount(counts[playlist.id] ?? 0),
-                ),
+                subtitle: Text(Formatters.trackCount(counts[playlist.id] ?? 0)),
                 onTap: () => context.push('/playlist/${playlist.id}'),
               ),
           ],
@@ -196,9 +196,9 @@ class _HomeTitle extends StatelessWidget {
         Text(
           AppStrings.tagline,
           style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                fontSize: 11.5,
-                color: Theme.of(context).colorScheme.onSurfaceVariant,
-              ),
+            fontSize: 11.5,
+            color: Theme.of(context).colorScheme.onSurfaceVariant,
+          ),
         ),
       ],
     );
@@ -356,13 +356,13 @@ enum HomeSection {
   final String key;
 
   String get label => switch (this) {
-        HomeSection.continueListening => AppStrings.homeContinue,
-        HomeSection.favorites => AppStrings.homeFavorites,
-        HomeSection.recentlyPlayed => AppStrings.homeRecentlyPlayed,
-        HomeSection.recentAlbums => AppStrings.homeRecentAlbums,
-        HomeSection.mostPlayed => AppStrings.homeMostPlayed,
-        HomeSection.featuredPlaylists => AppStrings.homeFeaturedPlaylists,
-      };
+    HomeSection.continueListening => AppStrings.homeContinue,
+    HomeSection.favorites => AppStrings.homeFavorites,
+    HomeSection.recentlyPlayed => AppStrings.homeRecentlyPlayed,
+    HomeSection.recentAlbums => AppStrings.homeRecentAlbums,
+    HomeSection.mostPlayed => AppStrings.homeMostPlayed,
+    HomeSection.featuredPlaylists => AppStrings.homeFeaturedPlaylists,
+  };
 
   static HomeSection? fromKey(String key) {
     for (final value in values) {
@@ -400,15 +400,12 @@ class _SectionSettingsSheet extends ConsumerWidget {
               onChanged: (value) {
                 final updated = HomeSection.values
                     .where(
-                      (item) => item == section
-                          ? value
-                          : enabled.contains(item),
+                      (item) =>
+                          item == section ? value : enabled.contains(item),
                     )
                     .map((item) => item.key)
                     .toList();
-                ref
-                    .read(settingsRepositoryProvider)
-                    .saveHomeSections(updated);
+                ref.read(settingsRepositoryProvider).saveHomeSections(updated);
               },
             ),
           const SizedBox(height: 8),
@@ -474,11 +471,11 @@ class _ContinueCard extends ConsumerWidget {
                   ),
                 ),
                 IconButton.filled(
-                  onPressed: ref.read(playbackProvider.notifier).togglePlayPause,
+                  onPressed: ref
+                      .read(playbackProvider.notifier)
+                      .togglePlayPause,
                   icon: Icon(
-                    isPlaying
-                        ? Icons.pause_rounded
-                        : Icons.play_arrow_rounded,
+                    isPlaying ? Icons.pause_rounded : Icons.play_arrow_rounded,
                   ),
                 ),
               ],
@@ -521,8 +518,9 @@ class _SongRow extends ConsumerWidget {
           SongTile(
             song: song,
             dense: true,
-            onTap: () =>
-                ref.read(playbackProvider.notifier).playSong(song, within: songs),
+            onTap: () => ref
+                .read(playbackProvider.notifier)
+                .playSong(song, within: songs),
             onMore: () =>
                 showSongActions(context, song: song, contextSongs: songs),
           ),

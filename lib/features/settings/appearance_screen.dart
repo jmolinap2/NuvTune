@@ -14,6 +14,7 @@ import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
 import 'package:nuvtune/features/player/visualizer_color_map.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
+import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 import 'package:nuvtune/features/player/visualizer_quality.dart';
 import 'package:nuvtune/features/settings/visualizer_color_map_screen.dart';
 import 'package:nuvtune/features/player/audio_visualizer.dart';
@@ -223,6 +224,9 @@ class _PlayerAppearancePanel extends ConsumerWidget {
     final visualizerQuality = VisualizerQuality.byId(
       settings.playerVisualizerQuality,
     );
+    final lyricsAnimation = LyricsAnimationStyle.byId(
+      settings.lyricsAnimationStyle,
+    );
 
     // Estructura del documento de reorganización: Diseño, Fondo y ambiente,
     // Visualizador. La densidad vive aquí porque es composición visual del
@@ -321,6 +325,29 @@ class _PlayerAppearancePanel extends ConsumerWidget {
               title: 'Color reactivo',
               subtitle: 'Mapa de colores por intensidad y modo de aplicación',
               onTap: () => context.push('/settings/player/visualizer/colors'),
+            ),
+            SwitchListTile(
+              secondary: const Icon(Icons.casino_outlined),
+              title: const Text('Colores aleatorios'),
+              subtitle: const Text(
+                'La paleta evoluciona suavemente con la canción y el ritmo.',
+              ),
+              value: settings.visualizerRandomColors,
+              onChanged: (value) => mutation.save(
+                AppSettingsCompanion(visualizerRandomColors: Value(value)),
+              ),
+            ),
+          ],
+        ),
+        const SettingsSectionLabel('Letras'),
+        SettingsGroup(
+          children: [
+            SettingsNavigationRow(
+              icon: lyricsAnimation.icon,
+              title: 'Animación sincronizada',
+              subtitle:
+                  '${lyricsAnimation.label} · ${lyricsAnimation.description}',
+              onTap: () => showLyricsAnimationStylePicker(context, ref),
             ),
           ],
         ),
@@ -566,7 +593,7 @@ class _MotionSliderState extends State<_MotionSlider> {
   @override
   Widget build(BuildContext context) {
     final value = _dragValue ?? widget.value.toDouble();
-    const labels = ['Nula', 'Suave', 'Media', 'Alta'];
+    const labels = ['Nula', 'Suave', 'Media', 'Alta', 'Extrema'];
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: Tokens.gutter),
       child: Column(
@@ -574,13 +601,13 @@ class _MotionSliderState extends State<_MotionSlider> {
           Row(
             children: [
               Expanded(child: Text(widget.label)),
-              Text(labels[value.round().clamp(0, 3)]),
+              Text(labels[value.round().clamp(0, 4)]),
             ],
           ),
           Slider(
-            value: value.clamp(0, 3),
-            max: 3,
-            divisions: 3,
+            value: value.clamp(0, 4),
+            max: 4,
+            divisions: 4,
             onChanged: (next) => setState(() => _dragValue = next),
             onChangeEnd: (next) {
               setState(() => _dragValue = null);
@@ -623,7 +650,8 @@ class _MotionPreviewState extends State<_MotionPreview>
     final base = switch (widget.motion.effectiveIntensity) {
       1 => const Duration(milliseconds: 760),
       2 => const Duration(milliseconds: 560),
-      _ => const Duration(milliseconds: 380),
+      3 => const Duration(milliseconds: 380),
+      _ => const Duration(milliseconds: 280),
     };
     _controller.duration = widget.motion.scale(base);
     _controller.forward(from: 0);
@@ -1044,7 +1072,10 @@ class _AxisSelector<T> extends StatelessWidget {
               Icon(icon, size: 18, color: scheme.onSurfaceVariant),
               const SizedBox(width: Tokens.space2),
               Expanded(
-                child: Text(title, style: Theme.of(context).textTheme.titleSmall),
+                child: Text(
+                  title,
+                  style: Theme.of(context).textTheme.titleSmall,
+                ),
               ),
             ],
           ),
@@ -1064,9 +1095,9 @@ class _AxisSelector<T> extends StatelessWidget {
           const SizedBox(height: 4),
           Text(
             descriptionOf(selected),
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
       ),

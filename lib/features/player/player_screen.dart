@@ -24,6 +24,8 @@ import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/data/repositories/cover_repository.dart';
 import 'package:nuvtune/features/equalizer/equalizer_screen.dart';
 import 'package:nuvtune/features/lyrics/lrc_parser.dart';
+import 'package:nuvtune/features/lyrics/animated_lyrics_line.dart';
+import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 import 'package:nuvtune/features/lyrics/lyrics_view.dart';
 import 'package:nuvtune/features/player/audio_visualizer.dart';
 import 'package:nuvtune/features/player/customizable_player_controls.dart';
@@ -223,6 +225,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   late final MusicEngineHostApi _engineApi;
   bool _appIsVisible = true;
   bool _visualizerVisible = false;
+  bool _lyricsSceneVisible = false;
+  String? _analysisLyricsStyle;
   bool _fullscreenOpen = false;
   bool? _audioAnalysisEnabled;
   String? _videoReadinessId;
@@ -253,8 +257,11 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     final enabled =
         _appIsVisible &&
         !_fullscreenOpen &&
-        _tabController.index == 0 &&
-        _visualizerVisible;
+        ((_tabController.index == 0 && _visualizerVisible) ||
+            (LyricsAnimationStyle.byId(_analysisLyricsStyle) ==
+                    LyricsAnimationStyle.pulse &&
+                (_tabController.index == 1 ||
+                    (_tabController.index == 0 && _lyricsSceneVisible))));
     if (_audioAnalysisEnabled == enabled) return;
     _audioAnalysisEnabled = enabled;
     ref.read(playbackProvider.notifier).setAudioAnalysisEnabled(enabled);
@@ -263,6 +270,16 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   void _setVisualizerVisible(bool visible) {
     if (_visualizerVisible == visible) return;
     _visualizerVisible = visible;
+    WidgetsBinding.instance.addPostFrameCallback((_) => _syncAudioAnalysis());
+  }
+
+  void _setLyricsAnalysisContext(bool sceneVisible, String? styleId) {
+    if (_lyricsSceneVisible == sceneVisible &&
+        _analysisLyricsStyle == styleId) {
+      return;
+    }
+    _lyricsSceneVisible = sceneVisible;
+    _analysisLyricsStyle = styleId;
     WidgetsBinding.instance.addPostFrameCallback((_) => _syncAudioAnalysis());
   }
 
@@ -369,6 +386,10 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     final videoReady = videoBackgroundId != null && _videoReady;
     final visualizerVisible = visualScene.showsVisualizer;
     _setVisualizerVisible(visualizerVisible);
+    _setLyricsAnalysisContext(
+      visualScene.showsLyrics,
+      settings?.lyricsAnimationStyle,
+    );
     // Se vuelve a declarar el ambito para que las tarjetas de vidrio y el boton
     // de reproduccion tomen el color de la portada, no el general.
     return ThemeScope(
@@ -414,9 +435,9 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                               begin: Alignment.topCenter,
                               end: Alignment.bottomCenter,
                               colors: [
-                                Colors.black.withValues(alpha: 0.12),
-                                scheme.surface.withValues(alpha: 0.34),
-                                scheme.surface.withValues(alpha: 0.9),
+                                Colors.black.withValues(alpha: 0.05),
+                                scheme.surface.withValues(alpha: 0.16),
+                                scheme.surface.withValues(alpha: 0.62),
                               ],
                               stops: const [0, 0.56, 1],
                             ),
@@ -560,7 +581,14 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
 
   void _syncAudioAnalysis() {
     if (!mounted) return;
-    final enabled = _appIsVisible && _scene == PlayerVisualScene.visualizer;
+    final settings = ref.read(settingsProvider).valueOrNull;
+    final pulseLyrics =
+        LyricsAnimationStyle.byId(settings?.lyricsAnimationStyle) ==
+        LyricsAnimationStyle.pulse;
+    final enabled =
+        _appIsVisible &&
+        (_scene == PlayerVisualScene.visualizer ||
+            (_scene.showsLyrics && pulseLyrics));
     if (_audioAnalysisEnabled == enabled) return;
     _audioAnalysisEnabled = enabled;
     ref.read(playbackProvider.notifier).setAudioAnalysisEnabled(enabled);
@@ -871,19 +899,25 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
           constraints: constraints,
           videoId: videoId,
         ),
-        const IgnorePointer(
-          child: DecoratedBox(
-            decoration: BoxDecoration(
-              gradient: LinearGradient(
-                begin: Alignment.topCenter,
-                end: Alignment.bottomCenter,
-                colors: [
-                  Color(0x66000000),
-                  Colors.transparent,
-                  Colors.transparent,
-                  Color(0x99000000),
-                ],
-                stops: [0, 0.2, 0.68, 1],
+        IgnorePointer(
+          child: AnimatedOpacity(
+            opacity: _scene == PlayerVisualScene.video && !_chromeVisible
+                ? 0
+                : 1,
+            duration: Tokens.durationMedium,
+            child: const DecoratedBox(
+              decoration: BoxDecoration(
+                gradient: LinearGradient(
+                  begin: Alignment.topCenter,
+                  end: Alignment.bottomCenter,
+                  colors: [
+                    Color(0x66000000),
+                    Colors.transparent,
+                    Colors.transparent,
+                    Color(0x99000000),
+                  ],
+                  stops: [0, 0.2, 0.68, 1],
+                ),
               ),
             ),
           ),
@@ -1254,11 +1288,9 @@ class _ImmersivePlayerBackground extends ConsumerStatefulWidget {
   final bool animateFallback;
   final void Function(String videoId, bool ready) onVideoReadinessChanged;
 
-  /// Cuando es `true` (solo pantalla completa), el video 16:9 se muestra
-  /// completo y centrado en vez de recortado, y la portada ampliada y
-  /// desenfocada se usa como relleno del espacio sobrante. Cuando es `false`
-  /// (fondo ambiental detrás de la interfaz normal), el video llena el
-  /// contenedor por completo, igual que antes de esta opción.
+  /// Indica que la escena pertenece al visor fullscreen. El video sigue
+  /// llenando el marco elegido; la diferencia solo se conserva para las keys
+  /// y el fallback estático de esa ruta.
   final bool letterbox;
 
   @override
@@ -1365,10 +1397,7 @@ class _ImmersivePlayerBackgroundState
         ? null
         : widget.videoId;
     final showVideo = activeVideoId != null;
-    // En letterbox la portada difuminada es la capa base siempre, porque
-    // ademas de fallback rellena el espacio sobrante del video 16:9 contenido;
-    // fuera de letterbox solo aparece cuando no hay video que mostrar.
-    final showFallback = widget.letterbox || !showVideo;
+    final showFallback = !showVideo;
 
     return IgnorePointer(
       child: LayoutBuilder(
@@ -1416,36 +1445,21 @@ class _ImmersivePlayerBackgroundState
                   ),
                 ),
               if (showVideo)
-                if (widget.letterbox)
-                  Center(
-                    child: AspectRatio(
-                      aspectRatio: 16 / 9,
-                      child: MusicVideoBackground(
-                        key: ValueKey(activeVideoId),
-                        videoId: activeVideoId,
-                        isPlaying: widget.isPlaying,
-                        audioPositionMs: audioPositionMs,
-                        audioDurationMs: audioDurationMs,
-                        fit: MusicVideoFit.contain,
-                        onStateChanged: _handleVideoState,
-                      ),
-                    ),
-                  )
-                else
-                  // WebView es una vista de plataforma en Android. Mantenerla
-                  // fuera de filtros y opacidad evita cuadros negros en GPU.
-                  Positioned.fill(
-                    child: MusicVideoBackground(
-                      key: ValueKey(activeVideoId),
-                      videoId: activeVideoId,
-                      isPlaying: widget.isPlaying,
-                      audioPositionMs: audioPositionMs,
-                      audioDurationMs: audioDurationMs,
-                      onStateChanged: _handleVideoState,
-                    ),
+                // WebView es una vista de plataforma en Android. Mantenerla
+                // fuera de filtros y opacidad evita cuadros negros en GPU.
+                Positioned.fill(
+                  child: MusicVideoBackground(
+                    key: ValueKey(activeVideoId),
+                    videoId: activeVideoId,
+                    isPlaying: widget.isPlaying,
+                    audioPositionMs: audioPositionMs,
+                    audioDurationMs: audioDurationMs,
+                    fit: MusicVideoFit.cover,
+                    onStateChanged: _handleVideoState,
                   ),
+                ),
               ColoredBox(
-                color: Colors.black.withValues(alpha: showVideo ? 0.24 : 0.38),
+                color: Colors.black.withValues(alpha: showVideo ? 0.07 : 0.38),
               ),
             ],
           );
@@ -2058,345 +2072,343 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     final showSingleVisualizer =
         !showCleanVideo && !showLyrics && forceVisualizer;
 
-    // El bloque inferior (titulo, progreso y controles) toma la altura que
-    // necesita y el escenario se queda con lo que sobre. Es el invariante de
-    // la regla 3: se reparte de nuevo en cada fotograma con la pantalla real,
-    // en vez de guardar fracciones fijas que en un telefono corto empujaban el
-    // contenido fuera de la vista y obligaban a desplazar -que era justo lo
-    // que dejaba los controles pegados a la barra de navegacion del sistema.
-    return Padding(
-      padding: EdgeInsets.fromLTRB(24, density.gap(16), 24, density.gap(20)),
-      child: Column(
-        children: [
-          Expanded(
-            child: LayoutBuilder(
-              builder: (context, constraints) {
-                final stageWidth = constraints.maxWidth;
-                final stageHeight = constraints.maxHeight;
-                final coverSize = math
-                    .min(stageWidth * density.coverFraction, stageHeight)
-                    .clamp(120.0, 460.0)
-                    .toDouble();
-                return _VolumeDragTarget(
-                  enabled: volumeGestureEnabled,
-                  indicator: _volumeIndicator,
-                  onStart: _startVolumeDrag,
-                  onUpdate: (dy) => _updateVolumeDrag(dy, stageHeight),
-                  onEnd: _endVolumeDrag,
-                  child: AnimatedSwitcher(
-                    duration: motionPreferences.scale(
-                      Tokens.durationMedium,
-                      systemReduceMotion: reduceSystemMotion,
+    final stage = LayoutBuilder(
+      builder: (context, constraints) {
+        final stageWidth = constraints.maxWidth;
+        final stageHeight = constraints.maxHeight;
+        final coverSize = math
+            .min(stageWidth * density.coverFraction, stageHeight)
+            .clamp(120.0, 460.0)
+            .toDouble();
+        return _VolumeDragTarget(
+          enabled: volumeGestureEnabled,
+          indicator: _volumeIndicator,
+          onStart: _startVolumeDrag,
+          onUpdate: (dy) => _updateVolumeDrag(dy, stageHeight),
+          onEnd: _endVolumeDrag,
+          child: AnimatedSwitcher(
+            duration: motionPreferences.scale(
+              Tokens.durationMedium,
+              systemReduceMotion: reduceSystemMotion,
+            ),
+            switchInCurve: motionPreferences.curve,
+            switchOutCurve: motionPreferences.curve,
+            child: showCleanVideo
+                ? const SizedBox.expand(key: ValueKey('clean-video-stage'))
+                : showLyrics
+                ? _PlayerLyricsSceneStage(
+                    key: ValueKey('lyrics-stage-${displaySong.id}'),
+                    song: displaySong,
+                    onOpenLyrics: widget.onOpenLyrics,
+                    videoOverlay: widget.visualScene == PlayerVisualScene.both,
+                  )
+                : showSingleVisualizer
+                ? SizedBox.expand(
+                    key: ValueKey('single-visualizer-${activeSong.id}'),
+                    child: Semantics(
+                      label: 'Visualización de ${activeSong.title}',
+                      hint:
+                          'Toca para abrir en pantalla completa. '
+                          'Desliza para cambiar de canción.',
+                      button: true,
+                      onTap: () async {
+                        await widget.onOpenFullscreen(
+                          activeSong,
+                          widget.visualScene,
+                        );
+                      },
+                      onIncrease: () => _skipFromVisualizer(next: true),
+                      onDecrease: () => _skipFromVisualizer(next: false),
+                      child: GestureDetector(
+                        behavior: HitTestBehavior.opaque,
+                        onTap: () async {
+                          await widget.onOpenFullscreen(
+                            activeSong,
+                            widget.visualScene,
+                          );
+                        },
+                        onHorizontalDragStart: (_) {
+                          _visualizerDragDx = 0;
+                        },
+                        onHorizontalDragUpdate: (details) {
+                          _visualizerDragDx += details.primaryDelta ?? 0;
+                        },
+                        onHorizontalDragCancel: () {
+                          _visualizerDragDx = 0;
+                        },
+                        onHorizontalDragEnd: _finishVisualizerDrag,
+                        child: ReactiveAudioVisualizer(
+                          key: ValueKey('stage-visualizer-${activeSong.id}'),
+                          song: activeSong,
+                          size: stageWidth,
+                          height: stageHeight,
+                          borderRadius: 0,
+                          isPlaying: state.isPlaying,
+                          immersive: true,
+                        ),
+                      ),
                     ),
-                    switchInCurve: motionPreferences.curve,
-                    switchOutCurve: motionPreferences.curve,
-                    child: showCleanVideo
-                        ? const SizedBox.expand(
-                            key: ValueKey('clean-video-stage'),
-                          )
-                        : showLyrics
-                        ? _PlayerLyricsSceneStage(
-                            key: ValueKey('lyrics-stage-${displaySong.id}'),
-                            song: displaySong,
-                            onOpenLyrics: widget.onOpenLyrics,
-                            videoOverlay:
-                                widget.visualScene == PlayerVisualScene.both,
-                          )
-                        : showSingleVisualizer
-                        ? SizedBox.expand(
-                            key: ValueKey('single-visualizer-${activeSong.id}'),
-                            child: Semantics(
-                              label: 'Visualización de ${activeSong.title}',
-                              hint:
-                                  'Toca para abrir en pantalla completa. '
-                                  'Desliza para cambiar de canción.',
-                              button: true,
-                              onTap: () async {
-                                await widget.onOpenFullscreen(
-                                  activeSong,
-                                  widget.visualScene,
+                  )
+                : OverflowBox(
+                    key: const ValueKey('cover-carousel-stage'),
+                    alignment: Alignment.center,
+                    minWidth: stageWidth,
+                    maxWidth: stageWidth,
+                    child: SizedBox(
+                      width: stageWidth,
+                      height: stageHeight,
+                      child: NotificationListener<ScrollNotification>(
+                        onNotification: _handleCarouselScroll,
+                        child: PageView.builder(
+                          controller: _pageController,
+                          itemCount: state.queue.length,
+                          physics: state.queue.length > 1
+                              ? const PageScrollPhysics()
+                              : const NeverScrollableScrollPhysics(),
+                          itemBuilder: (context, index) {
+                            final item = state.queue[index];
+                            final hasArtwork = _songHasArtwork(
+                              item,
+                              customCovers,
+                            );
+                            final itemSize = coverSize;
+                            return AnimatedBuilder(
+                              animation: _pageController,
+                              builder: (context, child) {
+                                final page = _pageController.hasClients
+                                    ? (_pageController.page ??
+                                          engineIndex.toDouble())
+                                    : engineIndex.toDouble();
+                                final distance = (page - index)
+                                    .abs()
+                                    .clamp(0.0, 1.0)
+                                    .toDouble();
+                                return Transform.translate(
+                                  offset: Offset(0, distance * 8),
+                                  child: Transform.scale(
+                                    scale: 1 - distance * 0.065,
+                                    child: Opacity(
+                                      opacity: 1 - distance * 0.28,
+                                      child: child,
+                                    ),
+                                  ),
                                 );
                               },
-                              onIncrease: () => _skipFromVisualizer(next: true),
-                              onDecrease: () =>
-                                  _skipFromVisualizer(next: false),
                               child: GestureDetector(
-                                behavior: HitTestBehavior.opaque,
                                 onTap: () async {
+                                  if (index != engineIndex) {
+                                    _requestIndex(index);
+                                    return;
+                                  }
                                   await widget.onOpenFullscreen(
-                                    activeSong,
+                                    item,
                                     widget.visualScene,
                                   );
                                 },
-                                onHorizontalDragStart: (_) {
-                                  _visualizerDragDx = 0;
-                                },
-                                onHorizontalDragUpdate: (details) {
-                                  _visualizerDragDx +=
-                                      details.primaryDelta ?? 0;
-                                },
-                                onHorizontalDragCancel: () {
-                                  _visualizerDragDx = 0;
-                                },
-                                onHorizontalDragEnd: _finishVisualizerDrag,
-                                child: ReactiveAudioVisualizer(
-                                  key: ValueKey(
-                                    'stage-visualizer-${activeSong.id}',
+                                child: Center(
+                                  child: OverflowBox(
+                                    alignment: Alignment.center,
+                                    minWidth: itemSize,
+                                    maxWidth: itemSize,
+                                    minHeight: itemSize,
+                                    maxHeight: itemSize,
+                                    child: _buildCarouselArtwork(
+                                      song: item,
+                                      size: itemSize,
+                                      hasArtwork: hasArtwork,
+                                      isCurrent: index == engineIndex,
+                                      isPlaying: state.isPlaying,
+                                      scheme: scheme,
+                                      staticFallback: true,
+                                    ),
                                   ),
-                                  song: activeSong,
-                                  size: stageWidth,
-                                  height: stageHeight,
-                                  borderRadius: 0,
-                                  isPlaying: state.isPlaying,
-                                  immersive: true,
                                 ),
                               ),
-                            ),
-                          )
-                        : OverflowBox(
-                            key: const ValueKey('cover-carousel-stage'),
-                            alignment: Alignment.center,
-                            minWidth: stageWidth,
-                            maxWidth: stageWidth,
-                            child: SizedBox(
-                              width: stageWidth,
-                              height: stageHeight,
-                              child: NotificationListener<ScrollNotification>(
-                                onNotification: _handleCarouselScroll,
-                                child: PageView.builder(
-                                  controller: _pageController,
-                                  itemCount: state.queue.length,
-                                  physics: state.queue.length > 1
-                                      ? const PageScrollPhysics()
-                                      : const NeverScrollableScrollPhysics(),
-                                  itemBuilder: (context, index) {
-                                    final item = state.queue[index];
-                                    final hasArtwork = _songHasArtwork(
-                                      item,
-                                      customCovers,
-                                    );
-                                    final itemSize = coverSize;
-                                    return AnimatedBuilder(
-                                      animation: _pageController,
-                                      builder: (context, child) {
-                                        final page = _pageController.hasClients
-                                            ? (_pageController.page ??
-                                                  engineIndex.toDouble())
-                                            : engineIndex.toDouble();
-                                        final distance = (page - index)
-                                            .abs()
-                                            .clamp(0.0, 1.0)
-                                            .toDouble();
-                                        return Transform.translate(
-                                          offset: Offset(0, distance * 8),
-                                          child: Transform.scale(
-                                            scale: 1 - distance * 0.065,
-                                            child: Opacity(
-                                              opacity: 1 - distance * 0.28,
-                                              child: child,
-                                            ),
-                                          ),
-                                        );
-                                      },
-                                      child: GestureDetector(
-                                        onTap: () async {
-                                          if (index != engineIndex) {
-                                            _requestIndex(index);
-                                            return;
-                                          }
-                                          await widget.onOpenFullscreen(
-                                            item,
-                                            widget.visualScene,
-                                          );
-                                        },
-                                        child: Center(
-                                          child: OverflowBox(
-                                            alignment: Alignment.center,
-                                            minWidth: itemSize,
-                                            maxWidth: itemSize,
-                                            minHeight: itemSize,
-                                            maxHeight: itemSize,
-                                            child: _buildCarouselArtwork(
-                                              song: item,
-                                              size: itemSize,
-                                              hasArtwork: hasArtwork,
-                                              isCurrent: index == engineIndex,
-                                              isPlaying: state.isPlaying,
-                                              scheme: scheme,
-                                              staticFallback: true,
-                                            ),
-                                          ),
-                                        ),
-                                      ),
-                                    );
-                                  },
-                                ),
-                              ),
-                            ),
-                          ),
-                  ),
-                );
-              },
-            ),
-          ),
-          SizedBox(height: density.gap(24)),
-
-          Row(
-            children: [
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    // Se reserva la altura de dos lineas del titulo aunque
-                    // la cancion actual solo necesite una: si no, cada
-                    // titulo largo o corto empuja los controles arriba y
-                    // abajo al cambiar de pista.
-                    Builder(
-                      builder: (context) {
-                        final titleStyle = Theme.of(context)
-                            .textTheme
-                            .headlineSmall
-                            ?.copyWith(
-                              fontWeight: FontWeight.w700,
-                              height: 1.2,
                             );
-                        final lineHeight =
-                            (titleStyle?.fontSize ?? 22) *
-                            (titleStyle?.height ?? 1.2);
-                        final reserved =
-                            MediaQuery.textScalerOf(context).scale(lineHeight) *
-                            2;
-                        return SizedBox(
-                          height: reserved,
-                          child: Text(
-                            displaySong.title,
-                            maxLines: 2,
-                            overflow: TextOverflow.ellipsis,
-                            style: titleStyle,
-                          ),
-                        );
-                      },
-                    ),
-                    const SizedBox(height: 4),
-                    InkWell(
-                      onTap: () =>
-                          context.push('/artist/${displaySong.artistId}'),
-                      child: Text(
-                        displaySong.displayArtist,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 15,
-                          color: scheme.onSurfaceVariant,
+                          },
                         ),
                       ),
                     ),
-                    const SizedBox(height: 2),
-                    InkWell(
-                      onTap: () =>
-                          context.push('/album/${displaySong.albumId}'),
-                      child: Text(
-                        displaySong.displayAlbum,
-                        maxLines: 1,
-                        overflow: TextOverflow.ellipsis,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: scheme.onSurfaceVariant.withValues(
-                            alpha: 0.75,
-                          ),
+                  ),
+          ),
+        );
+      },
+    );
+    final details = Column(
+      mainAxisSize: MainAxisSize.min,
+      children: [
+        Row(
+          children: [
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  // Se reserva la altura de dos lineas del titulo aunque
+                  // la cancion actual solo necesite una: si no, cada
+                  // titulo largo o corto empuja los controles arriba y
+                  // abajo al cambiar de pista.
+                  Builder(
+                    builder: (context) {
+                      final titleStyle = Theme.of(context)
+                          .textTheme
+                          .headlineSmall
+                          ?.copyWith(fontWeight: FontWeight.w700, height: 1.2);
+                      final lineHeight =
+                          (titleStyle?.fontSize ?? 22) *
+                          (titleStyle?.height ?? 1.2);
+                      final reserved =
+                          MediaQuery.textScalerOf(context).scale(lineHeight) *
+                          2;
+                      return SizedBox(
+                        height: reserved,
+                        child: Text(
+                          displaySong.title,
+                          maxLines: 2,
+                          overflow: TextOverflow.ellipsis,
+                          style: titleStyle,
                         ),
+                      );
+                    },
+                  ),
+                  const SizedBox(height: 4),
+                  InkWell(
+                    onTap: () =>
+                        context.push('/artist/${displaySong.artistId}'),
+                    child: Text(
+                      displaySong.displayArtist,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 15,
+                        color: scheme.onSurfaceVariant,
                       ),
                     ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 2),
+                  InkWell(
+                    onTap: () => context.push('/album/${displaySong.albumId}'),
+                    child: Text(
+                      displaySong.displayAlbum,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: TextStyle(
+                        fontSize: 13,
+                        color: scheme.onSurfaceVariant.withValues(alpha: 0.75),
+                      ),
+                    ),
+                  ),
+                ],
               ),
-              // Favorito pertenece al bloque de información de la canción, no
-              // a la fila de transporte: es una propiedad de la pista, así que
-              // vive fijo aquí y no se configura como un control más.
+            ),
+            // Favorito pertenece al bloque de información de la canción, no
+            // a la fila de transporte: es una propiedad de la pista, así que
+            // vive fijo aquí y no se configura como un control más.
+            IconButton(
+              tooltip: 'Editar portada',
+              color: scheme.onSurfaceVariant,
+              icon: const Icon(Icons.add_photo_alternate_outlined),
+              onPressed: () => context.push('/song/${displaySong.id}/edit'),
+            ),
+            IconButton(
+              tooltip: isFavorite ? 'Quitar de favoritos' : AppStrings.favorite,
+              color: isFavorite ? scheme.primary : scheme.onSurfaceVariant,
+              icon: Icon(
+                isFavorite
+                    ? Icons.favorite_rounded
+                    : Icons.favorite_border_rounded,
+              ),
+              onPressed: () => controller.toggleFavorite(displaySong.id),
+            ),
+            // Zona «junto al título»: acciones adicionales que el usuario
+            // coloque aquí acompañan a la canción en lugar de vivir en la
+            // fila de transporte.
+            for (final control in controlLayout.metadata)
               IconButton(
-                tooltip: isFavorite
-                    ? 'Quitar de favoritos'
-                    : AppStrings.favorite,
-                color: isFavorite ? scheme.primary : scheme.onSurfaceVariant,
-                icon: Icon(
-                  isFavorite
-                      ? Icons.favorite_rounded
-                      : Icons.favorite_border_rounded,
+                tooltip: _metadataControlTooltip(control, state, isFavorite),
+                color: _metadataControlActive(control, state, isFavorite)
+                    ? scheme.primary
+                    : scheme.onSurfaceVariant,
+                icon: Icon(_metadataControlIcon(control, state, isFavorite)),
+                onPressed: () => _invokeMetadataControl(
+                  control,
+                  displaySong,
+                  state,
+                  controller,
                 ),
-                onPressed: () => controller.toggleFavorite(displaySong.id),
               ),
-              // Zona «junto al título»: acciones adicionales que el usuario
-              // coloque aquí acompañan a la canción en lugar de vivir en la
-              // fila de transporte.
-              for (final control in controlLayout.metadata)
-                IconButton(
-                  tooltip: _metadataControlTooltip(
-                    control,
-                    state,
-                    isFavorite,
-                  ),
-                  color: _metadataControlActive(control, state, isFavorite)
-                      ? scheme.primary
-                      : scheme.onSurfaceVariant,
-                  icon: Icon(
-                    _metadataControlIcon(control, state, isFavorite),
-                  ),
-                  onPressed: () => _invokeMetadataControl(
-                    control,
-                    displaySong,
-                    state,
-                    controller,
-                  ),
-                ),
-            ],
-          ),
+          ],
+        ),
 
-          SizedBox(height: density.gap(8)),
-          const _ProgressBar(),
-          SizedBox(height: density.gap(16)),
+        SizedBox(height: density.gap(8)),
+        const _ProgressBar(),
+        SizedBox(height: density.gap(16)),
 
-          CustomizablePlayerControls(
-            layout: controlLayout,
-            preset: controlPreset,
-            handedness: controlHandedness,
-            density: density,
-            state: state,
-            controller: controller,
-            song: displaySong,
-            isFavorite: isFavorite,
-            onOpenQueue: () => context.push('/queue'),
-          ),
+        CustomizablePlayerControls(
+          layout: controlLayout,
+          preset: controlPreset,
+          handedness: controlHandedness,
+          density: density,
+          state: state,
+          controller: controller,
+          song: displaySong,
+          isFavorite: isFavorite,
+          onOpenQueue: () => context.push('/queue'),
+        ),
 
-          if ((controlLayout.top.contains(PlayerControlId.queue) ||
-                  controlLayout.primary.contains(PlayerControlId.queue) ||
-                  controlLayout.secondary.contains(PlayerControlId.queue) ||
-                  controlLayout.footer.contains(PlayerControlId.queue)) &&
-              engineIndex >= 0 &&
-              engineIndex + 1 < state.queue.length)
-            Padding(
-              padding: EdgeInsets.only(top: density.gap(Tokens.space2)),
-              child: TextButton.icon(
-                onPressed: () => _requestIndex(engineIndex + 1),
-                icon: const Icon(Icons.queue_music_rounded, size: 18),
-                label: Text(
-                  'A continuación · ${state.queue[engineIndex + 1].title}',
-                  maxLines: 1,
-                  overflow: TextOverflow.ellipsis,
-                ),
+        if ((controlLayout.top.contains(PlayerControlId.queue) ||
+                controlLayout.primary.contains(PlayerControlId.queue) ||
+                controlLayout.secondary.contains(PlayerControlId.queue) ||
+                controlLayout.footer.contains(PlayerControlId.queue)) &&
+            engineIndex >= 0 &&
+            engineIndex + 1 < state.queue.length)
+          Padding(
+            padding: EdgeInsets.only(top: density.gap(Tokens.space2)),
+            child: TextButton.icon(
+              onPressed: () => _requestIndex(engineIndex + 1),
+              icon: const Icon(Icons.queue_music_rounded, size: 18),
+              label: Text(
+                'A continuación · ${state.queue[engineIndex + 1].title}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
               ),
             ),
+          ),
 
-          if (state.snapshot.sleepTimerRemainingMs != null)
-            Padding(
-              padding: EdgeInsets.only(top: density.gap(8)),
-              child: Text(
-                'La música se detendrá en '
-                '${Formatters.duration(state.snapshot.sleepTimerRemainingMs!)}',
-                style: TextStyle(fontSize: 12, color: scheme.primary),
-              ),
+        if (state.snapshot.sleepTimerRemainingMs != null)
+          Padding(
+            padding: EdgeInsets.only(top: density.gap(8)),
+            child: Text(
+              'La música se detendrá en '
+              '${Formatters.duration(state.snapshot.sleepTimerRemainingMs!)}',
+              style: TextStyle(fontSize: 12, color: scheme.primary),
             ),
-        ],
-      ),
+          ),
+      ],
+    );
+    final landscape =
+        MediaQuery.orientationOf(context) == Orientation.landscape;
+
+    // En vertical el escenario conserva todo el espacio sobrante. En
+    // horizontal forma una columna visual a la izquierda y deja la información
+    // y los controles a la derecha; si una escala de texto excepcional necesita
+    // más altura, solo ese panel puede desplazarse.
+    return Padding(
+      padding: EdgeInsets.fromLTRB(24, density.gap(12), 24, density.gap(16)),
+      child: landscape
+          ? Row(
+              children: [
+                Expanded(flex: 11, child: stage),
+                const SizedBox(width: Tokens.space4),
+                Expanded(flex: 9, child: SingleChildScrollView(child: details)),
+              ],
+            )
+          : Column(
+              children: [
+                Expanded(child: stage),
+                SizedBox(height: density.gap(24)),
+                details,
+              ],
+            ),
     );
   }
 
@@ -2793,6 +2805,9 @@ class _PlayerLyricsSceneStageState
   Widget _buildLyrics(BuildContext context, ResolvedLyrics resolved) {
     final scheme = Theme.of(context).colorScheme;
     final parsed = resolved.parsed;
+    final animationStyle = LyricsAnimationStyle.byId(
+      ref.watch(settingsProvider).valueOrNull?.lyricsAnimationStyle,
+    );
     final positionMs =
         ref.watch(playbackPositionProvider).valueOrNull?.positionMs ?? 0;
 
@@ -2843,20 +2858,35 @@ class _PlayerLyricsSceneStageState
                     padding: const EdgeInsets.symmetric(
                       horizontal: Tokens.space2,
                     ),
-                    child: AnimatedDefaultTextStyle(
-                      duration: Tokens.durationFast,
-                      textAlign: TextAlign.center,
-                      style: baseStyle.copyWith(
-                        color: index == activeIndex
-                            ? Colors.white
-                            : (widget.videoOverlay || widget.immersive
-                                  ? Colors.white.withValues(alpha: 0.46)
-                                  : scheme.onSurfaceVariant.withValues(
-                                      alpha: 0.5,
-                                    )),
-                        fontWeight: index == activeIndex
-                            ? FontWeight.w700
-                            : FontWeight.w500,
+                    child: AnimatedLyricsLine(
+                      text: parsed.lines[index].text.isEmpty
+                          ? '♪'
+                          : parsed.lines[index].text,
+                      active: index == activeIndex,
+                      progress:
+                          index == activeIndex &&
+                              parsed.lines[index].timeMs != null
+                          ? synchronizedLyricProgress(
+                              positionMs: positionMs,
+                              lineStartMs: lyricLinePlaybackPositionMs(
+                                lineTimeMs: parsed.lines[index].timeMs!,
+                                lrcOffsetMs: parsed.offsetMs,
+                                userOffsetMs: resolved.userOffsetMs,
+                              ),
+                              nextLineStartMs:
+                                  index + 1 < parsed.lines.length &&
+                                      parsed.lines[index + 1].timeMs != null
+                                  ? lyricLinePlaybackPositionMs(
+                                      lineTimeMs:
+                                          parsed.lines[index + 1].timeMs!,
+                                      lrcOffsetMs: parsed.offsetMs,
+                                      userOffsetMs: resolved.userOffsetMs,
+                                    )
+                                  : null,
+                            )
+                          : 0,
+                      style: animationStyle,
+                      baseStyle: baseStyle.copyWith(
                         height: 1.25,
                         shadows: widget.videoOverlay
                             ? const [
@@ -2865,13 +2895,12 @@ class _PlayerLyricsSceneStageState
                               ]
                             : null,
                       ),
-                      child: Text(
-                        parsed.lines[index].text.isEmpty
-                            ? '♪'
-                            : parsed.lines[index].text,
-                        maxLines: 2,
-                        overflow: TextOverflow.ellipsis,
-                      ),
+                      activeColor: Colors.white,
+                      inactiveColor: widget.videoOverlay || widget.immersive
+                          ? Colors.white.withValues(alpha: 0.46)
+                          : scheme.onSurfaceVariant.withValues(alpha: 0.5),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ),
                 ),

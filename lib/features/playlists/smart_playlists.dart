@@ -68,45 +68,51 @@ enum SmartPlaylist {
           ..sort((a, b) => b.dateAdded.compareTo(a.dateAdded));
 
       case SmartPlaylist.losslessQuality:
-        return songs.where((song) => song.isLossless).toList()
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        return songs.where((song) => song.isLossless).toList()..sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
 
       case SmartPlaylist.neverPlayed:
         return songs.where((song) => (playCounts[song.id] ?? 0) == 0).toList()
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+          ..sort(
+            (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+          );
 
       case SmartPlaylist.playedMoreThanFive:
-        final matching =
-            songs.where((song) => (playCounts[song.id] ?? 0) > 5).toList();
+        final matching = songs
+            .where((song) => (playCounts[song.id] ?? 0) > 5)
+            .toList();
         matching.sort(
           (a, b) => (playCounts[b.id] ?? 0).compareTo(playCounts[a.id] ?? 0),
         );
         return matching;
 
       case SmartPlaylist.withoutCover:
-        return songs.where((song) => !song.hasCover).toList()
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        return songs.where((song) => !song.hasCover).toList()..sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
 
       case SmartPlaylist.withoutArtist:
-        return songs.where((song) => !song.hasIdentifiedArtist).toList()
-          ..sort((a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()));
+        return songs.where((song) => !song.hasIdentifiedArtist).toList()..sort(
+          (a, b) => a.title.toLowerCase().compareTo(b.title.toLowerCase()),
+        );
     }
   }
 
   /// Explicacion que se muestra bajo el titulo, para que la regla sea evidente.
   String get description => switch (this) {
-        SmartPlaylist.addedThisWeek =>
-          'Canciones cuya fecha de agregado está dentro de los últimos siete días',
-        SmartPlaylist.losslessQuality =>
-          'Archivos FLAC, ALAC, WAV y AIFF, sin pérdida de información',
-        SmartPlaylist.neverPlayed =>
-          'Canciones que NuvTune nunca ha registrado como reproducidas',
-        SmartPlaylist.playedMoreThanFive =>
-          'Canciones con seis reproducciones o más',
-        SmartPlaylist.withoutCover =>
-          'Canciones cuyo álbum no tiene portada. La detección es por álbum, '
-              'así que un álbum con portada parcial aparece completo o no aparece.',
-        SmartPlaylist.withoutArtist =>
-          'Canciones cuyo campo de artista está vacío o sin identificar',
-      };
+    SmartPlaylist.addedThisWeek =>
+      'Canciones cuya fecha de agregado está dentro de los últimos siete días',
+    SmartPlaylist.losslessQuality =>
+      'Archivos FLAC, ALAC, WAV y AIFF, sin pérdida de información',
+    SmartPlaylist.neverPlayed =>
+      'Canciones que NuvTune nunca ha registrado como reproducidas',
+    SmartPlaylist.playedMoreThanFive =>
+      'Canciones con seis reproducciones o más',
+    SmartPlaylist.withoutCover =>
+      'Canciones cuyo álbum no tiene portada. La detección es por álbum, '
+          'así que un álbum con portada parcial aparece completo o no aparece.',
+    SmartPlaylist.withoutArtist =>
+      'Canciones cuyo campo de artista está vacío o sin identificar',
+  };
 }

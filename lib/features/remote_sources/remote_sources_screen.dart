@@ -50,7 +50,8 @@ class RemoteSourcesScreen extends ConsumerWidget {
                 child: EmptyState(
                   icon: Icons.cloud_off_outlined,
                   title: 'Sin fuentes remotas',
-                  message: 'Agrega un servidor SMB, WebDAV, un enlace directo '
+                  message:
+                      'Agrega un servidor SMB, WebDAV, un enlace directo '
                       'o una emisora de radio.',
                 ),
               )
@@ -83,7 +84,9 @@ class RemoteSourcesScreen extends ConsumerWidget {
       _playDirect(context, ref, source);
       return;
     }
-    context.push('/remote/${source.id}?name=${Uri.encodeComponent(source.name)}');
+    context.push(
+      '/remote/${source.id}?name=${Uri.encodeComponent(source.name)}',
+    );
   }
 
   Future<void> _playDirect(
@@ -92,10 +95,10 @@ class RemoteSourcesScreen extends ConsumerWidget {
     RemoteSource source,
   ) async {
     final messenger = ScaffoldMessenger.of(context);
-    final songs = await ref
-        .read(engineProvider)
-        .api
-        .resolveRemoteSongs(source.id, [source.uri]);
+    final songs = await ref.read(engineProvider).api.resolveRemoteSongs(
+      source.id,
+      [source.uri],
+    );
     if (songs.isEmpty) {
       messenger.showSnackBar(
         const SnackBar(content: Text('No se pudo abrir la fuente')),
@@ -118,7 +121,10 @@ class RemoteSourcesScreen extends ConsumerWidget {
     );
     if (result == null) return;
 
-    await ref.read(engineProvider).api.addRemoteSource(
+    await ref
+        .read(engineProvider)
+        .api
+        .addRemoteSource(
           result.kind,
           result.name,
           result.uri,
@@ -129,11 +135,11 @@ class RemoteSourcesScreen extends ConsumerWidget {
   }
 
   static IconData _iconFor(RemoteSourceKind kind) => switch (kind) {
-        RemoteSourceKind.smb => Icons.dns_rounded,
-        RemoteSourceKind.webdav => Icons.cloud_outlined,
-        RemoteSourceKind.http => Icons.link_rounded,
-        RemoteSourceKind.radio => Icons.radio_rounded,
-      };
+    RemoteSourceKind.smb => Icons.dns_rounded,
+    RemoteSourceKind.webdav => Icons.cloud_outlined,
+    RemoteSourceKind.http => Icons.link_rounded,
+    RemoteSourceKind.radio => Icons.radio_rounded,
+  };
 }
 
 class _NewSource {
@@ -204,7 +210,10 @@ class _AddSourceSheetState extends State<_AddSourceSheet> {
                   value: RemoteSourceKind.webdav,
                   label: Text('WebDAV'),
                 ),
-                ButtonSegment(value: RemoteSourceKind.http, label: Text('HTTP')),
+                ButtonSegment(
+                  value: RemoteSourceKind.http,
+                  label: Text('HTTP'),
+                ),
                 ButtonSegment(
                   value: RemoteSourceKind.radio,
                   label: Text('Radio'),
@@ -263,10 +272,7 @@ class _AddSourceSheetState extends State<_AddSourceSheet> {
                   child: const Text(AppStrings.cancel),
                 ),
                 const SizedBox(width: 8),
-                FilledButton(
-                  onPressed: _submit,
-                  child: const Text('Agregar'),
-                ),
+                FilledButton(onPressed: _submit, child: const Text('Agregar')),
               ],
             ),
           ],
@@ -290,11 +296,11 @@ class _AddSourceSheetState extends State<_AddSourceSheet> {
   }
 
   static String _hintFor(RemoteSourceKind kind) => switch (kind) {
-        RemoteSourceKind.smb => 'smb://192.168.1.10/musica',
-        RemoteSourceKind.webdav => 'https://servidor/remote.php/dav/musica',
-        RemoteSourceKind.http => 'https://servidor/cancion.flac',
-        RemoteSourceKind.radio => 'https://emisora/stream.mp3',
-      };
+    RemoteSourceKind.smb => 'smb://192.168.1.10/musica',
+    RemoteSourceKind.webdav => 'https://servidor/remote.php/dav/musica',
+    RemoteSourceKind.http => 'https://servidor/cancion.flac',
+    RemoteSourceKind.radio => 'https://emisora/stream.mp3',
+  };
 }
 
 /// Explorador de una fuente remota con arbol de carpetas.
@@ -319,8 +325,10 @@ class _RemoteBrowserScreenState extends ConsumerState<RemoteBrowserScreen> {
 
   late Future<List<RemoteEntry>> _entries = _load();
 
-  Future<List<RemoteEntry>> _load() =>
-      ref.read(engineProvider).api.browseRemoteSource(widget.sourceId, _path.last);
+  Future<List<RemoteEntry>> _load() => ref
+      .read(engineProvider)
+      .api
+      .browseRemoteSource(widget.sourceId, _path.last);
 
   void _enter(String uri) {
     setState(() {
@@ -374,7 +382,9 @@ class _RemoteBrowserScreenState extends ConsumerState<RemoteBrowserScreen> {
               );
             }
 
-            final playable = entries.where((entry) => !entry.isDirectory).toList();
+            final playable = entries
+                .where((entry) => !entry.isDirectory)
+                .toList();
 
             return ListView.builder(
               itemCount: entries.length,
@@ -389,7 +399,9 @@ class _RemoteBrowserScreenState extends ConsumerState<RemoteBrowserScreen> {
                   title: Text(entry.name),
                   subtitle: entry.isDirectory || entry.sizeBytes == 0
                       ? null
-                      : Text('${(entry.sizeBytes / 1048576).toStringAsFixed(1)} MB'),
+                      : Text(
+                          '${(entry.sizeBytes / 1048576).toStringAsFixed(1)} MB',
+                        ),
                   onTap: () => entry.isDirectory
                       ? _enter(entry.uri)
                       : _play(entry, playable),
@@ -403,7 +415,10 @@ class _RemoteBrowserScreenState extends ConsumerState<RemoteBrowserScreen> {
   }
 
   Future<void> _play(RemoteEntry entry, List<RemoteEntry> siblings) async {
-    final songs = await ref.read(engineProvider).api.resolveRemoteSongs(
+    final songs = await ref
+        .read(engineProvider)
+        .api
+        .resolveRemoteSongs(
           widget.sourceId,
           siblings.map((item) => item.uri).toList(),
         );

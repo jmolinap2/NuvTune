@@ -12,9 +12,27 @@
 /// La densidad solo expresa el gusto por encima de ese reparto, de modo que
 /// ningun valor pueda dejar los controles fuera de pantalla.
 enum PlayerDensity {
-  compact('compact', 'Compacta', coverFraction: 0.66, iconScale: 0.86, gapScale: 0.62),
-  normal('normal', 'Normal', coverFraction: 0.80, iconScale: 1.0, gapScale: 1.0),
-  spacious('spacious', 'Amplia', coverFraction: 0.90, iconScale: 1.12, gapScale: 1.35);
+  compact(
+    'compact',
+    'Compacta',
+    coverFraction: 0.66,
+    iconScale: 0.86,
+    gapScale: 0.62,
+  ),
+  normal(
+    'normal',
+    'Normal',
+    coverFraction: 0.80,
+    iconScale: 1.0,
+    gapScale: 1.0,
+  ),
+  spacious(
+    'spacious',
+    'Amplia',
+    coverFraction: 0.90,
+    iconScale: 1.12,
+    gapScale: 1.35,
+  );
 
   const PlayerDensity(
     this.id,

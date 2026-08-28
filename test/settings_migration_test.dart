@@ -23,7 +23,7 @@ void main() {
     final settings = await database.select(database.appSettings).getSingle();
 
     expect(settings.accentId, 'solar');
-      expect(settings.backgroundDepth, 'night');
+    expect(settings.backgroundDepth, 'night');
     expect(settings.gaplessEnabled, isFalse);
     expect(settings.widgetPauseOnDisconnect, isFalse);
     expect(settings.widgetResumeOnConnect, isTrue);
@@ -39,13 +39,15 @@ void main() {
     expect(settings.playerDensity, 'normal');
     expect(settings.playerVisualizerQuality, 'normal');
     expect(settings.reduceVisualizerEffects, isFalse);
-      expect(settings.themeMode, 'amoled');
+    expect(settings.themeMode, 'amoled');
     expect(settings.motionProfile, 'balanced');
     expect(settings.motionIntensity, 2);
     expect(settings.motionSmoothness, 2);
     expect(settings.motionBeatResponse, 2);
     expect(settings.motionParticles, 2);
     expect(settings.visualizerColorSource, 'cover');
+    expect(settings.visualizerRandomColors, isFalse);
+    expect(settings.lyricsAnimationStyle, 'soft');
     final playlist = await database.select(database.playlists).getSingle();
     expect(playlist.name, 'Sin perder');
     expect(playlist.giftId, isNull);

@@ -36,31 +36,32 @@ class CollectionSource {
   const CollectionSource._(this.kind, {this.id, this.name});
 
   const CollectionSource.album(int albumId)
-      : this._(CollectionKind.album, id: albumId);
+    : this._(CollectionKind.album, id: albumId);
 
   const CollectionSource.artist(int artistId)
-      : this._(CollectionKind.artist, id: artistId);
+    : this._(CollectionKind.artist, id: artistId);
 
   const CollectionSource.folder(String path)
-      : this._(CollectionKind.folder, name: path);
+    : this._(CollectionKind.folder, name: path);
 
   const CollectionSource.genre(String genre)
-      : this._(CollectionKind.genre, name: genre);
+    : this._(CollectionKind.genre, name: genre);
 
   const CollectionSource.composer(String composer)
-      : this._(CollectionKind.composer, name: composer);
+    : this._(CollectionKind.composer, name: composer);
 
   const CollectionSource.smart(String key)
-      : this._(CollectionKind.smart, name: key);
+    : this._(CollectionKind.smart, name: key);
 
   /// Colecciones con nombre fijo que aparecen en Inicio y en la biblioteca.
   factory CollectionSource.named(String kind) => switch (kind) {
-        'favorites' => const CollectionSource._(CollectionKind.favorites),
-        'recently-played' =>
-          const CollectionSource._(CollectionKind.recentlyPlayed),
-        'most-played' => const CollectionSource._(CollectionKind.mostPlayed),
-        _ => const CollectionSource._(CollectionKind.recentlyAdded),
-      };
+    'favorites' => const CollectionSource._(CollectionKind.favorites),
+    'recently-played' => const CollectionSource._(
+      CollectionKind.recentlyPlayed,
+    ),
+    'most-played' => const CollectionSource._(CollectionKind.mostPlayed),
+    _ => const CollectionSource._(CollectionKind.recentlyAdded),
+  };
 
   final CollectionKind kind;
   final int? id;
@@ -134,10 +135,8 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
                 IconButton(
                   tooltip: AppStrings.editSeveralSongs,
                   icon: const Icon(Icons.edit_note_rounded),
-                  onPressed: () => context.push(
-                    '/batch-edit',
-                    extra: _selection.toList(),
-                  ),
+                  onPressed: () =>
+                      context.push('/batch-edit', extra: _selection.toList()),
                 ),
                 IconButton(
                   tooltip: AppStrings.addToPlaylist,
@@ -154,10 +153,10 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
                   icon: const Icon(Icons.share_rounded),
                   onPressed: ordered.isEmpty
                       ? null
-                      : () => ref.read(engineProvider).api.shareText(
-                            title,
-                            M3u.plainListing(title, ordered),
-                          ),
+                      : () => ref
+                            .read(engineProvider)
+                            .api
+                            .shareText(title, M3u.plainListing(title, ordered)),
                 ),
                 PopupMenuButton<String>(
                   onSelected: (value) => _onMenuSelected(value, ordered),
@@ -214,9 +213,9 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
                     onSortChanged: _keepsOwnOrder
                         ? null
                         : (sort, direction) => setState(() {
-                              _sort = sort;
-                              _direction = direction;
-                            }),
+                            _sort = sort;
+                            _direction = direction;
+                          }),
                   ),
                 ),
                 SliverToBoxAdapter(
@@ -225,9 +224,7 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
                     subtitle: ordered.isEmpty
                         ? null
                         : '${Formatters.trackCount(ordered.length)} · '
-                            '${Formatters.durationVerbose(
-                            ordered.fold(0, (sum, song) => sum + song.durationMs),
-                          )}',
+                              '${Formatters.durationVerbose(ordered.fold(0, (sum, song) => sum + song.durationMs))}',
                     onPlayAll: () =>
                         ref.read(playbackProvider.notifier).playSongs(ordered),
                     onShuffleAll: () => ref
@@ -257,15 +254,15 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
                         onTap: isSelecting
                             ? () => _toggleSelection(song.id)
                             : () => ref
-                                .read(playbackProvider.notifier)
-                                .playSong(song, within: ordered),
+                                  .read(playbackProvider.notifier)
+                                  .playSong(song, within: ordered),
                         onMore: isSelecting
                             ? null
                             : () => showSongActions(
-                                  context,
-                                  song: song,
-                                  contextSongs: ordered,
-                                ),
+                                context,
+                                song: song,
+                                contextSongs: ordered,
+                              ),
                         trailing: isSelecting
                             ? Checkbox(
                                 value: selected,
@@ -282,10 +279,10 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
   }
 
   void _toggleSelection(int songId) => setState(() {
-        if (!_selection.remove(songId)) {
-          _selection.add(songId);
-        }
-      });
+    if (!_selection.remove(songId)) {
+      _selection.add(songId);
+    }
+  });
 
   void _onMenuSelected(String value, List<Song> songs) {
     switch (value) {
@@ -303,19 +300,19 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
 
   /// Las colecciónes cuyo orden es el resultado de la consulta no se reordenan.
   bool get _keepsOwnOrder => switch (widget.source.kind) {
-        CollectionKind.recentlyPlayed => true,
-        CollectionKind.mostPlayed => true,
-        CollectionKind.recentlyAdded => true,
-        CollectionKind.favorites => true,
-        CollectionKind.smart => true,
-        _ => false,
-      };
+    CollectionKind.recentlyPlayed => true,
+    CollectionKind.mostPlayed => true,
+    CollectionKind.recentlyAdded => true,
+    CollectionKind.favorites => true,
+    CollectionKind.smart => true,
+    _ => false,
+  };
 
   bool get _showsHeader => switch (widget.source.kind) {
-        CollectionKind.album => true,
-        CollectionKind.artist => true,
-        _ => false,
-      };
+    CollectionKind.album => true,
+    CollectionKind.artist => true,
+    _ => false,
+  };
 
   String? get _description => widget.source.kind == CollectionKind.smart
       ? SmartPlaylist.fromKey(widget.source.name ?? '')?.description
@@ -382,7 +379,8 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
         final ids = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
         return allSongs.where((song) => ids.contains(song.id)).toList();
       case CollectionKind.recentlyPlayed:
-        final ids = ref.watch(recentlyPlayedIdsProvider).valueOrNull ?? const [];
+        final ids =
+            ref.watch(recentlyPlayedIdsProvider).valueOrNull ?? const [];
         return repository.songsByIds(ids);
       case CollectionKind.mostPlayed:
         final ids = ref.watch(mostPlayedIdsProvider).valueOrNull ?? const [];
@@ -396,27 +394,27 @@ class _SongCollectionScreenState extends ConsumerState<SongCollectionScreen> {
   }
 
   String _resolveTitle(List<Song> songs) => switch (widget.source.kind) {
-        CollectionKind.album => songs.firstOrNull?.displayAlbum ?? 'Álbum',
-        CollectionKind.artist => songs.firstOrNull?.displayArtist ?? 'Artista',
-        CollectionKind.folder =>
-          songs.firstOrNull?.folderName ?? _lastPathSegment(widget.source.name),
-        CollectionKind.genre => widget.source.name ?? 'Género',
-        CollectionKind.composer => widget.source.name ?? 'Compositor',
-        CollectionKind.favorites => AppStrings.homeFavorites,
-        CollectionKind.recentlyPlayed => AppStrings.homeRecentlyPlayed,
-        CollectionKind.mostPlayed => AppStrings.homeMostPlayed,
-        CollectionKind.recentlyAdded => AppStrings.recentlyAdded,
-        CollectionKind.smart =>
-          SmartPlaylist.fromKey(widget.source.name ?? '')?.label ?? 'Lista',
-      };
+    CollectionKind.album => songs.firstOrNull?.displayAlbum ?? 'Álbum',
+    CollectionKind.artist => songs.firstOrNull?.displayArtist ?? 'Artista',
+    CollectionKind.folder =>
+      songs.firstOrNull?.folderName ?? _lastPathSegment(widget.source.name),
+    CollectionKind.genre => widget.source.name ?? 'Género',
+    CollectionKind.composer => widget.source.name ?? 'Compositor',
+    CollectionKind.favorites => AppStrings.homeFavorites,
+    CollectionKind.recentlyPlayed => AppStrings.homeRecentlyPlayed,
+    CollectionKind.mostPlayed => AppStrings.homeMostPlayed,
+    CollectionKind.recentlyAdded => AppStrings.recentlyAdded,
+    CollectionKind.smart =>
+      SmartPlaylist.fromKey(widget.source.name ?? '')?.label ?? 'Lista',
+  };
 
   String _resolveSubtitle(List<Song> songs) => switch (widget.source.kind) {
-        CollectionKind.album => songs.firstOrNull?.displayAlbumArtist ?? '',
-        CollectionKind.artist => Formatters.albumCount(
-            songs.map((song) => song.albumId).toSet().length,
-          ),
-        _ => '',
-      };
+    CollectionKind.album => songs.firstOrNull?.displayAlbumArtist ?? '',
+    CollectionKind.artist => Formatters.albumCount(
+      songs.map((song) => song.albumId).toSet().length,
+    ),
+    _ => '',
+  };
 
   static String _lastPathSegment(String? path) =>
       path == null || path.isEmpty ? 'Carpeta' : path.split('/').last;
@@ -450,9 +448,9 @@ class _CollectionHeader extends StatelessWidget {
                   title,
                   maxLines: 3,
                   overflow: TextOverflow.ellipsis,
-                  style: Theme.of(context).textTheme.titleLarge?.copyWith(
-                        fontWeight: FontWeight.w700,
-                      ),
+                  style: Theme.of(
+                    context,
+                  ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
                 ),
                 if (subtitle.isNotEmpty) ...[
                   const SizedBox(height: 6),

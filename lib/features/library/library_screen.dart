@@ -28,8 +28,10 @@ class LibraryScreen extends ConsumerStatefulWidget {
 
 class _LibraryScreenState extends ConsumerState<LibraryScreen>
     with SingleTickerProviderStateMixin {
-  late final TabController _tabController =
-      TabController(length: 5, vsync: this);
+  late final TabController _tabController = TabController(
+    length: 5,
+    vsync: this,
+  );
 
   @override
   void dispose() {
@@ -211,7 +213,9 @@ class _SongsTabState extends ConsumerState<_SongsTab>
     final favorites = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
     final playCounts = ref.watch(playCountsProvider).valueOrNull ?? const {};
 
-    final songs = ref.read(libraryRepositoryProvider).query(
+    final songs = ref
+        .read(libraryRepositoryProvider)
+        .query(
           source: librarySongs,
           search: _search,
           sort: _sort,
@@ -438,7 +442,8 @@ class _GroupsTabState extends ConsumerState<_GroupsTab>
                       icon: widget.kind == GroupKind.folder
                           ? Icons.folder_rounded
                           : Icons.person_rounded,
-                      onTap: () => context.push(routeForGroup(widget.kind, group)),
+                      onTap: () =>
+                          context.push(routeForGroup(widget.kind, group)),
                     );
                   },
                 ),
@@ -452,20 +457,19 @@ List<SongGroup> resolveGroups(
   LibraryRepository repository,
   GroupKind kind,
   String search,
-) =>
-    switch (kind) {
-      GroupKind.artist => repository.artists(search: search),
-      GroupKind.folder => repository.folders(search: search),
-      GroupKind.genre => repository.genres(search: search),
-      GroupKind.composer => repository.composers(search: search),
-    };
+) => switch (kind) {
+  GroupKind.artist => repository.artists(search: search),
+  GroupKind.folder => repository.folders(search: search),
+  GroupKind.genre => repository.genres(search: search),
+  GroupKind.composer => repository.composers(search: search),
+};
 
 String routeForGroup(GroupKind kind, SongGroup group) => switch (kind) {
-      GroupKind.artist => '/artist/${group.key}',
-      GroupKind.folder => '/folder?path=${Uri.encodeQueryComponent(group.key)}',
-      GroupKind.genre => '/genre/${Uri.encodeComponent(group.key)}',
-      GroupKind.composer => '/composer/${Uri.encodeComponent(group.key)}',
-    };
+  GroupKind.artist => '/artist/${group.key}',
+  GroupKind.folder => '/folder?path=${Uri.encodeQueryComponent(group.key)}',
+  GroupKind.genre => '/genre/${Uri.encodeComponent(group.key)}',
+  GroupKind.composer => '/composer/${Uri.encodeComponent(group.key)}',
+};
 
 /// Hoja para elegir un genero o un compositor.
 class _GroupPickerSheet extends ConsumerStatefulWidget {

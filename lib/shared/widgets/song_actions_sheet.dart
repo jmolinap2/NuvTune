@@ -135,6 +135,14 @@ class _SongActionsSheet extends ConsumerWidget {
             const Divider(height: 8),
 
             _Action(
+              icon: Icons.add_photo_alternate_outlined,
+              label: 'Editar portada',
+              onTap: () {
+                Navigator.of(context).pop();
+                context.push('/song/${song.id}/edit');
+              },
+            ),
+            _Action(
               icon: Icons.edit_rounded,
               label: AppStrings.editInfo,
               onTap: () {

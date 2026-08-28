@@ -38,12 +38,12 @@ class QueueRepository {
   final NuvTuneDatabase _database;
 
   Future<SavedQueue> load() async {
-    final entries = await (_database.select(_database.queueEntries)
-          ..orderBy([(table) => OrderingTerm(expression: table.position)]))
-        .get();
-    final state = await (_database.select(_database.queueState)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final entries = await (_database.select(
+      _database.queueEntries,
+    )..orderBy([(table) => OrderingTerm(expression: table.position)])).get();
+    final state = await (_database.select(
+      _database.queueState,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
 
     if (entries.isEmpty) return SavedQueue.empty;
 
@@ -72,44 +72,42 @@ class QueueRepository {
           );
         }
       });
-      await _upsertState(QueueStateCompanion(currentIndex: Value(currentIndex)));
+      await _upsertState(
+        QueueStateCompanion(currentIndex: Value(currentIndex)),
+      );
     });
   }
 
   Future<void> savePosition(int currentIndex, int positionMs) => _upsertState(
-        QueueStateCompanion(
-          currentIndex: Value(currentIndex),
-          positionMs: Value(positionMs),
-        ),
-      );
+    QueueStateCompanion(
+      currentIndex: Value(currentIndex),
+      positionMs: Value(positionMs),
+    ),
+  );
 
   Future<void> saveModes({
     required int repeatModeIndex,
     required bool shuffleEnabled,
-  }) =>
-      _upsertState(
-        QueueStateCompanion(
-          repeatMode: Value(repeatModeIndex),
-          shuffleEnabled: Value(shuffleEnabled),
-        ),
-      );
+  }) => _upsertState(
+    QueueStateCompanion(
+      repeatMode: Value(repeatModeIndex),
+      shuffleEnabled: Value(shuffleEnabled),
+    ),
+  );
 
   Future<void> clear() async {
     await _database.delete(_database.queueEntries).go();
     await _upsertState(
-      const QueueStateCompanion(
-        currentIndex: Value(-1),
-        positionMs: Value(0),
-      ),
+      const QueueStateCompanion(currentIndex: Value(-1), positionMs: Value(0)),
     );
   }
 
   /// La fila de estado siempre tiene id 0; se hace merge para no perder los
   /// campos que no vienen en [companion].
   Future<void> _upsertState(QueueStateCompanion companion) async {
-    final existing = await (_database.select(_database.queueState)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final existing = await (_database.select(
+      _database.queueState,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
 
     if (existing == null) {
       await _database
@@ -118,8 +116,8 @@ class QueueRepository {
       return;
     }
 
-    await (_database.update(_database.queueState)
-          ..where((table) => table.id.equals(0)))
-        .write(companion);
+    await (_database.update(
+      _database.queueState,
+    )..where((table) => table.id.equals(0))).write(companion);
   }
 }

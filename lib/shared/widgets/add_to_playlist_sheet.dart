@@ -8,12 +8,11 @@ import 'package:nuvtune/core/providers.dart';
 Future<void> showAddToPlaylistSheet(
   BuildContext context, {
   required List<int> songIds,
-}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _AddToPlaylistSheet(songIds: songIds),
-    );
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (context) => _AddToPlaylistSheet(songIds: songIds),
+);
 
 class _AddToPlaylistSheet extends ConsumerWidget {
   const _AddToPlaylistSheet({required this.songIds});
@@ -23,7 +22,8 @@ class _AddToPlaylistSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlists = ref.watch(playlistsProvider).valueOrNull ?? const [];
-    final counts = ref.watch(playlistSongCountsProvider).valueOrNull ?? const {};
+    final counts =
+        ref.watch(playlistSongCountsProvider).valueOrNull ?? const {};
 
     return SafeArea(
       child: Column(
@@ -96,9 +96,7 @@ class _AddToPlaylistSheet extends ConsumerWidget {
     if (name == null) return;
     if (!context.mounted) return;
     final navigator = Navigator.of(context);
-    await ref
-        .read(playlistRepositoryProvider)
-        .create(name, songIds: songIds);
+    await ref.read(playlistRepositoryProvider).create(name, songIds: songIds);
     navigator.pop();
   }
 }

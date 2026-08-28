@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:nuvtune/features/lyrics/lrc_parser.dart';
 import 'package:nuvtune/features/lyrics/lyrics_view.dart';
+import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 
 void main() {
   group('lyricLinePlaybackPositionMs', () {
@@ -33,5 +34,50 @@ void main() {
         0,
       );
     });
+  });
+
+  group('animación sincronizada', () {
+    test('los identificadores son estables y el fallback es Suave', () {
+      expect(
+        LyricsAnimationStyle.byId('karaoke'),
+        LyricsAnimationStyle.karaoke,
+      );
+      expect(LyricsAnimationStyle.byId('pulse'), LyricsAnimationStyle.pulse);
+      expect(LyricsAnimationStyle.byId('rise'), LyricsAnimationStyle.rise);
+      expect(
+        LyricsAnimationStyle.byId('desconocida'),
+        LyricsAnimationStyle.soft,
+      );
+    });
+
+    test(
+      'el progreso karaoke se limita entre la línea actual y la siguiente',
+      () {
+        expect(
+          synchronizedLyricProgress(
+            positionMs: 9000,
+            lineStartMs: 10000,
+            nextLineStartMs: 14000,
+          ),
+          0,
+        );
+        expect(
+          synchronizedLyricProgress(
+            positionMs: 12000,
+            lineStartMs: 10000,
+            nextLineStartMs: 14000,
+          ),
+          0.5,
+        );
+        expect(
+          synchronizedLyricProgress(
+            positionMs: 16000,
+            lineStartMs: 10000,
+            nextLineStartMs: 14000,
+          ),
+          1,
+        );
+      },
+    );
   });
 }

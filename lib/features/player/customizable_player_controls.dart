@@ -94,12 +94,14 @@ class CustomizablePlayerControls extends StatelessWidget {
     required bool primary,
   }) {
     if (control == PlayerControlId.playPause) {
+      final extent = _extent(68);
       return Semantics(
         button: true,
         label: state.isPlaying ? 'Pausar' : 'Reproducir',
         child: IconButton.filled(
-          iconSize: _scaled(34),
-          padding: EdgeInsets.all(_scaled(14)),
+          iconSize: _scaled(38),
+          padding: EdgeInsets.zero,
+          constraints: BoxConstraints.tightFor(width: extent, height: extent),
           tooltip: state.isPlaying ? 'Pausar' : 'Reproducir',
           onPressed: controller.togglePlayPause,
           icon: Icon(
@@ -118,8 +120,13 @@ class CustomizablePlayerControls extends StatelessWidget {
       _ => false,
     };
 
+    final transport =
+        control == PlayerControlId.previous || control == PlayerControlId.next;
+    final extent = _extent(primary && transport ? 54 : 48);
     return IconButton(
-      iconSize: _scaled(primary ? 30 : 23),
+      iconSize: _scaled(primary ? (transport ? 32 : 26) : 24),
+      padding: EdgeInsets.zero,
+      constraints: BoxConstraints.tightFor(width: extent, height: extent),
       tooltip: _tooltip(control),
       onPressed: () => _invoke(context, control),
       color: active ? scheme.primary : null,
@@ -130,6 +137,9 @@ class CustomizablePlayerControls extends StatelessWidget {
   /// Tamaño de icono ya ajustado a la densidad elegida. Se redondea porque un
   /// icono a media unidad logica se dibuja borroso.
   double _scaled(double base) => (base * density.iconScale).roundToDouble();
+
+  double _extent(double base) =>
+      (base * density.iconScale).clamp(48.0, 80.0).roundToDouble();
 
   void _invoke(BuildContext context, PlayerControlId control) {
     switch (control) {

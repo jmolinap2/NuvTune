@@ -21,7 +21,9 @@ class PlaylistDetailScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlists = ref.watch(playlistsProvider).valueOrNull ?? const [];
-    final playlist = playlists.where((item) => item.id == playlistId).firstOrNull;
+    final playlist = playlists
+        .where((item) => item.id == playlistId)
+        .firstOrNull;
 
     final songIdsAsync = ref.watch(_playlistSongIdsProvider(playlistId));
     final songIds = songIdsAsync.valueOrNull ?? const <int>[];
@@ -39,10 +41,10 @@ class PlaylistDetailScreen extends ConsumerWidget {
             onPressed: playlist == null
                 ? null
                 : () => showPlaylistActions(
-                      context,
-                      playlistId: playlistId,
-                      playlistName: playlist.name,
-                    ),
+                    context,
+                    playlistId: playlistId,
+                    playlistName: playlist.name,
+                  ),
           ),
         ],
       ),
@@ -53,10 +55,9 @@ class PlaylistDetailScreen extends ConsumerWidget {
             subtitle: songs.isEmpty
                 ? 'Lista vacía'
                 : '${Formatters.trackCount(songs.length)} · '
-                    '${Formatters.durationVerbose(
-                    songs.fold(0, (sum, song) => sum + song.durationMs),
-                  )}',
-            onPlayAll: () => ref.read(playbackProvider.notifier).playSongs(songs),
+                      '${Formatters.durationVerbose(songs.fold(0, (sum, song) => sum + song.durationMs))}',
+            onPlayAll: () =>
+                ref.read(playbackProvider.notifier).playSongs(songs),
             onShuffleAll: () => ref
                 .read(playbackProvider.notifier)
                 .playSongs(songs, shuffle: true),
@@ -115,8 +116,9 @@ class _PlaylistSongTile extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     return SongTile(
       song: song,
-      onTap: () =>
-          ref.read(playbackProvider.notifier).playSongs(songs, startIndex: index),
+      onTap: () => ref
+          .read(playbackProvider.notifier)
+          .playSongs(songs, startIndex: index),
       trailing: Row(
         mainAxisSize: MainAxisSize.min,
         children: [
@@ -148,7 +150,9 @@ class _PlaylistSongTile extends ConsumerWidget {
 
 /// Canciones de una lista concreta, observadas para que el reordenamiento se
 /// refleje sin recargar la pantalla.
-final _playlistSongIdsProvider =
-    StreamProvider.family<List<int>, int>((ref, playlistId) {
+final _playlistSongIdsProvider = StreamProvider.family<List<int>, int>((
+  ref,
+  playlistId,
+) {
   return ref.watch(playlistRepositoryProvider).watchSongIds(playlistId);
 });

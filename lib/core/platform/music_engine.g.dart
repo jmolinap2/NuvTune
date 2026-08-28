@@ -10,9 +10,9 @@ import 'package:flutter/services.dart';
 import 'package:meta/meta.dart' show immutable, protected, visibleForTesting;
 
 Object? _extractReplyValueOrThrow(
-    List<Object?>? replyList,
-    String channelName, {
-    required bool isNullValid,
+  List<Object?>? replyList,
+  String channelName, {
+  required bool isNullValid,
 }) {
   if (replyList == null) {
     throw PlatformException(
@@ -34,8 +34,11 @@ Object? _extractReplyValueOrThrow(
   return replyList.firstOrNull;
 }
 
-
-List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty = false}) {
+List<Object?> wrapResponse({
+  Object? result,
+  PlatformException? error,
+  bool empty = false,
+}) {
   if (empty) {
     return <Object?>[];
   }
@@ -44,6 +47,7 @@ List<Object?> wrapResponse({Object? result, PlatformException? error, bool empty
   }
   return <Object?>[error.code, error.message, error.details];
 }
+
 bool _deepEquals(Object? a, Object? b) {
   if (identical(a, b)) {
     return true;
@@ -56,8 +60,9 @@ bool _deepEquals(Object? a, Object? b) {
   }
   if (a is List && b is List) {
     return a.length == b.length &&
-        a.indexed
-            .every(((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]));
+        a.indexed.every(
+          ((int, dynamic) item) => _deepEquals(item.$2, b[item.$1]),
+        );
   }
   if (a is Map && b is Map) {
     if (a.length != b.length) {
@@ -106,40 +111,28 @@ int _deepHash(Object? value) {
   return value.hashCode;
 }
 
+enum RepeatMode { off, one, all }
 
-enum RepeatMode {
-  off,
-  one,
-  all,
-}
-
-enum ProcessingState {
-  idle,
-  buffering,
-  ready,
-  ended,
-}
+enum ProcessingState { idle, buffering, ready, ended }
 
 /// Salidas de audio reconocidas (requerimiento 5.4).
-enum AudioOutput {
-  speaker,
-  wiredHeadphones,
-  bluetooth,
-  androidAuto,
-  usbDac,
-}
+enum AudioOutput { speaker, wiredHeadphones, bluetooth, androidAuto, usbDac }
 
 /// Resultado de una operacion de escritura sobre un archivo de audio.
 enum WriteOutcome {
   /// Los cambios se escribieron y el original fue sustituido de forma atomica.
   success,
+
   /// El sistema requiere confirmacion del usuario; ya se le mostro el dialogo
   /// y hay que reintentar la operacion cuando `permissionGranted` sea true.
   needsUserConsent,
+
   /// El usuario rechazo la confirmacion del sistema.
   deniedByUser,
+
   /// El formato del archivo no admite escritura de etiquetas.
   unsupportedFormat,
+
   /// La verificacion de integridad posterior a la escritura fallo y se
   /// restauro el archivo original.
   integrityCheckFailed,
@@ -158,49 +151,28 @@ enum EnhancementProfile {
 
 /// Intensidad del realce de detalle. En [high] la interfaz debe advertir que
 /// puede sonar artificial en archivos de baja calidad (requerimiento 5.2).
-enum DetailLevel {
-  off,
-  low,
-  medium,
-  high,
-}
+enum DetailLevel { off, low, medium, high }
 
 /// [live] sigue la senal en tiempo real; [analyzed] aplica la ganancia medida
 /// previamente para la pista, al estilo de ReplayGain.
-enum NormalizationMode {
-  off,
-  live,
-  analyzed,
-}
+enum NormalizationMode { off, live, analyzed }
 
 /// Estilo visual del widget de inicio.
 enum WidgetStyle {
   /// Tarjeta clara, redondeada y minimalista.
   ios,
+
   /// Fondo oscuro, acento saturado y mas informacion a la vista.
   vlc,
 }
 
 /// Tamano de rejilla del widget: 4x1, 4x2 y 4x3.
-enum WidgetSize {
-  compact,
-  normal,
-  large,
-}
+enum WidgetSize { compact, normal, large }
 
-enum WidgetTheme {
-  light,
-  dark,
-  system,
-}
+enum WidgetTheme { light, dark, system }
 
 /// Tipos de fuente remota (requerimiento 10, "fase posterior").
-enum RemoteSourceKind {
-  smb,
-  webdav,
-  http,
-  radio,
-}
+enum RemoteSourceKind { smb, webdav, http, radio }
 
 /// Cancion tal como la expone MediaStore, enriquecida por el motor.
 class Song {
@@ -309,7 +281,8 @@ class Song {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static Song decode(Object result) {
     result as List<Object?>;
@@ -349,7 +322,29 @@ class Song {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(id, other.id) && _deepEquals(uri, other.uri) && _deepEquals(filePath, other.filePath) && _deepEquals(title, other.title) && _deepEquals(artist, other.artist) && _deepEquals(artistId, other.artistId) && _deepEquals(album, other.album) && _deepEquals(albumId, other.albumId) && _deepEquals(albumArtist, other.albumArtist) && _deepEquals(genre, other.genre) && _deepEquals(composer, other.composer) && _deepEquals(year, other.year) && _deepEquals(trackNumber, other.trackNumber) && _deepEquals(discNumber, other.discNumber) && _deepEquals(durationMs, other.durationMs) && _deepEquals(mimeType, other.mimeType) && _deepEquals(sizeBytes, other.sizeBytes) && _deepEquals(dateAdded, other.dateAdded) && _deepEquals(dateModified, other.dateModified) && _deepEquals(folderPath, other.folderPath) && _deepEquals(folderName, other.folderName) && _deepEquals(hasCover, other.hasCover) && _deepEquals(isSupported, other.isSupported);
+    return _deepEquals(id, other.id) &&
+        _deepEquals(uri, other.uri) &&
+        _deepEquals(filePath, other.filePath) &&
+        _deepEquals(title, other.title) &&
+        _deepEquals(artist, other.artist) &&
+        _deepEquals(artistId, other.artistId) &&
+        _deepEquals(album, other.album) &&
+        _deepEquals(albumId, other.albumId) &&
+        _deepEquals(albumArtist, other.albumArtist) &&
+        _deepEquals(genre, other.genre) &&
+        _deepEquals(composer, other.composer) &&
+        _deepEquals(year, other.year) &&
+        _deepEquals(trackNumber, other.trackNumber) &&
+        _deepEquals(discNumber, other.discNumber) &&
+        _deepEquals(durationMs, other.durationMs) &&
+        _deepEquals(mimeType, other.mimeType) &&
+        _deepEquals(sizeBytes, other.sizeBytes) &&
+        _deepEquals(dateAdded, other.dateAdded) &&
+        _deepEquals(dateModified, other.dateModified) &&
+        _deepEquals(folderPath, other.folderPath) &&
+        _deepEquals(folderName, other.folderName) &&
+        _deepEquals(hasCover, other.hasCover) &&
+        _deepEquals(isSupported, other.isSupported);
   }
 
   @override
@@ -425,7 +420,8 @@ class TechnicalInfo {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static TechnicalInfo decode(Object result) {
     result as List<Object?>;
@@ -455,7 +451,19 @@ class TechnicalInfo {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(songId, other.songId) && _deepEquals(filePath, other.filePath) && _deepEquals(mimeType, other.mimeType) && _deepEquals(container, other.container) && _deepEquals(codec, other.codec) && _deepEquals(durationMs, other.durationMs) && _deepEquals(sizeBytes, other.sizeBytes) && _deepEquals(bitrateBps, other.bitrateBps) && _deepEquals(sampleRateHz, other.sampleRateHz) && _deepEquals(bitsPerSample, other.bitsPerSample) && _deepEquals(channels, other.channels) && _deepEquals(isSupported, other.isSupported) && _deepEquals(unsupportedReason, other.unsupportedReason);
+    return _deepEquals(songId, other.songId) &&
+        _deepEquals(filePath, other.filePath) &&
+        _deepEquals(mimeType, other.mimeType) &&
+        _deepEquals(container, other.container) &&
+        _deepEquals(codec, other.codec) &&
+        _deepEquals(durationMs, other.durationMs) &&
+        _deepEquals(sizeBytes, other.sizeBytes) &&
+        _deepEquals(bitrateBps, other.bitrateBps) &&
+        _deepEquals(sampleRateHz, other.sampleRateHz) &&
+        _deepEquals(bitsPerSample, other.bitsPerSample) &&
+        _deepEquals(channels, other.channels) &&
+        _deepEquals(isSupported, other.isSupported) &&
+        _deepEquals(unsupportedReason, other.unsupportedReason);
   }
 
   @override
@@ -529,7 +537,8 @@ class PlaybackSnapshot {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static PlaybackSnapshot decode(Object result) {
     result as List<Object?>;
@@ -558,7 +567,18 @@ class PlaybackSnapshot {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(isPlaying, other.isPlaying) && _deepEquals(processingState, other.processingState) && _deepEquals(positionMs, other.positionMs) && _deepEquals(durationMs, other.durationMs) && _deepEquals(bufferedMs, other.bufferedMs) && _deepEquals(currentIndex, other.currentIndex) && _deepEquals(currentSongId, other.currentSongId) && _deepEquals(shuffleEnabled, other.shuffleEnabled) && _deepEquals(repeatMode, other.repeatMode) && _deepEquals(speed, other.speed) && _deepEquals(pitch, other.pitch) && _deepEquals(sleepTimerRemainingMs, other.sleepTimerRemainingMs);
+    return _deepEquals(isPlaying, other.isPlaying) &&
+        _deepEquals(processingState, other.processingState) &&
+        _deepEquals(positionMs, other.positionMs) &&
+        _deepEquals(durationMs, other.durationMs) &&
+        _deepEquals(bufferedMs, other.bufferedMs) &&
+        _deepEquals(currentIndex, other.currentIndex) &&
+        _deepEquals(currentSongId, other.currentSongId) &&
+        _deepEquals(shuffleEnabled, other.shuffleEnabled) &&
+        _deepEquals(repeatMode, other.repeatMode) &&
+        _deepEquals(speed, other.speed) &&
+        _deepEquals(pitch, other.pitch) &&
+        _deepEquals(sleepTimerRemainingMs, other.sleepTimerRemainingMs);
   }
 
   @override
@@ -599,18 +619,12 @@ class AudioAnalysisFrame {
   List<double> spectrum;
 
   List<Object?> _toList() {
-    return <Object?>[
-      level,
-      bass,
-      mid,
-      treble,
-      beat,
-      spectrum,
-    ];
+    return <Object?>[level, bass, mid, treble, beat, spectrum];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static AudioAnalysisFrame decode(Object result) {
     result as List<Object?>;
@@ -633,7 +647,12 @@ class AudioAnalysisFrame {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(level, other.level) && _deepEquals(bass, other.bass) && _deepEquals(mid, other.mid) && _deepEquals(treble, other.treble) && _deepEquals(beat, other.beat) && _deepEquals(spectrum, other.spectrum);
+    return _deepEquals(level, other.level) &&
+        _deepEquals(bass, other.bass) &&
+        _deepEquals(mid, other.mid) &&
+        _deepEquals(treble, other.treble) &&
+        _deepEquals(beat, other.beat) &&
+        _deepEquals(spectrum, other.spectrum);
   }
 
   @override
@@ -706,7 +725,8 @@ class MetadataEdit {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static MetadataEdit decode(Object result) {
     result as List<Object?>;
@@ -735,7 +755,18 @@ class MetadataEdit {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(songId, other.songId) && _deepEquals(title, other.title) && _deepEquals(artist, other.artist) && _deepEquals(albumArtist, other.albumArtist) && _deepEquals(album, other.album) && _deepEquals(genre, other.genre) && _deepEquals(year, other.year) && _deepEquals(trackNumber, other.trackNumber) && _deepEquals(discNumber, other.discNumber) && _deepEquals(composer, other.composer) && _deepEquals(comment, other.comment) && _deepEquals(lyrics, other.lyrics);
+    return _deepEquals(songId, other.songId) &&
+        _deepEquals(title, other.title) &&
+        _deepEquals(artist, other.artist) &&
+        _deepEquals(albumArtist, other.albumArtist) &&
+        _deepEquals(album, other.album) &&
+        _deepEquals(genre, other.genre) &&
+        _deepEquals(year, other.year) &&
+        _deepEquals(trackNumber, other.trackNumber) &&
+        _deepEquals(discNumber, other.discNumber) &&
+        _deepEquals(composer, other.composer) &&
+        _deepEquals(comment, other.comment) &&
+        _deepEquals(lyrics, other.lyrics);
   }
 
   @override
@@ -767,15 +798,12 @@ class GiftPackage {
   int sizeBytes;
 
   List<Object?> _toList() {
-    return <Object?>[
-      metadataJson,
-      embeddedAudioCount,
-      sizeBytes,
-    ];
+    return <Object?>[metadataJson, embeddedAudioCount, sizeBytes];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static GiftPackage decode(Object result) {
     result as List<Object?>;
@@ -795,7 +823,9 @@ class GiftPackage {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(metadataJson, other.metadataJson) && _deepEquals(embeddedAudioCount, other.embeddedAudioCount) && _deepEquals(sizeBytes, other.sizeBytes);
+    return _deepEquals(metadataJson, other.metadataJson) &&
+        _deepEquals(embeddedAudioCount, other.embeddedAudioCount) &&
+        _deepEquals(sizeBytes, other.sizeBytes);
   }
 
   @override
@@ -827,16 +857,12 @@ class WriteResult {
   bool permissionGranted;
 
   List<Object?> _toList() {
-    return <Object?>[
-      outcome,
-      songId,
-      message,
-      permissionGranted,
-    ];
+    return <Object?>[outcome, songId, message, permissionGranted];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static WriteResult decode(Object result) {
     result as List<Object?>;
@@ -857,7 +883,10 @@ class WriteResult {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(outcome, other.outcome) && _deepEquals(songId, other.songId) && _deepEquals(message, other.message) && _deepEquals(permissionGranted, other.permissionGranted);
+    return _deepEquals(outcome, other.outcome) &&
+        _deepEquals(songId, other.songId) &&
+        _deepEquals(message, other.message) &&
+        _deepEquals(permissionGranted, other.permissionGranted);
   }
 
   @override
@@ -913,7 +942,8 @@ class EqualizerSettings {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static EqualizerSettings decode(Object result) {
     result as List<Object?>;
@@ -936,7 +966,12 @@ class EqualizerSettings {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(enabled, other.enabled) && _deepEquals(bandGainsDb, other.bandGainsDb) && _deepEquals(preampDb, other.preampDb) && _deepEquals(autoPreventClipping, other.autoPreventClipping) && _deepEquals(balance, other.balance) && _deepEquals(monoOutput, other.monoOutput);
+    return _deepEquals(enabled, other.enabled) &&
+        _deepEquals(bandGainsDb, other.bandGainsDb) &&
+        _deepEquals(preampDb, other.preampDb) &&
+        _deepEquals(autoPreventClipping, other.autoPreventClipping) &&
+        _deepEquals(balance, other.balance) &&
+        _deepEquals(monoOutput, other.monoOutput);
   }
 
   @override
@@ -989,7 +1024,8 @@ class PlaybackOptions {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static PlaybackOptions decode(Object result) {
     result as List<Object?>;
@@ -1012,7 +1048,12 @@ class PlaybackOptions {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(gaplessEnabled, other.gaplessEnabled) && _deepEquals(crossfadeSeconds, other.crossfadeSeconds) && _deepEquals(fadeOnPause, other.fadeOnPause) && _deepEquals(fadeOnPauseMs, other.fadeOnPauseMs) && _deepEquals(directMode, other.directMode) && _deepEquals(allowOffload, other.allowOffload);
+    return _deepEquals(gaplessEnabled, other.gaplessEnabled) &&
+        _deepEquals(crossfadeSeconds, other.crossfadeSeconds) &&
+        _deepEquals(fadeOnPause, other.fadeOnPause) &&
+        _deepEquals(fadeOnPauseMs, other.fadeOnPauseMs) &&
+        _deepEquals(directMode, other.directMode) &&
+        _deepEquals(allowOffload, other.allowOffload);
   }
 
   @override
@@ -1082,7 +1123,8 @@ class EnhancementSettings {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static EnhancementSettings decode(Object result) {
     result as List<Object?>;
@@ -1108,7 +1150,15 @@ class EnhancementSettings {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(enabled, other.enabled) && _deepEquals(profile, other.profile) && _deepEquals(detail, other.detail) && _deepEquals(multibandStrength, other.multibandStrength) && _deepEquals(normalization, other.normalization) && _deepEquals(targetLevelDb, other.targetLevelDb) && _deepEquals(stereoExpansionEnabled, other.stereoExpansionEnabled) && _deepEquals(stereoWidth, other.stereoWidth) && _deepEquals(trackGainDb, other.trackGainDb);
+    return _deepEquals(enabled, other.enabled) &&
+        _deepEquals(profile, other.profile) &&
+        _deepEquals(detail, other.detail) &&
+        _deepEquals(multibandStrength, other.multibandStrength) &&
+        _deepEquals(normalization, other.normalization) &&
+        _deepEquals(targetLevelDb, other.targetLevelDb) &&
+        _deepEquals(stereoExpansionEnabled, other.stereoExpansionEnabled) &&
+        _deepEquals(stereoWidth, other.stereoWidth) &&
+        _deepEquals(trackGainDb, other.trackGainDb);
   }
 
   @override
@@ -1138,15 +1188,12 @@ class LoudnessAnalysis {
   double peak;
 
   List<Object?> _toList() {
-    return <Object?>[
-      songId,
-      gainDb,
-      peak,
-    ];
+    return <Object?>[songId, gainDb, peak];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static LoudnessAnalysis decode(Object result) {
     result as List<Object?>;
@@ -1166,7 +1213,9 @@ class LoudnessAnalysis {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(songId, other.songId) && _deepEquals(gainDb, other.gainDb) && _deepEquals(peak, other.peak);
+    return _deepEquals(songId, other.songId) &&
+        _deepEquals(gainDb, other.gainDb) &&
+        _deepEquals(peak, other.peak);
   }
 
   @override
@@ -1252,7 +1301,8 @@ class WidgetConfig {
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static WidgetConfig decode(Object result) {
     result as List<Object?>;
@@ -1283,7 +1333,20 @@ class WidgetConfig {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(enabled, other.enabled) && _deepEquals(style, other.style) && _deepEquals(theme, other.theme) && _deepEquals(preferredSize, other.preferredSize) && _deepEquals(accentColor, other.accentColor) && _deepEquals(backgroundOpacity, other.backgroundOpacity) && _deepEquals(showCover, other.showCover) && _deepEquals(showTitle, other.showTitle) && _deepEquals(showArtist, other.showArtist) && _deepEquals(showControls, other.showControls) && _deepEquals(showProgress, other.showProgress) && _deepEquals(showDuration, other.showDuration) && _deepEquals(showNextInQueue, other.showNextInQueue) && _deepEquals(openPlayerOnTap, other.openPlayerOnTap);
+    return _deepEquals(enabled, other.enabled) &&
+        _deepEquals(style, other.style) &&
+        _deepEquals(theme, other.theme) &&
+        _deepEquals(preferredSize, other.preferredSize) &&
+        _deepEquals(accentColor, other.accentColor) &&
+        _deepEquals(backgroundOpacity, other.backgroundOpacity) &&
+        _deepEquals(showCover, other.showCover) &&
+        _deepEquals(showTitle, other.showTitle) &&
+        _deepEquals(showArtist, other.showArtist) &&
+        _deepEquals(showControls, other.showControls) &&
+        _deepEquals(showProgress, other.showProgress) &&
+        _deepEquals(showDuration, other.showDuration) &&
+        _deepEquals(showNextInQueue, other.showNextInQueue) &&
+        _deepEquals(openPlayerOnTap, other.openPlayerOnTap);
   }
 
   @override
@@ -1311,14 +1374,12 @@ class DeviceControlConfig {
   bool resumeOnHeadphonesConnect;
 
   List<Object?> _toList() {
-    return <Object?>[
-      pauseOnHeadphonesDisconnect,
-      resumeOnHeadphonesConnect,
-    ];
+    return <Object?>[pauseOnHeadphonesDisconnect, resumeOnHeadphonesConnect];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static DeviceControlConfig decode(Object result) {
     result as List<Object?>;
@@ -1337,7 +1398,11 @@ class DeviceControlConfig {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(pauseOnHeadphonesDisconnect, other.pauseOnHeadphonesDisconnect) && _deepEquals(resumeOnHeadphonesConnect, other.resumeOnHeadphonesConnect);
+    return _deepEquals(
+          pauseOnHeadphonesDisconnect,
+          other.pauseOnHeadphonesDisconnect,
+        ) &&
+        _deepEquals(resumeOnHeadphonesConnect, other.resumeOnHeadphonesConnect);
   }
 
   @override
@@ -1378,18 +1443,12 @@ class RemoteSource {
   bool hasPassword;
 
   List<Object?> _toList() {
-    return <Object?>[
-      id,
-      kind,
-      name,
-      uri,
-      username,
-      hasPassword,
-    ];
+    return <Object?>[id, kind, name, uri, username, hasPassword];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static RemoteSource decode(Object result) {
     result as List<Object?>;
@@ -1412,7 +1471,12 @@ class RemoteSource {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(id, other.id) && _deepEquals(kind, other.kind) && _deepEquals(name, other.name) && _deepEquals(uri, other.uri) && _deepEquals(username, other.username) && _deepEquals(hasPassword, other.hasPassword);
+    return _deepEquals(id, other.id) &&
+        _deepEquals(kind, other.kind) &&
+        _deepEquals(name, other.name) &&
+        _deepEquals(uri, other.uri) &&
+        _deepEquals(username, other.username) &&
+        _deepEquals(hasPassword, other.hasPassword);
   }
 
   @override
@@ -1446,17 +1510,12 @@ class RemoteEntry {
   int sizeBytes;
 
   List<Object?> _toList() {
-    return <Object?>[
-      uri,
-      name,
-      isDirectory,
-      mimeType,
-      sizeBytes,
-    ];
+    return <Object?>[uri, name, isDirectory, mimeType, sizeBytes];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static RemoteEntry decode(Object result) {
     result as List<Object?>;
@@ -1478,7 +1537,11 @@ class RemoteEntry {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(uri, other.uri) && _deepEquals(name, other.name) && _deepEquals(isDirectory, other.isDirectory) && _deepEquals(mimeType, other.mimeType) && _deepEquals(sizeBytes, other.sizeBytes);
+    return _deepEquals(uri, other.uri) &&
+        _deepEquals(name, other.name) &&
+        _deepEquals(isDirectory, other.isDirectory) &&
+        _deepEquals(mimeType, other.mimeType) &&
+        _deepEquals(sizeBytes, other.sizeBytes);
   }
 
   @override
@@ -1506,15 +1569,12 @@ class EqualizerBands {
   double maxGainDb;
 
   List<Object?> _toList() {
-    return <Object?>[
-      centerFrequenciesHz,
-      minGainDb,
-      maxGainDb,
-    ];
+    return <Object?>[centerFrequenciesHz, minGainDb, maxGainDb];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static EqualizerBands decode(Object result) {
     result as List<Object?>;
@@ -1534,7 +1594,9 @@ class EqualizerBands {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(centerFrequenciesHz, other.centerFrequenciesHz) && _deepEquals(minGainDb, other.minGainDb) && _deepEquals(maxGainDb, other.maxGainDb);
+    return _deepEquals(centerFrequenciesHz, other.centerFrequenciesHz) &&
+        _deepEquals(minGainDb, other.minGainDb) &&
+        _deepEquals(maxGainDb, other.maxGainDb);
   }
 
   @override
@@ -1548,11 +1610,7 @@ class EqualizerBands {
 }
 
 class PickedDocument {
-  PickedDocument({
-    required this.uri,
-    required this.name,
-    this.mimeType,
-  });
+  PickedDocument({required this.uri, required this.name, this.mimeType});
 
   String uri;
 
@@ -1561,15 +1619,12 @@ class PickedDocument {
   String? mimeType;
 
   List<Object?> _toList() {
-    return <Object?>[
-      uri,
-      name,
-      mimeType,
-    ];
+    return <Object?>[uri, name, mimeType];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static PickedDocument decode(Object result) {
     result as List<Object?>;
@@ -1589,7 +1644,9 @@ class PickedDocument {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(uri, other.uri) && _deepEquals(name, other.name) && _deepEquals(mimeType, other.mimeType);
+    return _deepEquals(uri, other.uri) &&
+        _deepEquals(name, other.name) &&
+        _deepEquals(mimeType, other.mimeType);
   }
 
   @override
@@ -1603,24 +1660,19 @@ class PickedDocument {
 }
 
 class GrantedFolder {
-  GrantedFolder({
-    required this.uri,
-    required this.displayPath,
-  });
+  GrantedFolder({required this.uri, required this.displayPath});
 
   String uri;
 
   String displayPath;
 
   List<Object?> _toList() {
-    return <Object?>[
-      uri,
-      displayPath,
-    ];
+    return <Object?>[uri, displayPath];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static GrantedFolder decode(Object result) {
     result as List<Object?>;
@@ -1639,7 +1691,8 @@ class GrantedFolder {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(uri, other.uri) && _deepEquals(displayPath, other.displayPath);
+    return _deepEquals(uri, other.uri) &&
+        _deepEquals(displayPath, other.displayPath);
   }
 
   @override
@@ -1670,16 +1723,12 @@ class CoverImage {
   int height;
 
   List<Object?> _toList() {
-    return <Object?>[
-      songId,
-      bytes,
-      width,
-      height,
-    ];
+    return <Object?>[songId, bytes, width, height];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static CoverImage decode(Object result) {
     result as List<Object?>;
@@ -1700,7 +1749,10 @@ class CoverImage {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(songId, other.songId) && _deepEquals(bytes, other.bytes) && _deepEquals(width, other.width) && _deepEquals(height, other.height);
+    return _deepEquals(songId, other.songId) &&
+        _deepEquals(bytes, other.bytes) &&
+        _deepEquals(width, other.width) &&
+        _deepEquals(height, other.height);
   }
 
   @override
@@ -1715,11 +1767,7 @@ class CoverImage {
 
 /// Letra encontrada para una cancion (requerimiento 8).
 class LyricsPayload {
-  LyricsPayload({
-    this.embedded,
-    this.lrcContent,
-    this.lrcSource,
-  });
+  LyricsPayload({this.embedded, this.lrcContent, this.lrcSource});
 
   /// Letra sin sincronizar, incrustada en las etiquetas del archivo.
   String? embedded;
@@ -1731,15 +1779,12 @@ class LyricsPayload {
   String? lrcSource;
 
   List<Object?> _toList() {
-    return <Object?>[
-      embedded,
-      lrcContent,
-      lrcSource,
-    ];
+    return <Object?>[embedded, lrcContent, lrcSource];
   }
 
   Object encode() {
-    return _toList();  }
+    return _toList();
+  }
 
   static LyricsPayload decode(Object result) {
     result as List<Object?>;
@@ -1759,7 +1804,9 @@ class LyricsPayload {
     if (identical(this, other)) {
       return true;
     }
-    return _deepEquals(embedded, other.embedded) && _deepEquals(lrcContent, other.lrcContent) && _deepEquals(lrcSource, other.lrcSource);
+    return _deepEquals(embedded, other.embedded) &&
+        _deepEquals(lrcContent, other.lrcContent) &&
+        _deepEquals(lrcSource, other.lrcSource);
   }
 
   @override
@@ -1772,7 +1819,6 @@ class LyricsPayload {
   }
 }
 
-
 class _PigeonCodec extends StandardMessageCodec {
   const _PigeonCodec();
   @override
@@ -1780,97 +1826,97 @@ class _PigeonCodec extends StandardMessageCodec {
     if (value is int) {
       buffer.putUint8(4);
       buffer.putInt64(value);
-    }    else if (value is RepeatMode) {
+    } else if (value is RepeatMode) {
       buffer.putUint8(129);
       writeValue(buffer, value.index);
-    }    else if (value is ProcessingState) {
+    } else if (value is ProcessingState) {
       buffer.putUint8(130);
       writeValue(buffer, value.index);
-    }    else if (value is AudioOutput) {
+    } else if (value is AudioOutput) {
       buffer.putUint8(131);
       writeValue(buffer, value.index);
-    }    else if (value is WriteOutcome) {
+    } else if (value is WriteOutcome) {
       buffer.putUint8(132);
       writeValue(buffer, value.index);
-    }    else if (value is EnhancementProfile) {
+    } else if (value is EnhancementProfile) {
       buffer.putUint8(133);
       writeValue(buffer, value.index);
-    }    else if (value is DetailLevel) {
+    } else if (value is DetailLevel) {
       buffer.putUint8(134);
       writeValue(buffer, value.index);
-    }    else if (value is NormalizationMode) {
+    } else if (value is NormalizationMode) {
       buffer.putUint8(135);
       writeValue(buffer, value.index);
-    }    else if (value is WidgetStyle) {
+    } else if (value is WidgetStyle) {
       buffer.putUint8(136);
       writeValue(buffer, value.index);
-    }    else if (value is WidgetSize) {
+    } else if (value is WidgetSize) {
       buffer.putUint8(137);
       writeValue(buffer, value.index);
-    }    else if (value is WidgetTheme) {
+    } else if (value is WidgetTheme) {
       buffer.putUint8(138);
       writeValue(buffer, value.index);
-    }    else if (value is RemoteSourceKind) {
+    } else if (value is RemoteSourceKind) {
       buffer.putUint8(139);
       writeValue(buffer, value.index);
-    }    else if (value is Song) {
+    } else if (value is Song) {
       buffer.putUint8(140);
       writeValue(buffer, value.encode());
-    }    else if (value is TechnicalInfo) {
+    } else if (value is TechnicalInfo) {
       buffer.putUint8(141);
       writeValue(buffer, value.encode());
-    }    else if (value is PlaybackSnapshot) {
+    } else if (value is PlaybackSnapshot) {
       buffer.putUint8(142);
       writeValue(buffer, value.encode());
-    }    else if (value is AudioAnalysisFrame) {
+    } else if (value is AudioAnalysisFrame) {
       buffer.putUint8(143);
       writeValue(buffer, value.encode());
-    }    else if (value is MetadataEdit) {
+    } else if (value is MetadataEdit) {
       buffer.putUint8(144);
       writeValue(buffer, value.encode());
-    }    else if (value is GiftPackage) {
+    } else if (value is GiftPackage) {
       buffer.putUint8(145);
       writeValue(buffer, value.encode());
-    }    else if (value is WriteResult) {
+    } else if (value is WriteResult) {
       buffer.putUint8(146);
       writeValue(buffer, value.encode());
-    }    else if (value is EqualizerSettings) {
+    } else if (value is EqualizerSettings) {
       buffer.putUint8(147);
       writeValue(buffer, value.encode());
-    }    else if (value is PlaybackOptions) {
+    } else if (value is PlaybackOptions) {
       buffer.putUint8(148);
       writeValue(buffer, value.encode());
-    }    else if (value is EnhancementSettings) {
+    } else if (value is EnhancementSettings) {
       buffer.putUint8(149);
       writeValue(buffer, value.encode());
-    }    else if (value is LoudnessAnalysis) {
+    } else if (value is LoudnessAnalysis) {
       buffer.putUint8(150);
       writeValue(buffer, value.encode());
-    }    else if (value is WidgetConfig) {
+    } else if (value is WidgetConfig) {
       buffer.putUint8(151);
       writeValue(buffer, value.encode());
-    }    else if (value is DeviceControlConfig) {
+    } else if (value is DeviceControlConfig) {
       buffer.putUint8(152);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteSource) {
+    } else if (value is RemoteSource) {
       buffer.putUint8(153);
       writeValue(buffer, value.encode());
-    }    else if (value is RemoteEntry) {
+    } else if (value is RemoteEntry) {
       buffer.putUint8(154);
       writeValue(buffer, value.encode());
-    }    else if (value is EqualizerBands) {
+    } else if (value is EqualizerBands) {
       buffer.putUint8(155);
       writeValue(buffer, value.encode());
-    }    else if (value is PickedDocument) {
+    } else if (value is PickedDocument) {
       buffer.putUint8(156);
       writeValue(buffer, value.encode());
-    }    else if (value is GrantedFolder) {
+    } else if (value is GrantedFolder) {
       buffer.putUint8(157);
       writeValue(buffer, value.encode());
-    }    else if (value is CoverImage) {
+    } else if (value is CoverImage) {
       buffer.putUint8(158);
       writeValue(buffer, value.encode());
-    }    else if (value is LyricsPayload) {
+    } else if (value is LyricsPayload) {
       buffer.putUint8(159);
       writeValue(buffer, value.encode());
     } else {
@@ -1964,9 +2010,13 @@ class MusicEngineHostApi {
   /// Constructor for [MusicEngineHostApi]. The [binaryMessenger] named argument is
   /// available for dependency injection. If it is left null, the default
   /// BinaryMessenger will be used which routes to the host platform.
-  MusicEngineHostApi({BinaryMessenger? binaryMessenger, String messageChannelSuffix = ''})
-      : pigeonVar_binaryMessenger = binaryMessenger,
-        pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  MusicEngineHostApi({
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) : pigeonVar_binaryMessenger = binaryMessenger,
+       pigeonVar_messageChannelSuffix = messageChannelSuffix.isNotEmpty
+           ? '.$messageChannelSuffix'
+           : '';
   final BinaryMessenger? pigeonVar_binaryMessenger;
 
   static const MessageCodec<Object?> pigeonChannelCodec = _PigeonCodec();
@@ -1975,7 +2025,8 @@ class MusicEngineHostApi {
 
   /// Conecta con MusicPlayerService y comienza a emitir eventos.
   Future<void> initialize() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.initialize$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.initialize$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -1985,36 +2036,41 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Escanea MediaStore ignorando MIME de video y las carpetas excluidas.
   /// Devuelve el numero de canciones visibles tras el escaneo.
-  Future<int> scanLibrary(List<String> excludedFolderPaths, bool forceFullRescan) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.scanLibrary$pigeonVar_messageChannelSuffix';
+  Future<int> scanLibrary(
+    List<String> excludedFolderPaths,
+    bool forceFullRescan,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.scanLibrary$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[excludedFolderPaths, forceFullRescan]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[excludedFolderPaths, forceFullRescan],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as int;
   }
 
   Future<List<Song>> getSongs() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getSongs$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getSongs$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2024,166 +2080,187 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<Song>();
   }
 
   /// Pide a MediaStore volver a leer un archivo concreto (requerimiento 7.1).
   Future<void> rescanFile(String filePath) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.rescanFile$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.rescanFile$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[filePath]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[filePath],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<TechnicalInfo> getTechnicalInfo(int songId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getTechnicalInfo$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getTechnicalInfo$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as TechnicalInfo;
   }
 
   /// Miniatura cuadrada de `size` px. Devuelve null si no hay portada.
   Future<CoverImage?> getCover(int songId, int size) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getCover$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getCover$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId, size]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId, size],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as CoverImage?;
   }
 
   /// Reemplaza la cola completa. `startIndex` y `positionMs` permiten
   /// restaurar la ultima cola al abrir la aplicacion.
-  Future<void> setQueue(List<Song> songs, int startIndex, int positionMs, bool startPlaying) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setQueue$pigeonVar_messageChannelSuffix';
+  Future<void> setQueue(
+    List<Song> songs,
+    int startIndex,
+    int positionMs,
+    bool startPlaying,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setQueue$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songs, startIndex, positionMs, startPlaying]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songs, startIndex, positionMs, startPlaying],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> addToQueueNext(List<Song> songs) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.addToQueueNext$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.addToQueueNext$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songs]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songs],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> addToQueueEnd(List<Song> songs) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.addToQueueEnd$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.addToQueueEnd$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songs]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songs],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> removeQueueItem(int index) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.removeQueueItem$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.removeQueueItem$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[index]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[index],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> moveQueueItem(int fromIndex, int toIndex) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.moveQueueItem$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.moveQueueItem$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[fromIndex, toIndex]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[fromIndex, toIndex],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> clearQueue() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.clearQueue$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.clearQueue$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2193,33 +2270,35 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> playQueueIndex(int index) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.playQueueIndex$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.playQueueIndex$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[index]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[index],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> play() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.play$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.play$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2229,15 +2308,15 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> pause() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.pause$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.pause$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2247,15 +2326,15 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> stop() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.stop$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.stop$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2265,52 +2344,56 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> seek(int positionMs) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.seek$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.seek$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[positionMs]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[positionMs],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Desplazamiento relativo en milisegundos; negativo retrocede.
   Future<void> seekRelative(int deltaMs) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.seekRelative$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.seekRelative$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[deltaMs]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[deltaMs],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> skipNext() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.skipNext$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.skipNext$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2320,15 +2403,15 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> skipPrevious() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.skipPrevious$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.skipPrevious$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2338,108 +2421,118 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> setShuffle(bool enabled) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setShuffle$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setShuffle$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[enabled]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[enabled],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> setRepeatMode(RepeatMode mode) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setRepeatMode$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setRepeatMode$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[mode]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[mode],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> setPlaybackSpeed(double speed) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setPlaybackSpeed$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setPlaybackSpeed$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[speed]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[speed],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> setPitch(double pitch) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setPitch$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setPitch$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[pitch]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[pitch],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Activa el analisis PCM solo mientras una interfaz visible lo necesita.
   /// En modo directo/offload no se intercepta la senal y no se emiten cuadros.
   Future<void> setAudioAnalysisEnabled(bool enabled) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setAudioAnalysisEnabled$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setAudioAnalysisEnabled$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[enabled]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[enabled],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Devuelve el estado actual sin esperar un evento.
   Future<PlaybackSnapshot> getPlaybackSnapshot() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getPlaybackSnapshot$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getPlaybackSnapshot$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2449,55 +2542,59 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as PlaybackSnapshot;
   }
 
   /// Informa al motor si la cancion en curso es favorita, para que la
   /// notificacion y Android Auto dibujen el icono correcto (requerimiento 9.2).
   Future<void> setFavoriteState(int songId, bool isFavorite) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setFavoriteState$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setFavoriteState$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId, isFavorite]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId, isFavorite],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// `finishCurrentTrack` deja terminar la cancion en curso antes de pausar.
   Future<void> setSleepTimer(int durationMs, bool finishCurrentTrack) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setSleepTimer$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setSleepTimer$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[durationMs, finishCurrentTrack]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[durationMs, finishCurrentTrack],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> cancelSleepTimer() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.cancelSleepTimer$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.cancelSleepTimer$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2507,70 +2604,76 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> setEqualizer(EqualizerSettings settings) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setEqualizer$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setEqualizer$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[settings]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[settings],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> setPlaybackOptions(PlaybackOptions options) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setPlaybackOptions$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setPlaybackOptions$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[options]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[options],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<EqualizerBands> getEqualizerBands(int bandCount) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getEqualizerBands$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getEqualizerBands$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[bandCount]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[bandCount],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as EqualizerBands;
   }
 
   Future<AudioOutput> getCurrentAudioOutput() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getCurrentAudioOutput$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getCurrentAudioOutput$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2580,98 +2683,106 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as AudioOutput;
   }
 
   /// Publica la cadena de mejora completa. Aplicar el mismo objeto con
   /// `enabled` en falso es lo que hace la comparacion A/B instantanea.
   Future<void> setEnhancement(EnhancementSettings settings) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setEnhancement$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setEnhancement$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[settings]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[settings],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Mide la sonoridad de una pista para la normalizacion por analisis. Decodifica
   /// el archivo completo, de modo que la interfaz debe llamarlo en segundo plano
   /// y respetando el estado de la bateria (requerimiento 17).
   Future<LoudnessAnalysis> analyzeLoudness(int songId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.analyzeLoudness$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.analyzeLoudness$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as LoudnessAnalysis;
   }
 
   /// Publica la configuracion del widget y repinta los que ya esten colocados.
   Future<void> setWidgetConfig(WidgetConfig config) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setWidgetConfig$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setWidgetConfig$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[config]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[config],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Publica el comportamiento de auriculares y salidas Bluetooth.
   Future<void> setDeviceControlConfig(DeviceControlConfig config) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setDeviceControlConfig$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setDeviceControlConfig$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[config]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[config],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Numero de widgets colocados en la pantalla de inicio, para poder decirlo
   /// en la pantalla de ajustes en vez de dar por hecho que hay alguno.
   Future<int> countPlacedWidgets() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.countPlacedWidgets$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.countPlacedWidgets$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2681,16 +2792,16 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as int;
   }
 
   Future<List<RemoteSource>> listRemoteSources() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.listRemoteSources$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.listRemoteSources$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2700,69 +2811,83 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<RemoteSource>();
   }
 
-  Future<RemoteSource> addRemoteSource(RemoteSourceKind kind, String name, String uri, String? username, String? password) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.addRemoteSource$pigeonVar_messageChannelSuffix';
+  Future<RemoteSource> addRemoteSource(
+    RemoteSourceKind kind,
+    String name,
+    String uri,
+    String? username,
+    String? password,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.addRemoteSource$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[kind, name, uri, username, password]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[kind, name, uri, username, password],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as RemoteSource;
   }
 
   Future<void> removeRemoteSource(int sourceId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.removeRemoteSource$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.removeRemoteSource$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[sourceId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[sourceId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Lista una carpeta del servidor. `path` vacio significa la raiz declarada
   /// al dar de alta la fuente.
-  Future<List<RemoteEntry>> browseRemoteSource(int sourceId, String path) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.browseRemoteSource$pigeonVar_messageChannelSuffix';
+  Future<List<RemoteEntry>> browseRemoteSource(
+    int sourceId,
+    String path,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.browseRemoteSource$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[sourceId, path]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[sourceId, path],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<RemoteEntry>();
   }
 
@@ -2770,225 +2895,261 @@ class MusicEngineHostApi {
   /// son negativos para no colisionar nunca con los de MediaStore, que es lo
   /// que mantiene separadas la biblioteca local y las fuentes remotas.
   Future<List<Song>> resolveRemoteSongs(int sourceId, List<String> uris) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.resolveRemoteSongs$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.resolveRemoteSongs$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[sourceId, uris]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[sourceId, uris],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<Song>();
   }
 
   /// Descarga y resuelve una lista M3U alojada en un servidor.
   Future<List<Song>> loadRemotePlaylist(String url) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.loadRemotePlaylist$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.loadRemotePlaylist$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[url]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[url],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<Song>();
   }
 
   /// Consulta un proveedor abierto de letras. Devuelve el contenido `.lrc`
   /// sincronizado si existe, o la letra plana, o nulo si no hay coincidencia.
-  Future<String?> fetchLyricsOnline(String title, String artist, String album, int durationMs) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.fetchLyricsOnline$pigeonVar_messageChannelSuffix';
+  Future<String?> fetchLyricsOnline(
+    String title,
+    String artist,
+    String album,
+    int durationMs,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.fetchLyricsOnline$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[title, artist, album, durationMs]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[title, artist, album, durationMs],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as String?;
   }
 
   Future<WriteResult> editMetadata(MetadataEdit edit) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.editMetadata$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.editMetadata$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[edit]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[edit],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as WriteResult;
   }
 
   /// Escribe varias canciones en lote y devuelve un resultado por cancion.
   Future<List<WriteResult>> editMetadataBatch(List<MetadataEdit> edits) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.editMetadataBatch$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.editMetadataBatch$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[edits]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[edits],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<WriteResult>();
   }
 
   /// Incrusta `imageBytes` como portada del archivo.
-  Future<WriteResult> setCoverArt(int songId, Uint8List imageBytes, String mimeType) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setCoverArt$pigeonVar_messageChannelSuffix';
+  Future<WriteResult> setCoverArt(
+    int songId,
+    Uint8List imageBytes,
+    String mimeType,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setCoverArt$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId, imageBytes, mimeType]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId, imageBytes, mimeType],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as WriteResult;
   }
 
-  Future<List<WriteResult>> setCoverArtBatch(List<int> songIds, Uint8List imageBytes, String mimeType) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setCoverArtBatch$pigeonVar_messageChannelSuffix';
+  Future<List<WriteResult>> setCoverArtBatch(
+    List<int> songIds,
+    Uint8List imageBytes,
+    String mimeType,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.setCoverArtBatch$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songIds, imageBytes, mimeType]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songIds, imageBytes, mimeType],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<WriteResult>();
   }
 
   Future<WriteResult> removeCoverArt(int songId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.removeCoverArt$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.removeCoverArt$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as WriteResult;
   }
 
   /// Portada incrustada en tamano original, para el editor.
   Future<Uint8List?> getEmbeddedCover(int songId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getEmbeddedCover$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getEmbeddedCover$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as Uint8List?;
   }
 
   Future<LyricsPayload> getLyrics(int songId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getLyrics$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getLyrics$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as LyricsPayload;
   }
 
   /// Guarda un .lrc junto al archivo de audio o en el almacenamiento de la
   /// aplicacion si la carpeta de origen no es escribible.
   Future<String> saveLrcFile(int songId, String lrcContent) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.saveLrcFile$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.saveLrcFile$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId, lrcContent]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId, lrcContent],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as String;
   }
 
   /// Abre ACTION_OPEN_DOCUMENT_TREE y persiste el permiso concedido.
   Future<GrantedFolder?> pickFolder() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.pickFolder$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.pickFolder$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -2998,16 +3159,16 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as GrantedFolder?;
   }
 
   Future<List<GrantedFolder>> getGrantedFolders() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getGrantedFolders$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getGrantedFolders$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -3017,114 +3178,128 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return (pigeonVar_replyValue! as List<Object?>).cast<GrantedFolder>();
   }
 
   Future<void> releaseFolder(String uri) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.releaseFolder$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.releaseFolder$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[uri]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[uri],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<PickedDocument?> pickDocument(List<String> mimeTypes) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.pickDocument$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.pickDocument$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[mimeTypes]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[mimeTypes],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as PickedDocument?;
   }
 
   Future<String> readDocumentText(String uri) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readDocumentText$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readDocumentText$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[uri]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[uri],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as String;
   }
 
   /// Contenido binario de un documento elegido con el selector del sistema. Se
   /// usa para las imagenes de portada que no estan indexadas en la galeria.
   Future<Uint8List> readDocumentBytes(String uri) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readDocumentBytes$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readDocumentBytes$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[uri]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[uri],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as Uint8List;
   }
 
   /// Abre ACTION_CREATE_DOCUMENT y escribe `content`. Devuelve el URI creado.
-  Future<String?> createTextDocument(String suggestedName, String mimeType, String content) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.createTextDocument$pigeonVar_messageChannelSuffix';
+  Future<String?> createTextDocument(
+    String suggestedName,
+    String mimeType,
+    String content,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.createTextDocument$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[suggestedName, mimeType, content]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[suggestedName, mimeType, content],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as String?;
   }
 
   /// Imagen presente en el portapapeles, si hay alguna.
   Future<Uint8List?> getClipboardImage() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getClipboardImage$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.getClipboardImage$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -3134,87 +3309,94 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
     return pigeonVar_replyValue as Uint8List?;
   }
 
   Future<void> shareSongs(List<int> songIds) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.shareSongs$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.shareSongs$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songIds]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songIds],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   Future<void> shareText(String subject, String text) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.shareText$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.shareText$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[subject, text]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[subject, text],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Abre la ubicacion del archivo en un explorador del sistema.
   Future<void> revealFile(int songId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.revealFile$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.revealFile$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 
   /// Elimina el archivo del dispositivo. Distinto de quitar de la biblioteca
   /// (requerimiento 16).
   Future<WriteResult> deleteSongFile(int songId) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.deleteSongFile$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.deleteSongFile$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[songId]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[songId],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as WriteResult;
   }
 
@@ -3225,64 +3407,74 @@ class MusicEngineHostApi {
   /// de titulos que el receptor tenga que salir a buscar y que puede terminar
   /// resolviendo con la version equivocada (o no encontrar, si es musica que
   /// no esta publicada en internet).
-  Future<String> createGiftPackage(String suggestedFileName, String metadataJson, List<int> songIds) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.createGiftPackage$pigeonVar_messageChannelSuffix';
+  Future<String> createGiftPackage(
+    String suggestedFileName,
+    String metadataJson,
+    List<int> songIds,
+  ) async {
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.createGiftPackage$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[suggestedFileName, metadataJson, songIds]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[suggestedFileName, metadataJson, songIds],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as String;
   }
 
   /// Lee un archivo de regalo sin importarlo todavia, para poder mostrar que
   /// trae antes de tocar la biblioteca.
   Future<GiftPackage> readGiftPackage(String uri) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readGiftPackage$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readGiftPackage$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[uri]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[uri],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as GiftPackage;
   }
 
   /// Copia a la biblioteca de musica el audio incrustado en el regalo.
   /// Devuelve cuantas canciones se agregaron.
   Future<int> importGiftAudio(String uri) async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.importGiftAudio$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.importGiftAudio$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
       binaryMessenger: pigeonVar_binaryMessenger,
     );
-    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(<Object?>[uri]);
+    final Future<Object?> pigeonVar_sendFuture = pigeonVar_channel.send(
+      <Object?>[uri],
+    );
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as int;
   }
 
@@ -3297,7 +3489,8 @@ class MusicEngineHostApi {
   /// una a cruzar el canal como un mensaje individual solo para listar el
   /// registro completo seria mas lento sin ganar nada.
   Future<String> readPlaybackFailureLog() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readPlaybackFailureLog$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.readPlaybackFailureLog$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -3307,17 +3500,17 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     final Object? pigeonVar_replyValue = _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: false,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: false,
+    );
     return pigeonVar_replyValue! as String;
   }
 
   /// Vacia el registro.
   Future<void> clearPlaybackFailureLog() async {
-    final pigeonVar_channelName = 'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.clearPlaybackFailureLog$pigeonVar_messageChannelSuffix';
+    final pigeonVar_channelName =
+        'dev.flutter.pigeon.nuvtune.MusicEngineHostApi.clearPlaybackFailureLog$pigeonVar_messageChannelSuffix';
     final pigeonVar_channel = BasicMessageChannel<Object?>(
       pigeonVar_channelName,
       pigeonChannelCodec,
@@ -3327,11 +3520,10 @@ class MusicEngineHostApi {
     final pigeonVar_replyList = await pigeonVar_sendFuture as List<Object?>?;
 
     _extractReplyValueOrThrow(
-        pigeonVar_replyList,
-        pigeonVar_channelName,
-        isNullValid: true,
-    )
-    ;
+      pigeonVar_replyList,
+      pigeonVar_channelName,
+      isNullValid: true,
+    );
   }
 }
 
@@ -3379,12 +3571,20 @@ abstract class MusicEngineFlutterApi {
 
   void errorOccurred(String code, String message);
 
-  static void setUp(MusicEngineFlutterApi? api, {BinaryMessenger? binaryMessenger, String messageChannelSuffix = '',}) {
-    messageChannelSuffix = messageChannelSuffix.isNotEmpty ? '.$messageChannelSuffix' : '';
+  static void setUp(
+    MusicEngineFlutterApi? api, {
+    BinaryMessenger? binaryMessenger,
+    String messageChannelSuffix = '',
+  }) {
+    messageChannelSuffix = messageChannelSuffix.isNotEmpty
+        ? '.$messageChannelSuffix'
+        : '';
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.playbackStateChanged$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.playbackStateChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3396,16 +3596,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.currentTrackChanged$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.currentTrackChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3418,16 +3622,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.positionChanged$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.positionChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3441,16 +3649,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.queueChanged$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.queueChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3462,16 +3674,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.audioDeviceChanged$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.audioDeviceChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3484,16 +3700,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.audioAnalysisChanged$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.audioAnalysisChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3505,16 +3725,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.libraryChanged$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.libraryChanged$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3526,16 +3750,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.metadataUpdated$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.metadataUpdated$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3547,16 +3775,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.sleepTimerFinished$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.sleepTimerFinished$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3566,16 +3798,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.favoriteToggleRequested$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.favoriteToggleRequested$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3587,16 +3823,20 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }
     }
     {
       final pigeonVar_channel = BasicMessageChannel<Object?>(
-          'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.errorOccurred$messageChannelSuffix', pigeonChannelCodec,
-          binaryMessenger: binaryMessenger);
+        'dev.flutter.pigeon.nuvtune.MusicEngineFlutterApi.errorOccurred$messageChannelSuffix',
+        pigeonChannelCodec,
+        binaryMessenger: binaryMessenger,
+      );
       if (api == null) {
         pigeonVar_channel.setMessageHandler(null);
       } else {
@@ -3609,8 +3849,10 @@ abstract class MusicEngineFlutterApi {
             return wrapResponse(empty: true);
           } on PlatformException catch (e) {
             return wrapResponse(error: e);
-          }          catch (e) {
-            return wrapResponse(error: PlatformException(code: 'error', message: e.toString()));
+          } catch (e) {
+            return wrapResponse(
+              error: PlatformException(code: 'error', message: e.toString()),
+            );
           }
         });
       }

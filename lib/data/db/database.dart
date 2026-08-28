@@ -418,6 +418,14 @@ class AppSettings extends Table {
   TextColumn get visualizerColorMode =>
       text().withDefault(const Constant('row'))();
 
+  /// Desplaza suavemente el matiz del mapa de color durante la reproducción.
+  BoolColumn get visualizerRandomColors =>
+      boolean().withDefault(const Constant(false))();
+
+  /// Animación de la línea activa (`LyricsAnimationStyle.id`).
+  TextColumn get lyricsAnimationStyle =>
+      text().withDefault(const Constant('soft'))();
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -492,7 +500,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 18;
+  int get schemaVersion => 19;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -519,6 +527,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   ///   intensidad que alcanza cada elemento.
   /// - Version 17: reparto del mapa por fila o por columna.
   /// - Version 18: identidades visuales completas y sus desvíos por eje.
+  /// - Version 19: color fluido del visualizador y animación de letras.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -689,6 +698,13 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
             ELSE 'nebulaGlass'
           END
         ''');
+      }
+      if (from < 19) {
+        await migrator.addColumn(
+          appSettings,
+          appSettings.visualizerRandomColors,
+        );
+        await migrator.addColumn(appSettings, appSettings.lyricsAnimationStyle);
       }
     },
   );

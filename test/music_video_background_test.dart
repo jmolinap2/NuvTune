@@ -90,4 +90,67 @@ void main() {
       );
     });
   });
+
+  group('MusicVideoSyncClock', () {
+    test('extrapola el tiempo entre muestras mientras se reproduce', () {
+      expect(
+        MusicVideoSyncClock.extrapolatedPositionMs(
+          anchorPositionMs: 30000,
+          anchorElapsedMs: 1000,
+          nowElapsedMs: 1500,
+          isPlaying: true,
+          durationMs: 180000,
+        ),
+        30500,
+      );
+    });
+
+    test('no avanza durante la pausa ni supera la duración', () {
+      expect(
+        MusicVideoSyncClock.extrapolatedPositionMs(
+          anchorPositionMs: 30000,
+          anchorElapsedMs: 1000,
+          nowElapsedMs: 9000,
+          isPlaying: false,
+          durationMs: 180000,
+        ),
+        30000,
+      );
+      expect(
+        MusicVideoSyncClock.extrapolatedPositionMs(
+          anchorPositionMs: 179800,
+          anchorElapsedMs: 1000,
+          nowElapsedMs: 1500,
+          isPlaying: true,
+          durationMs: 180000,
+        ),
+        180000,
+      );
+    });
+
+    test('distingue un salto manual del avance normal', () {
+      expect(
+        MusicVideoSyncClock.isDiscontinuity(
+          expectedPositionMs: 30500,
+          reportedPositionMs: 30600,
+        ),
+        isFalse,
+      );
+      expect(
+        MusicVideoSyncClock.isDiscontinuity(
+          expectedPositionMs: 30500,
+          reportedPositionMs: 60000,
+        ),
+        isTrue,
+      );
+    });
+  });
+
+  test('cover llena el viewport sin el zoom fijo histórico', () {
+    final css = musicVideoPlayerCss(MusicVideoFit.cover);
+
+    expect(css, contains('177.77777778vh'));
+    expect(css, contains('min-width: 100vw'));
+    expect(css, isNot(contains('scale(1.6)')));
+  });
 }

@@ -1,7 +1,32 @@
 import 'dart:convert';
+import 'dart:math' as math;
 
 import 'package:flutter/foundation.dart' show listEquals;
 import 'package:flutter/material.dart';
+
+/// Desplazamiento cromático continuo y determinista para una canción.
+/// Combina ondas inconmensurables: parece aleatorio, pero nunca salta entre
+/// fotogramas ni cambia al reconstruir el widget.
+double fluidRandomHueOffset({
+  required int seed,
+  required double elapsedSeconds,
+  required double energy,
+  required double beatImpulse,
+}) {
+  final seedPhase = (seed.abs() % 4096) / 4096 * math.pi * 2;
+  final speed = 0.10 + energy.clamp(0.0, 1.0) * 0.12;
+  final time = elapsedSeconds * speed;
+  final wave =
+      math.sin(time + seedPhase) * 0.31 +
+      math.sin(time * 0.618 + seedPhase * 1.7) * 0.19 +
+      math.sin(time * 1.414 - seedPhase * 0.73) * 0.08;
+  return (0.5 + wave + beatImpulse.clamp(0.0, 1.0) * 0.025) % 1.0;
+}
+
+Color rotateVisualizerHue(Color color, double offset) {
+  final hsl = HSLColor.fromColor(color);
+  return hsl.withHue((hsl.hue + offset * 360) % 360).toColor();
+}
 
 /// Cómo se reparte el mapa sobre cada elemento del visualizador.
 ///
@@ -16,7 +41,11 @@ enum VisualizerColorMode {
   /// Toda la barra toma un único color, el que corresponde a la intensidad
   /// que alcanza. Así solo las columnas que llegan a cierta fuerza muestran
   /// el color de esa fuerza.
-  column('column', 'Por columna', 'Cada barra toma un solo color según su fuerza');
+  column(
+    'column',
+    'Por columna',
+    'Cada barra toma un solo color según su fuerza',
+  );
 
   const VisualizerColorMode(this.id, this.label, this.description);
 
@@ -191,11 +220,12 @@ class VisualizerColorMap {
   /// devuelve únicamente los colores bajos del mapa, y solo una que llega al
   /// 100 % alcanza el color reservado al pico.
   ({List<Color> colors, List<double> positions}) rampTo(double intensity) {
-    final top = intensity.isFinite
-        ? intensity.clamp(0.0, 1.0).toDouble()
-        : 0.0;
+    final top = intensity.isFinite ? intensity.clamp(0.0, 1.0).toDouble() : 0.0;
     if (top <= 0) {
-      return (colors: [stops.first.color, stops.first.color], positions: [0, 1]);
+      return (
+        colors: [stops.first.color, stops.first.color],
+        positions: [0, 1],
+      );
     }
     final colors = <Color>[];
     final positions = <double>[];
@@ -250,7 +280,10 @@ class VisualizerColorMap {
 
   String toJsonString() => jsonEncode([
     for (final stop in stops)
-      {'p': double.parse(stop.position.toStringAsFixed(4)), 'c': stop.color.toARGB32()},
+      {
+        'p': double.parse(stop.position.toStringAsFixed(4)),
+        'c': stop.color.toARGB32(),
+      },
   ]);
 
   /// Una preferencia dañada o de una versión anterior vuelve al reparto por
@@ -270,12 +303,7 @@ class VisualizerColorMap {
       final position = entry['p'];
       final color = entry['c'];
       if (position is! num || color is! num) continue;
-      stops.add(
-        VisualizerColorStop(
-          position.toDouble(),
-          Color(color.toInt()),
-        ),
-      );
+      stops.add(VisualizerColorStop(position.toDouble(), Color(color.toInt())));
     }
     if (stops.length < minStops) return defaults;
     return VisualizerColorMap(stops.take(maxStops));

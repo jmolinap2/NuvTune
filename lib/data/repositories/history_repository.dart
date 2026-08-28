@@ -18,11 +18,13 @@ class HistoryRepository {
           .into(_database.playHistory)
           .insert(PlayHistoryCompanion.insert(songId: songId));
 
-      final existing = await (_database.select(_database.playCounts)
-            ..where((table) => table.songId.equals(songId)))
-          .getSingleOrNull();
+      final existing = await (_database.select(
+        _database.playCounts,
+      )..where((table) => table.songId.equals(songId))).getSingleOrNull();
 
-      await _database.into(_database.playCounts).insertOnConflictUpdate(
+      await _database
+          .into(_database.playCounts)
+          .insertOnConflictUpdate(
             PlayCountsCompanion.insert(
               songId: Value(songId),
               count: Value((existing?.count ?? 0) + 1),
@@ -58,31 +60,32 @@ class HistoryRepository {
       ..limit(limit);
 
     return query.watch().map(
-          (rows) => rows
-              .map((row) => row.read(_database.playHistory.songId))
-              .whereType<int>()
-              .toList(),
-        );
+      (rows) => rows
+          .map((row) => row.read(_database.playHistory.songId))
+          .whereType<int>()
+          .toList(),
+    );
   }
 
   Stream<List<int>> watchMostPlayedIds({int limit = 100}) {
     final query = _database.select(_database.playCounts)
       ..where((table) => table.count.isBiggerThanValue(0))
       ..orderBy([
-        (table) => OrderingTerm(expression: table.count, mode: OrderingMode.desc),
+        (table) =>
+            OrderingTerm(expression: table.count, mode: OrderingMode.desc),
         (table) => OrderingTerm(
-              expression: table.lastPlayedAt,
-              mode: OrderingMode.desc,
-            ),
+          expression: table.lastPlayedAt,
+          mode: OrderingMode.desc,
+        ),
       ])
       ..limit(limit);
     return query.watch().map((rows) => rows.map((row) => row.songId).toList());
   }
 
-  Stream<Map<int, int>> watchPlayCounts() =>
-      _database.select(_database.playCounts).watch().map(
-            (rows) => {for (final row in rows) row.songId: row.count},
-          );
+  Stream<Map<int, int>> watchPlayCounts() => _database
+      .select(_database.playCounts)
+      .watch()
+      .map((rows) => {for (final row in rows) row.songId: row.count});
 
   Future<Map<int, int>> playCounts() async {
     final rows = await _database.select(_database.playCounts).get();
@@ -90,15 +93,16 @@ class HistoryRepository {
   }
 
   Future<int?> lastPlayedSongId() async {
-    final row = await (_database.select(_database.playHistory)
-          ..orderBy([
-            (table) => OrderingTerm(
+    final row =
+        await (_database.select(_database.playHistory)
+              ..orderBy([
+                (table) => OrderingTerm(
                   expression: table.playedAt,
                   mode: OrderingMode.desc,
                 ),
-          ])
-          ..limit(1))
-        .getSingleOrNull();
+              ])
+              ..limit(1))
+            .getSingleOrNull();
     return row?.songId;
   }
 
@@ -115,9 +119,9 @@ class HistoryRepository {
         .map((row) => row.id)
         .toList();
     if (orphanHistory.isNotEmpty) {
-      await (_database.delete(_database.playHistory)
-            ..where((table) => table.id.isIn(orphanHistory)))
-          .go();
+      await (_database.delete(
+        _database.playHistory,
+      )..where((table) => table.id.isIn(orphanHistory))).go();
     }
 
     final countRows = await _database.select(_database.playCounts).get();
@@ -126,9 +130,9 @@ class HistoryRepository {
         .map((row) => row.songId)
         .toList();
     if (orphanCounts.isNotEmpty) {
-      await (_database.delete(_database.playCounts)
-            ..where((table) => table.songId.isIn(orphanCounts)))
-          .go();
+      await (_database.delete(
+        _database.playCounts,
+      )..where((table) => table.songId.isIn(orphanCounts))).go();
     }
   }
 

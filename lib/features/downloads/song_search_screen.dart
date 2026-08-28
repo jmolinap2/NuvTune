@@ -237,7 +237,8 @@ class _SongSearchScreenState extends ConsumerState<SongSearchScreen> {
   @override
   Widget build(BuildContext context) {
     final downloads = ref.watch(downloadsControllerProvider);
-    final loggedIntoYoutube = ref.watch(youtubeLoginProvider).valueOrNull ?? false;
+    final loggedIntoYoutube =
+        ref.watch(youtubeLoginProvider).valueOrNull ?? false;
 
     return Scaffold(
       appBar: AppBar(
@@ -408,9 +409,8 @@ class _SearchResultTile extends StatelessWidget {
                           duration == null ? author : '$author · $duration',
                           maxLines: 2,
                           overflow: TextOverflow.ellipsis,
-                          style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                            color: scheme.onSurfaceVariant,
-                          ),
+                          style: Theme.of(context).textTheme.bodySmall
+                              ?.copyWith(color: scheme.onSurfaceVariant),
                         ),
                       ],
                     ),
@@ -494,9 +494,10 @@ class _PlatformBadge extends StatelessWidget {
       ),
       child: Text(
         label,
-        style: Theme.of(
-          context,
-        ).textTheme.labelSmall?.copyWith(color: color, fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: color,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
@@ -627,9 +628,9 @@ class _ActiveDownloads extends StatelessWidget {
           const SizedBox(height: Tokens.space1),
           Text(
             detail,
-            style: Theme.of(context).textTheme.bodySmall?.copyWith(
-              color: scheme.onSurfaceVariant,
-            ),
+            style: Theme.of(
+              context,
+            ).textTheme.bodySmall?.copyWith(color: scheme.onSurfaceVariant),
           ),
         ],
       ),

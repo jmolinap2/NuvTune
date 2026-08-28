@@ -63,7 +63,9 @@ class CoverCache {
 
   /// Se invalida tras incrustar una portada nueva en el archivo.
   void invalidate(int songId) {
-    final keys = _thumbnails.keys.where((key) => key.startsWith('$songId@')).toList();
+    final keys = _thumbnails.keys
+        .where((key) => key.startsWith('$songId@'))
+        .toList();
     for (final key in keys) {
       _thumbnails.remove(key);
       _insertionOrder.remove(key);
@@ -86,7 +88,10 @@ final coverCacheProvider = Provider<CoverCache>((ref) {
 
 /// Color dominante de la portada de una cancion, para los colores dinamicos
 /// (requerimiento seccion 12).
-final coverAccentProvider = FutureProvider.family<Color?, int>((ref, songId) async {
+final coverAccentProvider = FutureProvider.family<Color?, int>((
+  ref,
+  songId,
+) async {
   final bytes = await ref
       .watch(coverCacheProvider)
       .thumbnail(songId, CoverCache.listSize);

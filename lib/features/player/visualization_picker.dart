@@ -8,6 +8,7 @@ import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
+import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 
 Future<void> showVisualizationPicker(
@@ -136,8 +137,47 @@ class _VisualizationPickerSheet extends ConsumerWidget {
                   );
                 },
               ),
+              const SizedBox(height: Tokens.space3),
+              SwitchListTile(
+                contentPadding: EdgeInsets.zero,
+                secondary: const Icon(Icons.casino_outlined),
+                title: const Text('Colores aleatorios'),
+                subtitle: const Text(
+                  'Cambios fluidos de paleta, sin parpadeos bruscos.',
+                ),
+                value: settings.visualizerRandomColors,
+                onChanged: (value) => mutation.save(
+                  AppSettingsCompanion(visualizerRandomColors: Value(value)),
+                ),
+              ),
             ] else
               _DependencyMessage(scene: scene),
+            if (scene.showsLyrics) ...[
+              const SizedBox(height: Tokens.space5),
+              Text(
+                'Animación de letras',
+                style: Theme.of(context).textTheme.titleMedium,
+              ),
+              const SizedBox(height: Tokens.space2),
+              ListTile(
+                contentPadding: EdgeInsets.zero,
+                leading: Icon(
+                  LyricsAnimationStyle.byId(settings.lyricsAnimationStyle).icon,
+                ),
+                title: Text(
+                  LyricsAnimationStyle.byId(
+                    settings.lyricsAnimationStyle,
+                  ).label,
+                ),
+                subtitle: Text(
+                  LyricsAnimationStyle.byId(
+                    settings.lyricsAnimationStyle,
+                  ).description,
+                ),
+                trailing: const Icon(Icons.chevron_right_rounded),
+                onTap: () => showLyricsAnimationStylePicker(context, ref),
+              ),
+            ],
           ],
         ),
       ),
@@ -372,7 +412,7 @@ class _StyleThumbnailPainter extends CustomPainter {
             canvas.drawCircle(Offset(x, y), 2.4 + row * 0.4, paint);
           }
         }
-      case VisualizerStyle.minimalSpectrum:
+      case VisualizerStyle.dynamicSpectrum:
         for (var index = 0; index < 11; index++) {
           final height = size.height * (0.18 + (index % 5) * 0.10);
           final x = size.width * (0.12 + index * 0.077);

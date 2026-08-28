@@ -28,6 +28,7 @@ enum MotionProfile {
   calm('calm', 'Calmada'),
   balanced('balanced', 'Equilibrada'),
   energetic('energetic', 'Enérgica'),
+  extreme('extreme', 'Extrema'),
   custom('custom', 'Personalizada');
 
   const MotionProfile(this.id, this.label);
@@ -89,7 +90,8 @@ class MotionPreferences {
     MotionProfile.calm => 1,
     MotionProfile.balanced => 2,
     MotionProfile.energetic => 3,
-    MotionProfile.custom => intensity.clamp(0, 3),
+    MotionProfile.extreme => 4,
+    MotionProfile.custom => intensity.clamp(0, 4),
   };
 
   int get effectiveSmoothness => switch (profile) {
@@ -97,7 +99,8 @@ class MotionPreferences {
     MotionProfile.calm => 3,
     MotionProfile.balanced => 2,
     MotionProfile.energetic => 1,
-    MotionProfile.custom => smoothness.clamp(0, 3),
+    MotionProfile.extreme => 0,
+    MotionProfile.custom => smoothness.clamp(0, 4),
   };
 
   int get effectiveBeatResponse => switch (profile) {
@@ -105,7 +108,8 @@ class MotionPreferences {
     MotionProfile.calm => 1,
     MotionProfile.balanced => 2,
     MotionProfile.energetic => 3,
-    MotionProfile.custom => beatResponse.clamp(0, 3),
+    MotionProfile.extreme => 4,
+    MotionProfile.custom => beatResponse.clamp(0, 4),
   };
 
   int get effectiveParticles => switch (profile) {
@@ -113,7 +117,8 @@ class MotionPreferences {
     MotionProfile.calm => 1,
     MotionProfile.balanced => 2,
     MotionProfile.energetic => 3,
-    MotionProfile.custom => particles.clamp(0, 3),
+    MotionProfile.extreme => 4,
+    MotionProfile.custom => particles.clamp(0, 4),
   };
 
   Duration scale(Duration base, {bool systemReduceMotion = false}) {
@@ -122,7 +127,8 @@ class MotionPreferences {
       0 => 0.68,
       1 => 0.82,
       2 => 1.0,
-      _ => 1.28,
+      3 => 1.28,
+      _ => 1.45,
     };
     return Duration(microseconds: (base.inMicroseconds * multiplier).round());
   }

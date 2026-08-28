@@ -57,8 +57,9 @@ class ExcludedFoldersScreen extends ConsumerWidget {
                     trailing: IconButton(
                       tooltip: 'Volver a incluir',
                       icon: const Icon(Icons.undo_rounded),
-                      onPressed: () =>
-                          ref.read(libraryProvider.notifier).includeFolder(path),
+                      onPressed: () => ref
+                          .read(libraryProvider.notifier)
+                          .includeFolder(path),
                     ),
                   ),
               ],
@@ -69,8 +70,9 @@ class ExcludedFoldersScreen extends ConsumerWidget {
   void _showFolderPicker(BuildContext context, WidgetRef ref) {
     final folders = ref.read(libraryRepositoryProvider).folders();
     final excluded = ref.read(excludedFoldersProvider).valueOrNull ?? const [];
-    final available =
-        folders.where((group) => !excluded.contains(group.key)).toList();
+    final available = folders
+        .where((group) => !excluded.contains(group.key))
+        .toList();
 
     showModalBottomSheet<void>(
       context: context,
@@ -171,7 +173,10 @@ class SourceFoldersScreen extends ConsumerWidget {
                   tooltip: 'Revocar acceso',
                   icon: const Icon(Icons.link_off_rounded),
                   onPressed: () async {
-                    await ref.read(engineProvider).api.releaseFolder(folder.uri);
+                    await ref
+                        .read(engineProvider)
+                        .api
+                        .releaseFolder(folder.uri);
                     await ref
                         .read(settingsRepositoryProvider)
                         .removeSourceFolder(folder.uri);

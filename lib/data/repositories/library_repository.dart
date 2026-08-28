@@ -54,7 +54,8 @@ class SongGroup {
       songs.fold(0, (total, song) => total + song.durationMs);
 
   /// Cancion de la que se toma la portada del grupo.
-  Song? get coverSong => songs.firstWhereOrNull((song) => song.hasCover) ?? songs.firstOrNull;
+  Song? get coverSong =>
+      songs.firstWhereOrNull((song) => song.hasCover) ?? songs.firstOrNull;
 }
 
 /// Biblioteca musical en memoria y todas sus vistas derivadas.
@@ -135,7 +136,8 @@ class LibraryRepository {
       SongFilter.lossless => result.where((song) => song.isLossless).toList(),
       SongFilter.unplayed =>
         result.where((song) => (playCounts[song.id] ?? 0) == 0).toList(),
-      SongFilter.withoutCover => result.where((song) => !song.hasCover).toList(),
+      SongFilter.withoutCover =>
+        result.where((song) => !song.hasCover).toList(),
       SongFilter.unsupported =>
         result.where((song) => !song.isSupported).toList(),
     };
@@ -150,28 +152,41 @@ class LibraryRepository {
   ) {
     final sorted = [...songs];
     final comparator = switch (sort) {
-      SongSort.title => (Song a, Song b) => _text(a.title).compareTo(_text(b.title)),
+      SongSort.title => (Song a, Song b) => _text(
+        a.title,
+      ).compareTo(_text(b.title)),
       SongSort.artist => (Song a, Song b) {
-          final byArtist = _text(a.artist).compareTo(_text(b.artist));
-          return byArtist != 0 ? byArtist : _text(a.title).compareTo(_text(b.title));
-        },
+        final byArtist = _text(a.artist).compareTo(_text(b.artist));
+        return byArtist != 0
+            ? byArtist
+            : _text(a.title).compareTo(_text(b.title));
+      },
       SongSort.album => (Song a, Song b) {
-          final byAlbum = _text(a.album).compareTo(_text(b.album));
-          if (byAlbum != 0) return byAlbum;
-          return _trackOrder(a).compareTo(_trackOrder(b));
-        },
-      SongSort.dateAdded => (Song a, Song b) => a.dateAdded.compareTo(b.dateAdded),
-      SongSort.dateModified =>
-        (Song a, Song b) => a.dateModified.compareTo(b.dateModified),
-      SongSort.duration => (Song a, Song b) => a.durationMs.compareTo(b.durationMs),
-      SongSort.trackNumber =>
-        (Song a, Song b) => _trackOrder(a).compareTo(_trackOrder(b)),
-      SongSort.fileName => (Song a, Song b) =>
-          _text(a.filePath.split('/').last).compareTo(_text(b.filePath.split('/').last)),
+        final byAlbum = _text(a.album).compareTo(_text(b.album));
+        if (byAlbum != 0) return byAlbum;
+        return _trackOrder(a).compareTo(_trackOrder(b));
+      },
+      SongSort.dateAdded => (Song a, Song b) => a.dateAdded.compareTo(
+        b.dateAdded,
+      ),
+      SongSort.dateModified => (Song a, Song b) => a.dateModified.compareTo(
+        b.dateModified,
+      ),
+      SongSort.duration => (Song a, Song b) => a.durationMs.compareTo(
+        b.durationMs,
+      ),
+      SongSort.trackNumber => (Song a, Song b) => _trackOrder(
+        a,
+      ).compareTo(_trackOrder(b)),
+      SongSort.fileName => (Song a, Song b) => _text(
+        a.filePath.split('/').last,
+      ).compareTo(_text(b.filePath.split('/').last)),
       SongSort.folder => (Song a, Song b) {
-          final byFolder = _text(a.folderPath).compareTo(_text(b.folderPath));
-          return byFolder != 0 ? byFolder : _text(a.title).compareTo(_text(b.title));
-        },
+        final byFolder = _text(a.folderPath).compareTo(_text(b.folderPath));
+        return byFolder != 0
+            ? byFolder
+            : _text(a.title).compareTo(_text(b.title));
+      },
     };
 
     sorted.sort(comparator);
@@ -211,7 +226,11 @@ class LibraryRepository {
   List<SongGroup> artists({String search = ''}) {
     final grouped = groupBy(_songs, (Song song) => song.artistId);
     final groups = grouped.entries.map((entry) {
-      final tracks = sortSongs(entry.value, SongSort.album, SortDirection.ascending);
+      final tracks = sortSongs(
+        entry.value,
+        SongSort.album,
+        SortDirection.ascending,
+      );
       final albumCount = tracks.map((song) => song.albumId).toSet().length;
       return SongGroup(
         key: entry.key.toString(),
@@ -226,7 +245,11 @@ class LibraryRepository {
   List<SongGroup> folders({String search = ''}) {
     final grouped = groupBy(_songs, (Song song) => song.folderPath);
     final groups = grouped.entries.map((entry) {
-      final tracks = sortSongs(entry.value, SongSort.title, SortDirection.ascending);
+      final tracks = sortSongs(
+        entry.value,
+        SongSort.title,
+        SortDirection.ascending,
+      );
       return SongGroup(
         key: entry.key,
         title: tracks.first.folderName,
@@ -246,7 +269,11 @@ class LibraryRepository {
       (Song song) => song.displayGenre?.trim() ?? 'Sin género',
     );
     final groups = grouped.entries.map((entry) {
-      final tracks = sortSongs(entry.value, SongSort.artist, SortDirection.ascending);
+      final tracks = sortSongs(
+        entry.value,
+        SongSort.artist,
+        SortDirection.ascending,
+      );
       return SongGroup(
         key: entry.key,
         title: entry.key,
@@ -263,7 +290,11 @@ class LibraryRepository {
       (Song song) => song.displayComposer?.trim() ?? 'Sin compositor',
     );
     final groups = grouped.entries.map((entry) {
-      final tracks = sortSongs(entry.value, SongSort.album, SortDirection.ascending);
+      final tracks = sortSongs(
+        entry.value,
+        SongSort.album,
+        SortDirection.ascending,
+      );
       return SongGroup(
         key: entry.key,
         title: entry.key,
@@ -295,10 +326,11 @@ class LibraryRepository {
   }
 
   /// Canciones agregadas mas recientemente (requerimiento 4.1).
-  List<Song> recentlyAdded({int limit = 50}) =>
-      sortSongs(_songs, SongSort.dateAdded, SortDirection.descending)
-          .take(limit)
-          .toList();
+  List<Song> recentlyAdded({int limit = 50}) => sortSongs(
+    _songs,
+    SongSort.dateAdded,
+    SortDirection.descending,
+  ).take(limit).toList();
 
   static int max(int a, int b) => a > b ? a : b;
 

@@ -4,6 +4,8 @@ import 'package:nuvtune/app/localization/strings.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/lyrics/lrc_parser.dart';
+import 'package:nuvtune/features/lyrics/animated_lyrics_line.dart';
+import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
 
@@ -557,6 +559,9 @@ class _SyncedLyrics extends ConsumerWidget {
     }
 
     final scheme = Theme.of(context).colorScheme;
+    final animationStyle = LyricsAnimationStyle.byId(
+      ref.watch(settingsProvider).valueOrNull?.lyricsAnimationStyle,
+    );
 
     return ListView.builder(
       controller: scrollController,
@@ -585,17 +590,35 @@ class _SyncedLyrics extends ConsumerWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                AnimatedDefaultTextStyle(
-                  duration: const Duration(milliseconds: 220),
-                  style: TextStyle(
-                    fontSize: isActive ? 20 : 16.5,
-                    height: 1.35,
-                    fontWeight: isActive ? FontWeight.w700 : FontWeight.w400,
-                    color: isActive
-                        ? scheme.primary
-                        : scheme.onSurface.withValues(alpha: 0.55),
-                  ),
-                  child: Text(line.text),
+                AnimatedLyricsLine(
+                  text: line.text,
+                  active: isActive,
+                  progress: isActive && line.timeMs != null
+                      ? synchronizedLyricProgress(
+                          positionMs: position?.positionMs ?? 0,
+                          lineStartMs: lyricLinePlaybackPositionMs(
+                            lineTimeMs: line.timeMs!,
+                            lrcOffsetMs: resolved.parsed.offsetMs,
+                            userOffsetMs: resolved.userOffsetMs,
+                          ),
+                          nextLineStartMs:
+                              index + 1 < resolved.parsed.lines.length &&
+                                  resolved.parsed.lines[index + 1].timeMs !=
+                                      null
+                              ? lyricLinePlaybackPositionMs(
+                                  lineTimeMs:
+                                      resolved.parsed.lines[index + 1].timeMs!,
+                                  lrcOffsetMs: resolved.parsed.offsetMs,
+                                  userOffsetMs: resolved.userOffsetMs,
+                                )
+                              : null,
+                        )
+                      : 0,
+                  style: animationStyle,
+                  baseStyle: const TextStyle(fontSize: 17, height: 1.35),
+                  activeColor: scheme.primary,
+                  inactiveColor: scheme.onSurface.withValues(alpha: 0.55),
+                  textAlign: TextAlign.start,
                 ),
                 if (line.translation != null)
                   Padding(

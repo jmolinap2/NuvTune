@@ -261,7 +261,8 @@ class SectionLabel extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Padding(
-      padding: padding ??
+      padding:
+          padding ??
           const EdgeInsets.fromLTRB(
             Tokens.gutter,
             Tokens.space5,
@@ -271,8 +272,8 @@ class SectionLabel extends StatelessWidget {
       child: Text(
         text.toUpperCase(),
         style: Theme.of(context).textTheme.labelSmall?.copyWith(
-              color: Theme.of(context).colorScheme.onSurfaceVariant,
-            ),
+          color: Theme.of(context).colorScheme.onSurfaceVariant,
+        ),
       ),
     );
   }
@@ -297,8 +298,9 @@ class GradientText extends StatelessWidget {
       child: Text(
         text,
         textAlign: textAlign,
-        style: (style ?? Theme.of(context).textTheme.headlineMedium)
-            ?.copyWith(color: Colors.white),
+        style: (style ?? Theme.of(context).textTheme.headlineMedium)?.copyWith(
+          color: Colors.white,
+        ),
       ),
     );
   }

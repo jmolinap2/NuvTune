@@ -7,12 +7,14 @@ import 'package:nuvtune/shared/widgets/accent_picker.dart';
 
 /// Bottom sheet para convertir una lista en regalo o editar su dedicatoria
 /// (idea de la novia del usuario: "una lista de canciones para mí").
-Future<void> showGiftEditor(BuildContext context, {required Playlist playlist}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      isScrollControlled: true,
-      builder: (context) => _GiftEditorSheet(playlist: playlist),
-    );
+Future<void> showGiftEditor(
+  BuildContext context, {
+  required Playlist playlist,
+}) => showModalBottomSheet<void>(
+  context: context,
+  isScrollControlled: true,
+  builder: (context) => _GiftEditorSheet(playlist: playlist),
+);
 
 class _GiftEditorSheet extends ConsumerStatefulWidget {
   const _GiftEditorSheet({required this.playlist});
@@ -32,10 +34,13 @@ class _GiftEditorSheetState extends ConsumerState<_GiftEditorSheet> {
   @override
   void initState() {
     super.initState();
-    _fromController = TextEditingController(text: widget.playlist.giftFrom ?? '');
+    _fromController = TextEditingController(
+      text: widget.playlist.giftFrom ?? '',
+    );
     _toController = TextEditingController(text: widget.playlist.giftTo ?? '');
-    _dedicationController =
-        TextEditingController(text: widget.playlist.dedication ?? '');
+    _dedicationController = TextEditingController(
+      text: widget.playlist.dedication ?? '',
+    );
     _accentId = widget.playlist.giftAccentId ?? AccentIdentity.nebula.id;
   }
 
@@ -73,8 +78,8 @@ class _GiftEditorSheetState extends ConsumerState<_GiftEditorSheet> {
               Text(
                 'Presenta esta lista con una dedicatoria antes de reproducirla.',
                 style: Theme.of(context).textTheme.bodySmall?.copyWith(
-                      color: Theme.of(context).colorScheme.onSurfaceVariant,
-                    ),
+                  color: Theme.of(context).colorScheme.onSurfaceVariant,
+                ),
               ),
               const SizedBox(height: Tokens.space4),
               TextField(
@@ -97,11 +102,15 @@ class _GiftEditorSheetState extends ConsumerState<_GiftEditorSheet> {
                 minLines: 2,
               ),
               const SizedBox(height: Tokens.space4),
-              Text('Color del regalo', style: Theme.of(context).textTheme.titleSmall),
+              Text(
+                'Color del regalo',
+                style: Theme.of(context).textTheme.titleSmall,
+              ),
               const SizedBox(height: Tokens.space3),
               AccentSwatchGrid(
                 selected: _accentId,
-                onSelected: (identity) => setState(() => _accentId = identity.id),
+                onSelected: (identity) =>
+                    setState(() => _accentId = identity.id),
               ),
               const SizedBox(height: Tokens.space5),
               Row(
@@ -132,13 +141,20 @@ class _GiftEditorSheetState extends ConsumerState<_GiftEditorSheet> {
 
   Future<void> _save({required bool giftMode}) async {
     final navigator = Navigator.of(context);
-    await ref.read(playlistRepositoryProvider).setGift(
+    await ref
+        .read(playlistRepositoryProvider)
+        .setGift(
           widget.playlist.id,
           giftMode: giftMode,
-          dedication:
-              _dedicationController.text.trim().isEmpty ? null : _dedicationController.text.trim(),
-          giftFrom: _fromController.text.trim().isEmpty ? null : _fromController.text.trim(),
-          giftTo: _toController.text.trim().isEmpty ? null : _toController.text.trim(),
+          dedication: _dedicationController.text.trim().isEmpty
+              ? null
+              : _dedicationController.text.trim(),
+          giftFrom: _fromController.text.trim().isEmpty
+              ? null
+              : _fromController.text.trim(),
+          giftTo: _toController.text.trim().isEmpty
+              ? null
+              : _toController.text.trim(),
           giftAccentId: giftMode ? _accentId : null,
         );
     navigator.pop();

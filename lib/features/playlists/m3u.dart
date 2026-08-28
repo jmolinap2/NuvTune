@@ -75,8 +75,7 @@ abstract final class M3u {
   static String _normalize(String path) =>
       path.replaceAll(r'\', '/').toLowerCase();
 
-  static String _fileNameOf(String path) =>
-      _normalize(path).split('/').last;
+  static String _fileNameOf(String path) => _normalize(path).split('/').last;
 }
 
 class M3uImport {

@@ -55,11 +55,11 @@ abstract final class Formatters {
       bits == null || bits <= 0 ? 'No disponible' : '$bits bits';
 
   static String channels(int? count) => switch (count) {
-        1 => 'Mono',
-        2 => 'Estéreo',
-        null => 'No disponible',
-        _ => '$count canales',
-      };
+    1 => 'Mono',
+    2 => 'Estéreo',
+    null => 'No disponible',
+    _ => '$count canales',
+  };
 
   /// Segundos epoch de MediaStore a fecha legible.
   static String epochDate(int epochSeconds) {
@@ -74,7 +74,8 @@ abstract final class Formatters {
   static String trackCount(int count) =>
       count == 1 ? '1 canción' : '$count canciones';
 
-  static String albumCount(int count) => count == 1 ? '1 álbum' : '$count álbumes';
+  static String albumCount(int count) =>
+      count == 1 ? '1 álbum' : '$count álbumes';
 
   static String gainDb(double value) {
     final rounded = (value * 10).round() / 10;

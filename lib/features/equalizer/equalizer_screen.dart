@@ -32,8 +32,10 @@ const _presetCurves = <String, List<double>>{
 const _customPresetName = 'Personalizado';
 
 /// Frecuencias de las bandas del motor, para dibujar las etiquetas.
-final equalizerBandsProvider =
-    FutureProvider.family<EqualizerBands, int>((ref, bandCount) {
+final equalizerBandsProvider = FutureProvider.family<EqualizerBands, int>((
+  ref,
+  bandCount,
+) {
   return ref.watch(engineProvider).api.getEqualizerBands(bandCount);
 });
 
@@ -82,17 +84,16 @@ class EqualizerScreen extends ConsumerWidget {
   Future<void> _changeBandCount(WidgetRef ref, int bandCount) async {
     final repository = ref.read(equalizerRepositoryProvider);
     final current = await repository.state();
-    final currentGains =
-        EqualizerRepository.decodeGains(current.gainsJson, current.bandCount);
+    final currentGains = EqualizerRepository.decodeGains(
+      current.gainsJson,
+      current.bandCount,
+    );
 
     // Al cambiar la resolucion se recalcula la curva del preset activo. Si era
     // personalizada, se conserva lo que se pueda y el resto queda a cero.
     final curve = _presetCurves[current.presetName];
     final gains = curve == null
-        ? EqualizerRepository.decodeGains(
-            _encode(currentGains),
-            bandCount,
-          )
+        ? EqualizerRepository.decodeGains(_encode(currentGains), bandCount)
         : _resampleCurve(curve, bandCount);
 
     await repository.save(bandCount: bandCount, gains: gains);
@@ -106,11 +107,7 @@ class EqualizerScreen extends ConsumerWidget {
 /// Cuerpo del ecualizador, compartido por la pantalla completa y por la
 /// pestana "Efectos" del reproductor.
 class EqualizerBody extends ConsumerWidget {
-  const EqualizerBody({
-    super.key,
-    required this.state,
-    required this.settings,
-  });
+  const EqualizerBody({super.key, required this.state, required this.settings});
 
   final EqualizerStateData state;
   final AppSetting? settings;
@@ -161,7 +158,10 @@ class EqualizerBody extends ConsumerWidget {
             ),
             child: Row(
               children: [
-                Icon(Icons.warning_amber_rounded, color: scheme.onErrorContainer),
+                Icon(
+                  Icons.warning_amber_rounded,
+                  color: scheme.onErrorContainer,
+                ),
                 const SizedBox(width: 12),
                 Expanded(
                   child: Text(
@@ -198,9 +198,9 @@ class EqualizerBody extends ConsumerWidget {
           padding: const EdgeInsets.fromLTRB(16, 12, 16, 8),
           child: Text(
             AppStrings.preset,
-            style: Theme.of(context).textTheme.titleSmall?.copyWith(
-                  fontWeight: FontWeight.w700,
-                ),
+            style: Theme.of(
+              context,
+            ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
           ),
         ),
         SingleChildScrollView(
@@ -231,10 +231,8 @@ class EqualizerBody extends ConsumerWidget {
             height: 260,
             child: Center(child: CircularProgressIndicator()),
           ),
-          error: (error, stack) => SizedBox(
-            height: 120,
-            child: Center(child: Text('$error')),
-          ),
+          error: (error, stack) =>
+              SizedBox(height: 120, child: Center(child: Text('$error'))),
           data: (bands) => _BandSliders(
             bands: bands,
             gains: gains,
@@ -300,7 +298,9 @@ class EqualizerBody extends ConsumerWidget {
           title: const Text(AppStrings.monoOutput),
           subtitle: const Text('Mezcla los dos canales en uno.'),
           value: state.monoOutput,
-          onChanged: directMode ? null : (value) => _save(ref, monoOutput: value),
+          onChanged: directMode
+              ? null
+              : (value) => _save(ref, monoOutput: value),
         ),
 
         const Divider(height: 32),
@@ -315,9 +315,9 @@ class EqualizerBody extends ConsumerWidget {
           subtitle: const Text(AppStrings.directModeNote),
           value: directMode,
           onChanged: (value) async {
-            await ref.read(settingsRepositoryProvider).update(
-                  AppSettingsCompanion(directMode: Value(value)),
-                );
+            await ref
+                .read(settingsRepositoryProvider)
+                .update(AppSettingsCompanion(directMode: Value(value)));
             await ref.read(playbackProvider.notifier).pushAudioSettings();
           },
         ),
@@ -339,10 +339,9 @@ class EqualizerBody extends ConsumerWidget {
     final state = await ref.read(equalizerRepositoryProvider).state();
     final curve = _presetCurves[name];
     if (curve == null) return;
-    await ref.read(equalizerRepositoryProvider).save(
-          gains: _resampleCurve(curve, state.bandCount),
-          presetName: name,
-        );
+    await ref
+        .read(equalizerRepositoryProvider)
+        .save(gains: _resampleCurve(curve, state.bandCount), presetName: name);
     await ref.read(playbackProvider.notifier).pushAudioSettings();
   }
 
@@ -356,7 +355,9 @@ class EqualizerBody extends ConsumerWidget {
     bool? monoOutput,
     String? presetName,
   }) async {
-    await ref.read(equalizerRepositoryProvider).save(
+    await ref
+        .read(equalizerRepositoryProvider)
+        .save(
           enabled: enabled,
           gains: gains,
           preampDb: preampDb,
@@ -377,9 +378,12 @@ class EqualizerBody extends ConsumerWidget {
   static String _matchPreset(List<double> gains, int bandCount) {
     for (final entry in _presetCurves.entries) {
       final candidate = _resampleCurve(entry.value, bandCount);
-      final matches = candidate.length == gains.length &&
-          List.generate(gains.length, (index) => index)
-              .every((index) => (candidate[index] - gains[index]).abs() < 0.05);
+      final matches =
+          candidate.length == gains.length &&
+          List.generate(
+            gains.length,
+            (index) => index,
+          ).every((index) => (candidate[index] - gains[index]).abs() < 0.05);
       if (matches) return entry.key;
     }
     return _customPresetName;
@@ -557,9 +561,9 @@ class _SpeedAndPitch extends ConsumerWidget {
           valueLabel: Formatters.speed(speed),
           enabled: true,
           onChanged: (value) async {
-            await ref.read(settingsRepositoryProvider).update(
-                  AppSettingsCompanion(playbackSpeed: Value(value)),
-                );
+            await ref
+                .read(settingsRepositoryProvider)
+                .update(AppSettingsCompanion(playbackSpeed: Value(value)));
             ref.read(playbackProvider.notifier).setSpeed(value);
           },
         ),
@@ -571,9 +575,9 @@ class _SpeedAndPitch extends ConsumerWidget {
           valueLabel: '${pitch.toStringAsFixed(2)}x',
           enabled: true,
           onChanged: (value) async {
-            await ref.read(settingsRepositoryProvider).update(
-                  AppSettingsCompanion(playbackPitch: Value(value)),
-                );
+            await ref
+                .read(settingsRepositoryProvider)
+                .update(AppSettingsCompanion(playbackPitch: Value(value)));
             ref.read(playbackProvider.notifier).setPitch(value);
           },
         ),

@@ -34,10 +34,10 @@ class CoverRepository {
 
   static String albumTarget(int albumId) => 'álbum:$albumId';
 
-  Stream<Map<String, String>> watchCustomCovers() =>
-      _database.select(_database.customCovers).watch().map(
-            (rows) => {for (final row in rows) row.target: row.imagePath},
-          );
+  Stream<Map<String, String>> watchCustomCovers() => _database
+      .select(_database.customCovers)
+      .watch()
+      .map((rows) => {for (final row in rows) row.target: row.imagePath});
 
   Future<Map<String, String>> customCovers() async {
     final rows = await _database.select(_database.customCovers).get();
@@ -46,12 +46,16 @@ class CoverRepository {
 
   /// Ruta de la portada personalizada aplicable a una cancion. La portada
   /// propia de la cancion tiene prioridad sobre la del album.
-  Future<String?> resolvePath({required int songId, required int albumId}) async {
-    final rows = await (_database.select(_database.customCovers)
-          ..where(
-            (table) => table.target.isIn([songTarget(songId), albumTarget(albumId)]),
-          ))
-        .get();
+  Future<String?> resolvePath({
+    required int songId,
+    required int albumId,
+  }) async {
+    final rows =
+        await (_database.select(_database.customCovers)..where(
+              (table) =>
+                  table.target.isIn([songTarget(songId), albumTarget(albumId)]),
+            ))
+            .get();
     if (rows.isEmpty) return null;
     final bySong = rows.firstWhereOrNullTarget(songTarget(songId));
     return bySong ?? rows.first.imagePath;
@@ -63,15 +67,20 @@ class CoverRepository {
     // Se escribe con un nombre nuevo en cada guardado para que Flutter no sirva
     // la imagen anterior desde su cache de imagenes.
     final file = File(
-      p.join(directory.path, '$safeName-${DateTime.now().millisecondsSinceEpoch}.jpg'),
+      p.join(
+        directory.path,
+        '$safeName-${DateTime.now().millisecondsSinceEpoch}.jpg',
+      ),
     );
     await file.writeAsBytes(bytes, flush: true);
 
-    final previous = await (_database.select(_database.customCovers)
-          ..where((table) => table.target.equals(target)))
-        .getSingleOrNull();
+    final previous = await (_database.select(
+      _database.customCovers,
+    )..where((table) => table.target.equals(target))).getSingleOrNull();
 
-    await _database.into(_database.customCovers).insertOnConflictUpdate(
+    await _database
+        .into(_database.customCovers)
+        .insertOnConflictUpdate(
           CustomCoversCompanion.insert(target: target, imagePath: file.path),
         );
 
@@ -86,17 +95,17 @@ class CoverRepository {
   }
 
   Future<void> removeCover(String target) async {
-    final row = await (_database.select(_database.customCovers)
-          ..where((table) => table.target.equals(target)))
-        .getSingleOrNull();
+    final row = await (_database.select(
+      _database.customCovers,
+    )..where((table) => table.target.equals(target))).getSingleOrNull();
     if (row == null) return;
     final file = File(row.imagePath);
     if (file.existsSync()) {
       await file.delete();
     }
-    await (_database.delete(_database.customCovers)
-          ..where((table) => table.target.equals(target)))
-        .go();
+    await (_database.delete(
+      _database.customCovers,
+    )..where((table) => table.target.equals(target))).go();
   }
 
   /// Portada elegida para una lista de reproduccion.

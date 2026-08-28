@@ -16,6 +16,7 @@ import androidx.media3.common.util.UnstableApi
 import androidx.media3.datasource.DefaultDataSource
 import androidx.media3.exoplayer.ExoPlayer
 import androidx.media3.exoplayer.source.DefaultMediaSourceFactory
+import androidx.media3.exoplayer.source.ShuffleOrder
 import androidx.media3.session.CommandButton
 import androidx.media3.session.DefaultMediaNotificationProvider
 import androidx.media3.session.MediaLibraryService
@@ -267,6 +268,22 @@ class MusicPlayerService : MediaLibraryService() {
 
             EngineCommand.PlayWithFade -> fadeController.playWithFade()
             EngineCommand.PauseWithFade -> fadeController.pauseWithFade()
+
+            is EngineCommand.SetShuffle -> {
+                if (command.enabled) {
+                    // ExoPlayer conserva su ShuffleOrder al apagar y encender
+                    // el modo. Generar uno nuevo hace que cada activación sea
+                    // una sesión aleatoria real, sin mover la canción actual.
+                    player.setShuffleOrder(
+                        ShuffleOrder.DefaultShuffleOrder(
+                            player.mediaItemCount,
+                            System.nanoTime(),
+                        ),
+                    )
+                }
+                player.shuffleModeEnabled = command.enabled
+                publishSnapshot()
+            }
 
             is EngineCommand.SetFavoriteState -> {
                 currentSongIsFavorite = command.isFavorite
@@ -579,5 +596,6 @@ internal sealed interface EngineCommand {
     data object CancelSleepTimer : EngineCommand
     data object PlayWithFade : EngineCommand
     data object PauseWithFade : EngineCommand
+    data class SetShuffle(val enabled: Boolean) : EngineCommand
     data class SetFavoriteState(val songId: Long, val isFavorite: Boolean) : EngineCommand
 }

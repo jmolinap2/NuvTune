@@ -87,7 +87,10 @@ class EnhancementPanel extends ConsumerWidget {
             padding: const EdgeInsets.symmetric(horizontal: 16),
             child: SegmentedButton<DetailLevel>(
               segments: const [
-                ButtonSegment(value: DetailLevel.off, label: Text('Sin realce')),
+                ButtonSegment(
+                  value: DetailLevel.off,
+                  label: Text('Sin realce'),
+                ),
                 ButtonSegment(value: DetailLevel.low, label: Text('Bajo')),
                 ButtonSegment(value: DetailLevel.medium, label: Text('Medio')),
                 ButtonSegment(value: DetailLevel.high, label: Text('Alto')),
@@ -135,7 +138,8 @@ class EnhancementPanel extends ConsumerWidget {
             value: state.multibandStrength,
             valueLabel: _percent(state.multibandStrength),
             onChanged: (value) => _save(ref, multibandStrength: value),
-            note: 'Controla graves, medios y agudos por separado, de modo que '
+            note:
+                'Controla graves, medios y agudos por separado, de modo que '
                 'un golpe de bajo no apague la voz.',
           ),
 
@@ -228,14 +232,18 @@ class EnhancementPanel extends ConsumerWidget {
   }) async {
     // Tocar un parametro a mano convierte la seleccion en "personalizado": si
     // no, la pantalla mostraria un perfil que ya no corresponde a lo que suena.
-    final becomesCustom = detail != null ||
+    final becomesCustom =
+        detail != null ||
         multibandStrength != null ||
         stereoExpansionEnabled != null ||
         stereoWidth != null;
 
-    await ref.read(enhancementRepositoryProvider).save(
+    await ref
+        .read(enhancementRepositoryProvider)
+        .save(
           enabled: enabled,
-          profile: profile ?? (becomesCustom ? EnhancementProfile.custom : null),
+          profile:
+              profile ?? (becomesCustom ? EnhancementProfile.custom : null),
           detail: detail,
           multibandStrength: multibandStrength,
           normalization: normalization,
@@ -260,7 +268,9 @@ class EnhancementPanel extends ConsumerWidget {
   ) async {
     final values = _profileDefaults[profile];
     if (values == null) return;
-    await ref.read(enhancementRepositoryProvider).save(
+    await ref
+        .read(enhancementRepositoryProvider)
+        .save(
           detail: values.detail,
           multibandStrength: values.multiband,
           stereoExpansionEnabled: values.stereo,
@@ -271,58 +281,77 @@ class EnhancementPanel extends ConsumerWidget {
   static String _percent(double value) => '${(value * 100).round()}%';
 
   static String _profileLabel(EnhancementProfile profile) => switch (profile) {
-        EnhancementProfile.balanced => 'Equilibrado',
-        EnhancementProfile.clarity => 'Claridad',
-        EnhancementProfile.tightBass => 'Graves definidos',
-        EnhancementProfile.smooth => 'Suave',
-        EnhancementProfile.headphones => 'Audífonos',
-        EnhancementProfile.phoneSpeaker => 'Altavoz del teléfono',
-        EnhancementProfile.custom => 'Personalizado',
-      };
+    EnhancementProfile.balanced => 'Equilibrado',
+    EnhancementProfile.clarity => 'Claridad',
+    EnhancementProfile.tightBass => 'Graves definidos',
+    EnhancementProfile.smooth => 'Suave',
+    EnhancementProfile.headphones => 'Audífonos',
+    EnhancementProfile.phoneSpeaker => 'Altavoz del teléfono',
+    EnhancementProfile.custom => 'Personalizado',
+  };
 
-  static String _profileDescription(EnhancementProfile profile) =>
-      switch (profile) {
-        EnhancementProfile.balanced =>
-          'Corrección discreta, sin coloración apreciable.',
-        EnhancementProfile.clarity =>
-          'Acentua transitorios y voces. Puede endurecer archivos muy comprimidos.',
-        EnhancementProfile.tightBass =>
-          'Contiene el grave para que no se desborde ni tape la voz.',
-        EnhancementProfile.smooth =>
-          'Sin realce y con la dinámica contenida, para escuchar de fondo.',
-        EnhancementProfile.headphones =>
-          'Único perfil con expansión estéreo, moderada.',
-        EnhancementProfile.phoneSpeaker =>
-          'Compresión fuerte para ganar volumen útil; sin expansión, que ahí '
-              'solo restaría energía al centro.',
-        EnhancementProfile.custom =>
-          'Todos los parametros quedan bajo tu control.',
-      };
+  static String _profileDescription(
+    EnhancementProfile profile,
+  ) => switch (profile) {
+    EnhancementProfile.balanced =>
+      'Corrección discreta, sin coloración apreciable.',
+    EnhancementProfile.clarity =>
+      'Acentua transitorios y voces. Puede endurecer archivos muy comprimidos.',
+    EnhancementProfile.tightBass =>
+      'Contiene el grave para que no se desborde ni tape la voz.',
+    EnhancementProfile.smooth =>
+      'Sin realce y con la dinámica contenida, para escuchar de fondo.',
+    EnhancementProfile.headphones =>
+      'Único perfil con expansión estéreo, moderada.',
+    EnhancementProfile.phoneSpeaker =>
+      'Compresión fuerte para ganar volumen útil; sin expansión, que ahí '
+          'solo restaría energía al centro.',
+    EnhancementProfile.custom => 'Todos los parametros quedan bajo tu control.',
+  };
 
   /// Los mismos valores que aplica `EnhancementPresets` en Kotlin.
   static const _profileDefaults = <EnhancementProfile, _ProfileDefaults>{
-    EnhancementProfile.balanced:
-        _ProfileDefaults(DetailLevel.low, 0.35, false, 0),
-    EnhancementProfile.clarity:
-        _ProfileDefaults(DetailLevel.medium, 0.45, false, 0),
-    EnhancementProfile.tightBass:
-        _ProfileDefaults(DetailLevel.low, 0.75, false, 0),
-    EnhancementProfile.smooth:
-        _ProfileDefaults(DetailLevel.off, 0.55, false, 0),
-    EnhancementProfile.headphones:
-        _ProfileDefaults(DetailLevel.low, 0.40, true, 0.45),
-    EnhancementProfile.phoneSpeaker:
-        _ProfileDefaults(DetailLevel.medium, 0.85, false, 0),
+    EnhancementProfile.balanced: _ProfileDefaults(
+      DetailLevel.low,
+      0.35,
+      false,
+      0,
+    ),
+    EnhancementProfile.clarity: _ProfileDefaults(
+      DetailLevel.medium,
+      0.45,
+      false,
+      0,
+    ),
+    EnhancementProfile.tightBass: _ProfileDefaults(
+      DetailLevel.low,
+      0.75,
+      false,
+      0,
+    ),
+    EnhancementProfile.smooth: _ProfileDefaults(
+      DetailLevel.off,
+      0.55,
+      false,
+      0,
+    ),
+    EnhancementProfile.headphones: _ProfileDefaults(
+      DetailLevel.low,
+      0.40,
+      true,
+      0.45,
+    ),
+    EnhancementProfile.phoneSpeaker: _ProfileDefaults(
+      DetailLevel.medium,
+      0.85,
+      false,
+      0,
+    ),
   };
 }
 
 class _ProfileDefaults {
-  const _ProfileDefaults(
-    this.detail,
-    this.multiband,
-    this.stereo,
-    this.width,
-  );
+  const _ProfileDefaults(this.detail, this.multiband, this.stereo, this.width);
 
   final DetailLevel detail;
   final double multiband;
@@ -337,15 +366,14 @@ class _Header extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) => Padding(
-        padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
-        child: Text(
-          title,
-          style: Theme.of(context)
-              .textTheme
-              .titleSmall
-              ?.copyWith(fontWeight: FontWeight.w700),
-        ),
-      );
+    padding: const EdgeInsets.fromLTRB(20, 16, 20, 8),
+    child: Text(
+      title,
+      style: Theme.of(
+        context,
+      ).textTheme.titleSmall?.copyWith(fontWeight: FontWeight.w700),
+    ),
+  );
 }
 
 class _SliderRow extends StatefulWidget {
@@ -433,7 +461,7 @@ class _AnalysisTileState extends ConsumerState<_AnalysisTile> {
         _running
             ? 'Analizando $_done de $_total. Puedes seguir usando la aplicación.'
             : 'Mide la sonoridad real de cada canción. Es un proceso largo y '
-                'solo hay que hacerlo una vez por archivo.',
+                  'solo hay que hacerlo una vez por archivo.',
       ),
       trailing: _running
           ? const SizedBox(
@@ -490,7 +518,7 @@ class _OutputProfileTile extends ConsumerWidget {
       subtitle: Text(
         saved == null
             ? 'Esta salida todavía no tiene perfil propio. Al guardarlo, '
-                'NuvTune lo cargara sola cada vez que la detecte.'
+                  'NuvTune lo cargara sola cada vez que la detecte.'
             : 'Ya hay un perfil guardado para esta salida. Se sobrescribirá.',
       ),
       trailing: const Icon(Icons.save_outlined),
@@ -507,7 +535,9 @@ class _OutputProfileTile extends ConsumerWidget {
     final equalizer = await ref.read(equalizerRepositoryProvider).state();
     final enhancement = await ref.read(enhancementRepositoryProvider).state();
 
-    await ref.read(enhancementRepositoryProvider).saveOutputProfile(
+    await ref
+        .read(enhancementRepositoryProvider)
+        .saveOutputProfile(
           output: output,
           bandCount: equalizer.bandCount,
           gains: equalizerGainsOf(equalizer),
@@ -523,10 +553,10 @@ class _OutputProfileTile extends ConsumerWidget {
   }
 
   static String _outputLabel(AudioOutput output) => switch (output) {
-        AudioOutput.speaker => 'el altavoz del teléfono',
-        AudioOutput.wiredHeadphones => 'los audífonos con cable',
-        AudioOutput.bluetooth => 'Bluetooth',
-        AudioOutput.androidAuto => 'Android Auto',
-        AudioOutput.usbDac => 'el DAC USB',
-      };
+    AudioOutput.speaker => 'el altavoz del teléfono',
+    AudioOutput.wiredHeadphones => 'los audífonos con cable',
+    AudioOutput.bluetooth => 'Bluetooth',
+    AudioOutput.androidAuto => 'Android Auto',
+    AudioOutput.usbDac => 'el DAC USB',
+  };
 }

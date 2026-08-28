@@ -55,7 +55,9 @@ class _SleepTimerSheetState extends ConsumerState<_SleepTimerSheet> {
                 padding: const EdgeInsets.only(bottom: 12),
                 child: Text(
                   'Activo: quedan ${Formatters.duration(remaining)}',
-                  style: TextStyle(color: Theme.of(context).colorScheme.primary),
+                  style: TextStyle(
+                    color: Theme.of(context).colorScheme.primary,
+                  ),
                 ),
               ),
 
@@ -111,12 +113,16 @@ class _SleepTimerSheetState extends ConsumerState<_SleepTimerSheet> {
                   child: FilledButton(
                     onPressed: () async {
                       final navigator = Navigator.of(context);
-                      ref.read(playbackProvider.notifier).startSleepTimer(
+                      ref
+                          .read(playbackProvider.notifier)
+                          .startSleepTimer(
                             Duration(minutes: minutes),
                             finishCurrentTrack: finishTrack,
                           );
                       // Se recuerda la eleccion para la proxima vez.
-                      await ref.read(settingsRepositoryProvider).update(
+                      await ref
+                          .read(settingsRepositoryProvider)
+                          .update(
                             AppSettingsCompanion(
                               sleepTimerMinutes: Value(minutes),
                               sleepTimerFinishTrack: Value(finishTrack),

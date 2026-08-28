@@ -13,15 +13,15 @@ class EnhancementRepository {
 
   // -- Estado global -------------------------------------------------------
 
-  Stream<EnhancementStateData> watchState() =>
-      _database.select(_database.enhancementState).watchSingleOrNull().asyncMap(
-            (row) async => row ?? await _ensureRow(),
-          );
+  Stream<EnhancementStateData> watchState() => _database
+      .select(_database.enhancementState)
+      .watchSingleOrNull()
+      .asyncMap((row) async => row ?? await _ensureRow());
 
   Future<EnhancementStateData> state() async {
-    final row = await (_database.select(_database.enhancementState)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final row = await (_database.select(
+      _database.enhancementState,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
     return row ?? await _ensureRow();
   }
 
@@ -53,50 +53,55 @@ class EnhancementRepository {
     double? stereoWidth,
   }) async {
     await _ensureRow();
-    await (_database.update(_database.enhancementState)
-          ..where((table) => table.id.equals(0)))
-        .write(
+    await (_database.update(
+      _database.enhancementState,
+    )..where((table) => table.id.equals(0))).write(
       EnhancementStateCompanion(
         enabled: enabled == null ? const Value.absent() : Value(enabled),
-        profileIndex:
-            profile == null ? const Value.absent() : Value(profile.index),
-        detailIndex: detail == null ? const Value.absent() : Value(detail.index),
+        profileIndex: profile == null
+            ? const Value.absent()
+            : Value(profile.index),
+        detailIndex: detail == null
+            ? const Value.absent()
+            : Value(detail.index),
         multibandStrength: multibandStrength == null
             ? const Value.absent()
             : Value(multibandStrength),
         normalizationIndex: normalization == null
             ? const Value.absent()
             : Value(normalization.index),
-        targetLevelDb:
-            targetLevelDb == null ? const Value.absent() : Value(targetLevelDb),
+        targetLevelDb: targetLevelDb == null
+            ? const Value.absent()
+            : Value(targetLevelDb),
         stereoExpansionEnabled: stereoExpansionEnabled == null
             ? const Value.absent()
             : Value(stereoExpansionEnabled),
-        stereoWidth:
-            stereoWidth == null ? const Value.absent() : Value(stereoWidth),
+        stereoWidth: stereoWidth == null
+            ? const Value.absent()
+            : Value(stereoWidth),
       ),
     );
   }
 
   Future<EnhancementStateData> _ensureRow() async {
-    final existing = await (_database.select(_database.enhancementState)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final existing = await (_database.select(
+      _database.enhancementState,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
     if (existing != null) return existing;
     await _database
         .into(_database.enhancementState)
         .insert(const EnhancementStateCompanion(id: Value(0)));
-    return (_database.select(_database.enhancementState)
-          ..where((table) => table.id.equals(0)))
-        .getSingle();
+    return (_database.select(
+      _database.enhancementState,
+    )..where((table) => table.id.equals(0))).getSingle();
   }
 
   // -- Perfiles por salida (requerimiento 5.4) -----------------------------
 
-  Stream<Map<int, OutputProfile>> watchOutputProfiles() =>
-      _database.select(_database.outputProfiles).watch().map(
-            (rows) => {for (final row in rows) row.outputIndex: row},
-          );
+  Stream<Map<int, OutputProfile>> watchOutputProfiles() => _database
+      .select(_database.outputProfiles)
+      .watch()
+      .map((rows) => {for (final row in rows) row.outputIndex: row});
 
   Future<OutputProfile?> profileFor(AudioOutput output) =>
       (_database.select(_database.outputProfiles)
@@ -112,39 +117,39 @@ class EnhancementRepository {
     required double preampDb,
     required EnhancementProfile profile,
     required bool enhancementEnabled,
-  }) =>
-      _database.into(_database.outputProfiles).insertOnConflictUpdate(
-            OutputProfilesCompanion.insert(
-              outputIndex: Value(output.index),
-              bandCount: Value(bandCount),
-              gainsJson: Value(jsonEncode(gains)),
-              presetName: Value(presetName),
-              preampDb: Value(preampDb),
-              profileIndex: Value(profile.index),
-              enhancementEnabled: Value(enhancementEnabled),
-            ),
-          );
+  }) => _database
+      .into(_database.outputProfiles)
+      .insertOnConflictUpdate(
+        OutputProfilesCompanion.insert(
+          outputIndex: Value(output.index),
+          bandCount: Value(bandCount),
+          gainsJson: Value(jsonEncode(gains)),
+          presetName: Value(presetName),
+          preampDb: Value(preampDb),
+          profileIndex: Value(profile.index),
+          enhancementEnabled: Value(enhancementEnabled),
+        ),
+      );
 
-  Future<void> deleteOutputProfile(AudioOutput output) =>
-      (_database.delete(_database.outputProfiles)
-            ..where((table) => table.outputIndex.equals(output.index)))
-          .go();
+  Future<void> deleteOutputProfile(AudioOutput output) => (_database.delete(
+    _database.outputProfiles,
+  )..where((table) => table.outputIndex.equals(output.index))).go();
 
   // -- Analisis de sonoridad (requerimiento 5.2) ---------------------------
 
-  Future<LoudnessAnalyse?> analysisFor(int songId) =>
-      (_database.select(_database.loudnessAnalyses)
-            ..where((table) => table.songId.equals(songId)))
-          .getSingleOrNull();
+  Future<LoudnessAnalyse?> analysisFor(int songId) => (_database.select(
+    _database.loudnessAnalyses,
+  )..where((table) => table.songId.equals(songId))).getSingleOrNull();
 
-  Future<void> saveAnalysis(LoudnessAnalysis analysis) =>
-      _database.into(_database.loudnessAnalyses).insertOnConflictUpdate(
-            LoudnessAnalysesCompanion.insert(
-              songId: Value(analysis.songId),
-              gainDb: analysis.gainDb,
-              peak: analysis.peak,
-            ),
-          );
+  Future<void> saveAnalysis(LoudnessAnalysis analysis) => _database
+      .into(_database.loudnessAnalyses)
+      .insertOnConflictUpdate(
+        LoudnessAnalysesCompanion.insert(
+          songId: Value(analysis.songId),
+          gainDb: analysis.gainDb,
+          peak: analysis.peak,
+        ),
+      );
 
   Future<int> analyzedCount() async {
     final rows = await _database.select(_database.loudnessAnalyses).get();

@@ -22,8 +22,10 @@ class PlaylistsList extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlists = ref.watch(playlistsProvider).valueOrNull ?? const [];
-    final counts = ref.watch(playlistSongCountsProvider).valueOrNull ?? const {};
-    final customCovers = ref.watch(customCoversProvider).valueOrNull ?? const {};
+    final counts =
+        ref.watch(playlistSongCountsProvider).valueOrNull ?? const {};
+    final customCovers =
+        ref.watch(customCoversProvider).valueOrNull ?? const {};
 
     return ListView(
       padding: const EdgeInsets.only(bottom: 24),
@@ -89,7 +91,8 @@ class PlaylistsList extends ConsumerWidget {
             ListTile(
               leading: GroupCover(
                 song: null,
-                customPath: playlist.coverPath ??
+                customPath:
+                    playlist.coverPath ??
                     customCovers['playlist:${playlist.id}'],
                 size: 52,
                 borderRadius: 12,
@@ -201,10 +204,10 @@ class _GiftChip extends StatelessWidget {
       ),
       child: Text(
         '🎁 Regalo',
-        style: Theme.of(context)
-            .textTheme
-            .labelSmall
-            ?.copyWith(color: scheme.primary, fontWeight: FontWeight.w600),
+        style: Theme.of(context).textTheme.labelSmall?.copyWith(
+          color: scheme.primary,
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }

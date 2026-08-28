@@ -35,13 +35,15 @@ class SongTile extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final scheme = Theme.of(context).colorScheme;
-    final currentSongId =
-        ref.watch(playbackProvider.select((state) => state.currentSong?.id));
+    final currentSongId = ref.watch(
+      playbackProvider.select((state) => state.currentSong?.id),
+    );
     final isCurrent = currentSongId == song.id;
     final favorites = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
     final isFavorite = favorites.contains(song.id);
 
-    final subtitle = subtitleOverride ??
+    final subtitle =
+        subtitleOverride ??
         '${song.displayArtist} · ${Formatters.duration(song.durationMs)}';
 
     return ListTile(
@@ -62,8 +64,8 @@ class SongTile extends ConsumerWidget {
                 color: isCurrent
                     ? scheme.primary
                     : song.isSupported
-                        ? null
-                        : scheme.onSurface.withValues(alpha: 0.45),
+                    ? null
+                    : scheme.onSurface.withValues(alpha: 0.45),
               ),
             ),
           ),
@@ -91,7 +93,8 @@ class SongTile extends ConsumerWidget {
               : scheme.onSurfaceVariant.withValues(alpha: 0.5),
         ),
       ),
-      trailing: trailing ??
+      trailing:
+          trailing ??
           Row(
             mainAxisSize: MainAxisSize.min,
             children: [
@@ -115,9 +118,7 @@ class SongTile extends ConsumerWidget {
   void _showUnsupportedMessage(BuildContext context, Song song) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(
-        content: Text(
-          '${AppStrings.unsupportedFormat}: ${song.mimeType}',
-        ),
+        content: Text('${AppStrings.unsupportedFormat}: ${song.mimeType}'),
       ),
     );
   }
@@ -146,7 +147,12 @@ class GroupTile extends StatelessWidget {
   Widget build(BuildContext context) {
     return ListTile(
       onTap: onTap,
-      leading: GroupCover(song: coverSong, size: 52, borderRadius: 12, icon: icon),
+      leading: GroupCover(
+        song: coverSong,
+        size: 52,
+        borderRadius: 12,
+        icon: icon,
+      ),
       title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
       subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
       trailing: onMore == null

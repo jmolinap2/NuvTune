@@ -16,14 +16,11 @@ Future<void> showPlaylistActions(
   BuildContext context, {
   required int playlistId,
   required String playlistName,
-}) =>
-    showModalBottomSheet<void>(
-      context: context,
-      builder: (context) => _PlaylistActionsSheet(
-        playlistId: playlistId,
-        playlistName: playlistName,
-      ),
-    );
+}) => showModalBottomSheet<void>(
+  context: context,
+  builder: (context) =>
+      _PlaylistActionsSheet(playlistId: playlistId, playlistName: playlistName),
+);
 
 class _PlaylistActionsSheet extends ConsumerWidget {
   const _PlaylistActionsSheet({
@@ -37,7 +34,9 @@ class _PlaylistActionsSheet extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlists = ref.watch(playlistsProvider).valueOrNull ?? const [];
-    final playlist = playlists.where((item) => item.id == playlistId).firstOrNull;
+    final playlist = playlists
+        .where((item) => item.id == playlistId)
+        .firstOrNull;
     final isGift = playlist?.giftMode ?? false;
 
     return SafeArea(
@@ -87,7 +86,9 @@ class _PlaylistActionsSheet extends ConsumerWidget {
           // entre si, y era facil crear un regalo y no llegar a enviarlo.
           ListTile(
             leading: const Icon(Icons.card_giftcard_rounded),
-            title: Text(isGift ? 'Volver a enviar el regalo…' : 'Regalar esta lista…'),
+            title: Text(
+              isGift ? 'Volver a enviar el regalo…' : 'Regalar esta lista…',
+            ),
             subtitle: const Text('Dedícala y compártela en 3 pasos'),
             onTap: playlist == null
                 ? null
@@ -152,15 +153,16 @@ class _PlaylistActionsSheet extends ConsumerWidget {
     final navigator = Navigator.of(context);
     final messenger = ScaffoldMessenger.of(context);
 
-    final songIds = await ref.read(playlistRepositoryProvider).songIds(playlistId);
+    final songIds = await ref
+        .read(playlistRepositoryProvider)
+        .songIds(playlistId);
     final songs = ref.read(libraryRepositoryProvider).songsByIds(songIds);
     final content = M3u.write(playlistName, songs);
 
-    final uri = await ref.read(engineProvider).api.createTextDocument(
-          '$playlistName.m3u',
-          'audio/x-mpegurl',
-          content,
-        );
+    final uri = await ref
+        .read(engineProvider)
+        .api
+        .createTextDocument('$playlistName.m3u', 'audio/x-mpegurl', content);
 
     navigator.pop();
     messenger.showSnackBar(
@@ -179,18 +181,23 @@ class _PlaylistActionsSheet extends ConsumerWidget {
     final messenger = ScaffoldMessenger.of(context);
     final engine = ref.read(engineProvider);
 
-    final document = await engine.api.pickDocument(
-      const ['audio/x-mpegurl', 'audio/mpegurl', 'text/plain', '*/*'],
-    );
+    final document = await engine.api.pickDocument(const [
+      'audio/x-mpegurl',
+      'audio/mpegurl',
+      'text/plain',
+      '*/*',
+    ]);
     if (document == null) return;
 
     final content = await engine.api.readDocumentText(document.uri);
-    final imported = M3u.parse(content, ref.read(libraryRepositoryProvider).songs);
+    final imported = M3u.parse(
+      content,
+      ref.read(libraryRepositoryProvider).songs,
+    );
 
-    await ref.read(playlistRepositoryProvider).addSongs(
-          playlistId,
-          imported.songs.map((song) => song.id).toList(),
-        );
+    await ref
+        .read(playlistRepositoryProvider)
+        .addSongs(playlistId, imported.songs.map((song) => song.id).toList());
 
     navigator.pop();
     messenger.showSnackBar(
@@ -199,8 +206,8 @@ class _PlaylistActionsSheet extends ConsumerWidget {
           imported.missingEntries.isEmpty
               ? 'Se agregaron ${imported.songs.length} canciones'
               : 'Se agregaron ${imported.songs.length} canciones. '
-                  '${imported.missingEntries.length} entradas no se encontraron '
-                  'en el dispositivo.',
+                    '${imported.missingEntries.length} entradas no se encontraron '
+                    'en el dispositivo.',
         ),
       ),
     );
@@ -208,7 +215,9 @@ class _PlaylistActionsSheet extends ConsumerWidget {
 
   Future<void> _shareListing(BuildContext context, WidgetRef ref) async {
     final navigator = Navigator.of(context);
-    final songIds = await ref.read(playlistRepositoryProvider).songIds(playlistId);
+    final songIds = await ref
+        .read(playlistRepositoryProvider)
+        .songIds(playlistId);
     final songs = ref.read(libraryRepositoryProvider).songsByIds(songIds);
     await ref
         .read(engineProvider)

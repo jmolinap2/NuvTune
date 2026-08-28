@@ -15,13 +15,17 @@ class GiftIntroScreen extends ConsumerWidget {
   @override
   Widget build(BuildContext context, WidgetRef ref) {
     final playlists = ref.watch(playlistsProvider).valueOrNull ?? const [];
-    final playlist = playlists.where((item) => item.id == playlistId).firstOrNull;
+    final playlist = playlists
+        .where((item) => item.id == playlistId)
+        .firstOrNull;
 
     if (playlist == null) {
       return const Scaffold(body: Center(child: CircularProgressIndicator()));
     }
 
-    final accent = AccentIdentity.byId(playlist.giftAccentId ?? AccentIdentity.nebula.id);
+    final accent = AccentIdentity.byId(
+      playlist.giftAccentId ?? AccentIdentity.nebula.id,
+    );
 
     return Scaffold(
       body: Container(
@@ -32,9 +36,7 @@ class GiftIntroScreen extends ConsumerWidget {
             colors: [accent.start, accent.middle, accent.end],
           ),
         ),
-        child: SafeArea(
-          child: _GiftIntroBody(playlist: playlist),
-        ),
+        child: SafeArea(child: _GiftIntroBody(playlist: playlist)),
       ),
     );
   }
@@ -88,7 +90,11 @@ class _GiftIntroBodyState extends State<_GiftIntroBody> {
               curve: Curves.easeOut,
               child: Column(
                 children: [
-                  const Icon(Icons.card_giftcard_rounded, color: Colors.white, size: 56),
+                  const Icon(
+                    Icons.card_giftcard_rounded,
+                    color: Colors.white,
+                    size: 56,
+                  ),
                   const SizedBox(height: Tokens.space5),
                   if (hasFrom || hasTo)
                     Text(
@@ -98,18 +104,18 @@ class _GiftIntroBodyState extends State<_GiftIntroBody> {
                       ].join(' — '),
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.titleMedium?.copyWith(
-                            color: Colors.white70,
-                            fontWeight: FontWeight.w600,
-                          ),
+                        color: Colors.white70,
+                        fontWeight: FontWeight.w600,
+                      ),
                     ),
                   const SizedBox(height: Tokens.space3),
                   Text(
                     playlist.name,
                     textAlign: TextAlign.center,
                     style: Theme.of(context).textTheme.headlineMedium?.copyWith(
-                          color: Colors.white,
-                          fontWeight: FontWeight.w800,
-                        ),
+                      color: Colors.white,
+                      fontWeight: FontWeight.w800,
+                    ),
                   ),
                   if ((playlist.dedication ?? '').trim().isNotEmpty) ...[
                     const SizedBox(height: Tokens.space4),
@@ -117,9 +123,9 @@ class _GiftIntroBodyState extends State<_GiftIntroBody> {
                       playlist.dedication!,
                       textAlign: TextAlign.center,
                       style: Theme.of(context).textTheme.bodyLarge?.copyWith(
-                            color: Colors.white,
-                            fontStyle: FontStyle.italic,
-                          ),
+                        color: Colors.white,
+                        fontStyle: FontStyle.italic,
+                      ),
                     ),
                   ],
                 ],
@@ -139,7 +145,8 @@ class _GiftIntroBodyState extends State<_GiftIntroBody> {
                   foregroundColor: Colors.black,
                   padding: const EdgeInsets.symmetric(vertical: Tokens.space4),
                 ),
-                onPressed: () => context.go('/playlist/${playlist.id}?from=gift-intro'),
+                onPressed: () =>
+                    context.go('/playlist/${playlist.id}?from=gift-intro'),
                 icon: const Icon(Icons.play_arrow_rounded),
                 label: const Text('Reproducir'),
               ),

@@ -17,9 +17,9 @@ enum VisualizerStyle {
     'Una malla de puntos que fluye con la música',
     Icons.grain_rounded,
   ),
-  minimalSpectrum(
-    'Espectro minimalista',
-    'Frecuencias limpias con colores dinámicos',
+  dynamicSpectrum(
+    'Espectro dinámico',
+    'Columnas de gran altura que responden a cada frecuencia',
     Icons.graphic_eq_rounded,
   ),
   electricWaves(

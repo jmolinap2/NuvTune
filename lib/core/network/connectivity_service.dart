@@ -10,9 +10,9 @@ class ConnectivityService {
   /// fondo de video tardaria en aparecer hasta el primer cambio de red.
   Stream<bool> get isOnWifi async* {
     yield await checkIsOnWifi();
-    yield* Connectivity()
-        .onConnectivityChanged
-        .map((results) => results.contains(ConnectivityResult.wifi));
+    yield* Connectivity().onConnectivityChanged.map(
+      (results) => results.contains(ConnectivityResult.wifi),
+    );
   }
 
   Future<bool> checkIsOnWifi() async {

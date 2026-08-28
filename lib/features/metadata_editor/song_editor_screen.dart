@@ -42,7 +42,8 @@ class _SongEditorScreenState extends ConsumerState<SongEditorScreen> {
     super.dispose();
   }
 
-  Song? get _song => ref.read(libraryRepositoryProvider).songById(widget.songId);
+  Song? get _song =>
+      ref.read(libraryRepositoryProvider).songById(widget.songId);
 
   @override
   Widget build(BuildContext context) {
@@ -265,9 +266,7 @@ class _SongEditorScreenState extends ConsumerState<SongEditorScreen> {
 
       final tagResult = await engine.api.editMetadata(edit);
       if (tagResult.outcome != WriteOutcome.success) {
-        messenger.showSnackBar(
-          SnackBar(content: Text(_describe(tagResult))),
-        );
+        messenger.showSnackBar(SnackBar(content: Text(_describe(tagResult))));
         return;
       }
 
@@ -360,8 +359,11 @@ class _SongEditorScreenState extends ConsumerState<SongEditorScreen> {
       return;
     }
 
-    final result =
-        await engine.api.setCoverArt(song.id, cover.bytes, cover.mimeType);
+    final result = await engine.api.setCoverArt(
+      song.id,
+      cover.bytes,
+      cover.mimeType,
+    );
     if (result.outcome != WriteOutcome.success) {
       messenger.showSnackBar(SnackBar(content: Text(_describe(result))));
     }
@@ -375,16 +377,16 @@ class _SongEditorScreenState extends ConsumerState<SongEditorScreen> {
   }
 
   static String _describe(WriteResult result) => switch (result.outcome) {
-        WriteOutcome.success => 'Cambios guardados',
-        WriteOutcome.deniedByUser =>
-          'No se autorizo modificar el archivo, no se guardo nada',
-        WriteOutcome.needsUserConsent =>
-          'El sistema pide confirmacion para modificar este archivo',
-        WriteOutcome.unsupportedFormat =>
-          result.message ?? 'El formato no admite escritura de etiquetas',
-        WriteOutcome.integrityCheckFailed =>
-          result.message ?? 'La verificacion fallo; el archivo no se modifico',
-      };
+    WriteOutcome.success => 'Cambios guardados',
+    WriteOutcome.deniedByUser =>
+      'No se autorizo modificar el archivo, no se guardo nada',
+    WriteOutcome.needsUserConsent =>
+      'El sistema pide confirmacion para modificar este archivo',
+    WriteOutcome.unsupportedFormat =>
+      result.message ?? 'El formato no admite escritura de etiquetas',
+    WriteOutcome.integrityCheckFailed =>
+      result.message ?? 'La verificacion fallo; el archivo no se modifico',
+  };
 }
 
 class _CoverEditor extends ConsumerWidget {
@@ -498,13 +500,25 @@ class _CoverEditor extends ConsumerWidget {
           mainAxisSize: MainAxisSize.min,
           children: [
             for (final option in const [
-              (CoverSource.gallery, AppStrings.coverFromGallery, Icons.photo_library_outlined),
-              (CoverSource.camera, AppStrings.coverFromCamera, Icons.photo_camera_outlined),
-              (CoverSource.files, AppStrings.coverFromFiles, Icons.folder_open_outlined),
+              (
+                CoverSource.gallery,
+                AppStrings.coverFromGallery,
+                Icons.photo_library_outlined,
+              ),
+              (
+                CoverSource.camera,
+                AppStrings.coverFromCamera,
+                Icons.photo_camera_outlined,
+              ),
+              (
+                CoverSource.files,
+                AppStrings.coverFromFiles,
+                Icons.folder_open_outlined,
+              ),
               (
                 CoverSource.clipboard,
                 AppStrings.coverFromClipboard,
-                Icons.content_paste_rounded
+                Icons.content_paste_rounded,
               ),
             ])
               ListTile(

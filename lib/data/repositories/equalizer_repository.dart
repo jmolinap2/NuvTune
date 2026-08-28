@@ -10,15 +10,15 @@ class EqualizerRepository {
 
   final NuvTuneDatabase _database;
 
-  Stream<EqualizerStateData> watchState() =>
-      _database.select(_database.equalizerState).watchSingleOrNull().asyncMap(
-            (row) async => row ?? await _ensureRow(),
-          );
+  Stream<EqualizerStateData> watchState() => _database
+      .select(_database.equalizerState)
+      .watchSingleOrNull()
+      .asyncMap((row) async => row ?? await _ensureRow());
 
   Future<EqualizerStateData> state() async {
-    final row = await (_database.select(_database.equalizerState)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final row = await (_database.select(
+      _database.equalizerState,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
     return row ?? await _ensureRow();
   }
 
@@ -46,44 +46,49 @@ class EqualizerRepository {
     String? presetName,
   }) async {
     await _ensureRow();
-    await (_database.update(_database.equalizerState)
-          ..where((table) => table.id.equals(0)))
-        .write(
+    await (_database.update(
+      _database.equalizerState,
+    )..where((table) => table.id.equals(0))).write(
       EqualizerStateCompanion(
         enabled: enabled == null ? const Value.absent() : Value(enabled),
         bandCount: bandCount == null ? const Value.absent() : Value(bandCount),
-        gainsJson: gains == null ? const Value.absent() : Value(jsonEncode(gains)),
+        gainsJson: gains == null
+            ? const Value.absent()
+            : Value(jsonEncode(gains)),
         preampDb: preampDb == null ? const Value.absent() : Value(preampDb),
         autoPreventClipping: autoPreventClipping == null
             ? const Value.absent()
             : Value(autoPreventClipping),
         balance: balance == null ? const Value.absent() : Value(balance),
-        monoOutput:
-            monoOutput == null ? const Value.absent() : Value(monoOutput),
-        presetName:
-            presetName == null ? const Value.absent() : Value(presetName),
+        monoOutput: monoOutput == null
+            ? const Value.absent()
+            : Value(monoOutput),
+        presetName: presetName == null
+            ? const Value.absent()
+            : Value(presetName),
       ),
     );
   }
 
   Future<EqualizerStateData> _ensureRow() async {
-    final existing = await (_database.select(_database.equalizerState)
-          ..where((table) => table.id.equals(0)))
-        .getSingleOrNull();
+    final existing = await (_database.select(
+      _database.equalizerState,
+    )..where((table) => table.id.equals(0))).getSingleOrNull();
     if (existing != null) return existing;
     await _database
         .into(_database.equalizerState)
         .insert(const EqualizerStateCompanion(id: Value(0)));
-    return (_database.select(_database.equalizerState)
-          ..where((table) => table.id.equals(0)))
-        .getSingle();
+    return (_database.select(
+      _database.equalizerState,
+    )..where((table) => table.id.equals(0))).getSingle();
   }
 
   // -- Presets guardados por el usuario ------------------------------------
 
   Stream<List<EqualizerPreset>> watchUserPresets() =>
-      (_database.select(_database.equalizerPresetsTable)
-            ..orderBy([(table) => OrderingTerm(expression: table.name.lower())]))
+      (_database.select(
+            _database.equalizerPresetsTable,
+          )..orderBy([(table) => OrderingTerm(expression: table.name.lower())]))
           .watch();
 
   Future<void> saveUserPreset({
@@ -91,20 +96,20 @@ class EqualizerRepository {
     required int bandCount,
     required List<double> gains,
     required double preampDb,
-  }) =>
-      _database.into(_database.equalizerPresetsTable).insertOnConflictUpdate(
-            EqualizerPresetsTableCompanion.insert(
-              name: name,
-              bandCount: bandCount,
-              gainsJson: jsonEncode(gains),
-              preampDb: Value(preampDb),
-            ),
-          );
+  }) => _database
+      .into(_database.equalizerPresetsTable)
+      .insertOnConflictUpdate(
+        EqualizerPresetsTableCompanion.insert(
+          name: name,
+          bandCount: bandCount,
+          gainsJson: jsonEncode(gains),
+          preampDb: Value(preampDb),
+        ),
+      );
 
-  Future<void> deleteUserPreset(String name) =>
-      (_database.delete(_database.equalizerPresetsTable)
-            ..where((table) => table.name.equals(name)))
-          .go();
+  Future<void> deleteUserPreset(String name) => (_database.delete(
+    _database.equalizerPresetsTable,
+  )..where((table) => table.name.equals(name))).go();
 
   /// Decodifica las ganancias guardadas. Si el numero de bandas guardado no
   /// coincide con el pedido, se rellena o se recorta: pasa al cambiar entre el

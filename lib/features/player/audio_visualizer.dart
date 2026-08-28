@@ -12,6 +12,7 @@ import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/visualizer_color_map.dart';
 import 'package:nuvtune/features/player/visualizer_dynamics.dart';
 import 'package:nuvtune/features/player/visualizer_quality.dart';
+import 'package:nuvtune/features/player/visualizer_motion_tuning.dart';
 import 'package:nuvtune/features/player/visualizer_style.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
 import 'package:nuvtune/features/settings/personalization_models.dart';
@@ -168,17 +169,13 @@ class _ReactiveAudioVisualizerState
       settings?.visualizerColorMapJson,
     );
     final colorMode = VisualizerColorMode.byId(settings?.visualizerColorMode);
-    final motionScale = switch (motion.effectiveIntensity) {
-      0 => 0.0,
-      1 => 0.62,
-      2 => 1.0,
-      _ => 1.35,
-    };
+    final tuning = VisualizerMotionTuning.from(motion);
     final particleScale = switch (motion.effectiveParticles) {
       0 => 0.0,
       1 => 0.5,
       2 => 1.0,
-      _ => 1.45,
+      3 => 1.5,
+      _ => 2.0,
     };
 
     return Semantics(
@@ -218,16 +215,19 @@ class _ReactiveAudioVisualizerState
                   painter: _VisualizerPainter(
                     style: style,
                     time: (renderMicros % 14000000) / 14000000,
+                    elapsedSeconds:
+                        renderMicros / Duration.microsecondsPerSecond,
                     dynamics: _lastDynamics!,
                     colorMap: colorMap,
                     colorMode: colorMode,
+                    randomColors: settings?.visualizerRandomColors ?? false,
                     seed: seed,
                     isPlaying: widget.isPlaying,
                     immersive: widget.immersive,
                     hasLiveAnalysis: hasLiveAnalysis,
                     reduceMotion: _reduceMotion,
                     quality: quality,
-                    motionScale: motionScale,
+                    tuning: tuning,
                     motionParticleScale: particleScale,
                   ),
                 );
@@ -250,13 +250,15 @@ class _ReactiveAudioVisualizerState
       0 => 0.65,
       1 => 0.82,
       2 => 1.0,
-      _ => 1.22,
+      3 => 1.25,
+      _ => 1.55,
     };
     final smoothness = switch (motion.effectiveSmoothness) {
       0 => 1.22,
       1 => 1.08,
       2 => 1.0,
-      _ => 0.82,
+      3 => 0.82,
+      _ => 0.68,
     };
     _dynamicsEngine = VisualizerDynamicsEngine(
       config: VisualizerDynamicsConfig(
@@ -360,31 +362,35 @@ class _VisualizerPainter extends CustomPainter {
   const _VisualizerPainter({
     required this.style,
     required this.time,
+    required this.elapsedSeconds,
     required this.dynamics,
     required this.colorMap,
     required this.colorMode,
+    required this.randomColors,
     required this.seed,
     required this.isPlaying,
     required this.immersive,
     required this.hasLiveAnalysis,
     required this.reduceMotion,
     required this.quality,
-    required this.motionScale,
+    required this.tuning,
     required this.motionParticleScale,
   });
 
   final VisualizerStyle style;
   final double time;
+  final double elapsedSeconds;
   final VisualizerDynamicsState dynamics;
   final VisualizerColorMap colorMap;
   final VisualizerColorMode colorMode;
+  final bool randomColors;
   final int seed;
   final bool isPlaying;
   final bool immersive;
   final bool hasLiveAnalysis;
   final bool reduceMotion;
   final VisualizerQuality quality;
-  final double motionScale;
+  final VisualizerMotionTuning tuning;
   final double motionParticleScale;
 
   double get phase => time * math.pi * 2;
@@ -407,12 +413,14 @@ class _VisualizerPainter extends CustomPainter {
 
   double get visualMotion => reduceMotion
       ? 0
-      : ((0.05 + visualActivity * 0.95) * motionScale)
-            .clamp(0.0, 1.35)
+      : ((0.05 + visualActivity * 0.95) * tuning.motionScale)
+            .clamp(0.0, 1.8)
             .toDouble();
 
   double get renderGlow =>
-      (dynamics.glow * quality.glowScale * (reduceMotion ? 0.42 : motionScale))
+      (dynamics.glow *
+              quality.glowScale *
+              (reduceMotion ? 0.42 : tuning.motionScale))
           .clamp(0.0, 1.0)
           .toDouble();
 
@@ -431,7 +439,7 @@ class _VisualizerPainter extends CustomPainter {
   );
 
   double get renderBeatImpulse =>
-      dynamics.beatImpulse * (reduceMotion ? 0.28 : motionScale);
+      dynamics.beatImpulse * (reduceMotion ? 0.28 : tuning.motionScale);
 
   @override
   void paint(Canvas canvas, Size size) {
@@ -456,7 +464,7 @@ class _VisualizerPainter extends CustomPainter {
       case VisualizerStyle.prism:
         _paintPrism(canvas, size);
         break;
-      case VisualizerStyle.minimalSpectrum:
+      case VisualizerStyle.dynamicSpectrum:
         _paintSpectrum(canvas, size);
         break;
       case VisualizerStyle.electricWaves:
@@ -535,7 +543,7 @@ class _VisualizerPainter extends CustomPainter {
     final random = math.Random(seed ^ 0x6A09E667);
     final normalParticleBudget = switch (style) {
       VisualizerStyle.ribbons => 48,
-      VisualizerStyle.minimalSpectrum => 20,
+      VisualizerStyle.dynamicSpectrum => 20,
       VisualizerStyle.prism => 10,
       VisualizerStyle.electricWaves => 14,
       VisualizerStyle.cosmicOrbs => 10,
@@ -579,8 +587,20 @@ class _VisualizerPainter extends CustomPainter {
       size.width * 0.5,
       size.height * (fullCanvas ? 0.46 : 0.5),
     );
-    final baseRadius = shortest * (fullCanvas ? 0.26 : 0.235);
-    final innerRadius = baseRadius + shortest * renderBeatImpulse * 0.022;
+    // El aro deja espacio real a las columnas. Antes nacía al 26 % del lado
+    // corto y una barra solo podía crecer otro 19 %, por eso parecía un tambor
+    // que resonaba en su sitio en vez de un espectro radial vivo.
+    final baseRadius = shortest * (fullCanvas ? 0.18 : 0.175);
+    final innerRadius = baseRadius + shortest * renderBeatImpulse * 0.035;
+    final direction = seed.isEven ? 1.0 : -1.0;
+    final rotationAngle = reduceMotion
+        ? 0.0
+        : elapsedSeconds *
+                  math.pi *
+                  2 *
+                  tuning.rotationTurnsPerSecond *
+                  direction +
+              renderBeatImpulse * 0.16 * direction;
     // El aro de referencia necesita más trazos que bandas analíticas para
     // conservar su densidad. Se interpola el estado común; el perfil solo
     // reduce el muestreo donde realmente aporta ahorro.
@@ -665,15 +685,20 @@ class _VisualizerPainter extends CustomPainter {
 
       for (var index = 0; index < count; index++) {
         final normalized = index / count;
-        final angle = normalized * math.pi * 2 * ringDirection - math.pi / 2;
+        final angle =
+            normalized * math.pi * 2 * ringDirection -
+            math.pi / 2 +
+            rotationAngle;
         final tone = _mirroredSpectrumAt(normalized);
         final flutter = hasLiveAnalysis
             ? 1.0
             : 0.9 + math.sin(phase * 3.2 + index * 1.71 + ring * 1.3) * 0.1;
-        final shapedTone = math.pow(tone, 1.35).toDouble();
+        final shapedTone = math.pow(tone, tuning.ribbonExponent).toDouble();
         final length =
             shortest *
-            (0.012 + shapedTone * 0.19 * flutter + renderBeatImpulse * 0.03) *
+            (0.016 +
+                shapedTone * 0.25 * tuning.ribbonLengthScale * flutter +
+                renderBeatImpulse * 0.045) *
             lengthScale;
         final direction = Offset(math.cos(angle), math.sin(angle));
         final start = center + direction * ringRadius;
@@ -694,8 +719,12 @@ class _VisualizerPainter extends CustomPainter {
                     (ringRadius +
                         shortest *
                             (0.012 +
-                                math.pow(peak, 1.35).toDouble() * 0.19 +
-                                renderBeatImpulse * 0.03));
+                                math
+                                        .pow(peak, tuning.ribbonExponent)
+                                        .toDouble() *
+                                    0.25 *
+                                    tuning.ribbonLengthScale +
+                                renderBeatImpulse * 0.045));
             peakMarkers.addOval(
               Rect.fromCircle(center: peakEnd, radius: shortest * 0.0032),
             );
@@ -708,7 +737,9 @@ class _VisualizerPainter extends CustomPainter {
       // colores bajos. En «por columna» cada trazo se pinta con el color de su
       // propia intensidad. Antes ambos casos usaban un barrido por ángulo, así
       // que el color dependía de la posición en el aro y no de la fuerza.
-      final maxLength = shortest * (0.012 + 0.19 + renderBeatImpulse * 0.03);
+      final maxLength =
+          shortest *
+          (0.016 + 0.25 * tuning.ribbonLengthScale + renderBeatImpulse * 0.045);
       Shader? radialRamp(double alpha) => _radialGradient(
         center: center,
         innerRadius: ringRadius,
@@ -1012,8 +1043,10 @@ class _VisualizerPainter extends CustomPainter {
         : math.min(48, quality.bandCount);
     final gap = size.width * (fullCanvas ? 0.0038 : 0.0052);
     final barWidth = (size.width - gap * (count + 1)) / count;
-    final baseline = size.height * (fullCanvas ? 0.64 : 0.7);
-    final heightScale = fullCanvas ? 0.42 : 0.34;
+    final baseline = size.height * (fullCanvas ? 0.68 : 0.72);
+    final heightScale = fullCanvas
+        ? tuning.spectrumHeightScale
+        : tuning.spectrumHeightScale * 0.82;
     final segmentHeight = math.max(
       2.0,
       size.shortestSide * (fullCanvas ? 0.0085 : 0.011),
@@ -1030,12 +1063,15 @@ class _VisualizerPainter extends CustomPainter {
     for (var index = 0; index < count; index++) {
       final x = index / (count - 1);
       final tone = _spectrumAt(x);
+      final shapedTone = math
+          .pow(tone, (tuning.ribbonExponent + 0.10).clamp(0.62, 1.0))
+          .toDouble();
       final ambientFlutter = hasLiveAnalysis
           ? 1.0
           : 0.94 + math.sin(phase * 2.1 + index * 0.37) * 0.06;
       final height =
           size.height *
-          (0.018 + tone * heightScale * ambientFlutter).clamp(0.0, 0.62);
+          (0.022 + shapedTone * heightScale * ambientFlutter).clamp(0.0, 0.72);
       final left = gap + index * (barWidth + gap);
       final top = baseline - height;
       highestBar = math.min(highestBar, top);
@@ -1072,7 +1108,14 @@ class _VisualizerPainter extends CustomPainter {
 
       final peakTone = _peakAt(x);
       if (peakTone > tone + 0.02) {
-        final peakHeight = size.height * (0.018 + peakTone * heightScale);
+        final peakHeight =
+            size.height *
+            (0.022 +
+                math.pow(
+                      peakTone,
+                      (tuning.ribbonExponent + 0.10).clamp(0.62, 1.0),
+                    ) *
+                    heightScale);
         final markerHeight = math.max(1.8, segmentHeight * 0.36);
         peaks.addRRect(
           RRect.fromRectAndRadius(
@@ -1091,7 +1134,7 @@ class _VisualizerPainter extends CustomPainter {
     final bounds = Offset.zero & size;
     // Altura que alcanzaría una barra al 100 %: define el tramo del lienzo
     // sobre el que se proyecta el mapa en modo «por fila».
-    final fullHeight = size.height * (0.018 + heightScale);
+    final fullHeight = size.height * (0.022 + heightScale);
     if (renderGlow > 0.025) {
       final glowAlpha = (0.08 + renderGlow * 0.28).clamp(0.0, 1.0).toDouble();
       final glowShader = _barGradient(
@@ -2230,7 +2273,7 @@ class _VisualizerPainter extends CustomPainter {
       Offset(0, baseline - fullHeight),
       [
         for (final color in ramp.colors)
-          color.withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
+          _colorize(color).withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
       ],
       ramp.positions,
     );
@@ -2249,15 +2292,10 @@ class _VisualizerPainter extends CustomPainter {
     final outerRadius = innerRadius + maxLength;
     if (outerRadius <= 0) return null;
     final ramp = colorMap.projectedOnto(innerRadius / outerRadius, 1);
-    return ui.Gradient.radial(
-      center,
-      outerRadius,
-      [
-        for (final color in ramp.colors)
-          color.withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
-      ],
-      ramp.positions,
-    );
+    return ui.Gradient.radial(center, outerRadius, [
+      for (final color in ramp.colors)
+        _colorize(color).withValues(alpha: alpha.clamp(0.0, 1.0).toDouble()),
+    ], ramp.positions);
   }
 
   /// Una sola traducción cromática para todos los estilos.
@@ -2273,7 +2311,7 @@ class _VisualizerPainter extends CustomPainter {
   /// elegido en el mapa se ve naranja.
   Color _reactiveColor(double normalized, double tone, {double alpha = 1}) {
     final t = tone.clamp(0.0, 1.0).toDouble();
-    final base = colorMap.colorAt(t);
+    final base = _colorize(colorMap.colorAt(t));
     // Los elementos apagados se hunden hacia el fondo y los activos muestran el
     // color del mapa tal cual. La curva deja que la diferencia se note ya en
     // amplitudes medias en vez de solo cerca del pico.
@@ -2294,7 +2332,7 @@ class _VisualizerPainter extends CustomPainter {
   /// parada más baja del mapa para que un mapa cálido no descanse sobre un
   /// azul frío ajeno a la paleta elegida.
   Color get _floorColor {
-    final hsl = HSLColor.fromColor(colorMap.stops.first.color);
+    final hsl = HSLColor.fromColor(_colorize(colorMap.stops.first.color));
     return hsl
         .withSaturation((hsl.saturation * 0.7).clamp(0.0, 1.0))
         .withLightness(0.05)
@@ -2304,7 +2342,7 @@ class _VisualizerPainter extends CustomPainter {
   Color _peakColor(double normalized, double peak) {
     // El marcador de pico mira algo más arriba en el mapa que la barra que lo
     // sostiene, de modo que el tramo reservado al pico se vea de verdad.
-    final base = colorMap.colorAt(math.min(1.0, peak + 0.06));
+    final base = _colorize(colorMap.colorAt(math.min(1.0, peak + 0.06)));
     final whiteMix = (0.12 + dynamics.energy * 0.16 + renderBeatImpulse * 0.16)
         .clamp(0.0, 0.5)
         .toDouble();
@@ -2329,16 +2367,32 @@ class _VisualizerPainter extends CustomPainter {
 
   double _lerp(double a, double b, double amount) => a + (b - a) * amount;
 
+  Color _colorize(Color color) {
+    if (!randomColors) return color;
+    final offset = fluidRandomHueOffset(
+      seed: seed,
+      elapsedSeconds: elapsedSeconds,
+      energy: dynamics.energy,
+      beatImpulse: dynamics.beatImpulse,
+    );
+    return rotateVisualizerHue(color, offset);
+  }
+
   @override
   bool shouldRepaint(covariant _VisualizerPainter oldDelegate) =>
       oldDelegate.style != style ||
       oldDelegate.time != time ||
+      oldDelegate.elapsedSeconds != elapsedSeconds ||
       oldDelegate.dynamics != dynamics ||
       oldDelegate.colorMap != colorMap ||
+      oldDelegate.colorMode != colorMode ||
+      oldDelegate.randomColors != randomColors ||
       oldDelegate.seed != seed ||
       oldDelegate.isPlaying != isPlaying ||
       oldDelegate.immersive != immersive ||
       oldDelegate.hasLiveAnalysis != hasLiveAnalysis ||
       oldDelegate.reduceMotion != reduceMotion ||
-      oldDelegate.quality != quality;
+      oldDelegate.quality != quality ||
+      oldDelegate.tuning.motionScale != tuning.motionScale ||
+      oldDelegate.motionParticleScale != motionParticleScale;
 }

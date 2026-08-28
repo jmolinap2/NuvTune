@@ -6431,6 +6431,33 @@ class $AppSettingsTable extends AppSettings
         requiredDuringInsert: false,
         defaultValue: const Constant('row'),
       );
+  static const VerificationMeta _visualizerRandomColorsMeta =
+      const VerificationMeta('visualizerRandomColors');
+  @override
+  late final GeneratedColumn<bool> visualizerRandomColors =
+      GeneratedColumn<bool>(
+        'visualizer_random_colors',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("visualizer_random_colors" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
+  static const VerificationMeta _lyricsAnimationStyleMeta =
+      const VerificationMeta('lyricsAnimationStyle');
+  @override
+  late final GeneratedColumn<String> lyricsAnimationStyle =
+      GeneratedColumn<String>(
+        'lyrics_animation_style',
+        aliasedName,
+        false,
+        type: DriftSqlType.string,
+        requiredDuringInsert: false,
+        defaultValue: const Constant('soft'),
+      );
   static const VerificationMeta _playerVisualSceneMeta = const VerificationMeta(
     'playerVisualScene',
   );
@@ -6623,6 +6650,8 @@ class $AppSettingsTable extends AppSettings
     visualizerColorSource,
     visualizerColorMapJson,
     visualizerColorMode,
+    visualizerRandomColors,
+    lyricsAnimationStyle,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -7123,6 +7152,24 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('visualizer_random_colors')) {
+      context.handle(
+        _visualizerRandomColorsMeta,
+        visualizerRandomColors.isAcceptableOrUnknown(
+          data['visualizer_random_colors']!,
+          _visualizerRandomColorsMeta,
+        ),
+      );
+    }
+    if (data.containsKey('lyrics_animation_style')) {
+      context.handle(
+        _lyricsAnimationStyleMeta,
+        lyricsAnimationStyle.isAcceptableOrUnknown(
+          data['lyrics_animation_style']!,
+          _lyricsAnimationStyleMeta,
+        ),
+      );
+    }
     if (data.containsKey('player_visual_scene')) {
       context.handle(
         _playerVisualSceneMeta,
@@ -7442,6 +7489,14 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.string,
         data['${effectivePrefix}visualizer_color_mode'],
       )!,
+      visualizerRandomColors: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}visualizer_random_colors'],
+      )!,
+      lyricsAnimationStyle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}lyrics_animation_style'],
+      )!,
       playerVisualScene: attachedDatabase.typeMapping.read(
         DriftSqlType.int,
         data['${effectivePrefix}player_visual_scene'],
@@ -7592,6 +7647,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// entera el color de la intensidad que alcanza.
   final String visualizerColorMode;
 
+  /// Desplaza suavemente el matiz del mapa de color durante la reproducción.
+  final bool visualizerRandomColors;
+
+  /// Animación de la línea activa (`LyricsAnimationStyle.id`).
+  final String lyricsAnimationStyle;
+
   /// Escenario principal del reproductor. Los índices corresponden a
   /// PlayerVisualScene; cero es Video y usa Portada si no hay un video
   /// disponible mediante Wi-Fi.
@@ -7671,6 +7732,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.visualizerColorSource,
     required this.visualizerColorMapJson,
     required this.visualizerColorMode,
+    required this.visualizerRandomColors,
+    required this.lyricsAnimationStyle,
     required this.playerVisualScene,
     required this.playerSceneAspectRatio,
     required this.playerControlPreset,
@@ -7744,6 +7807,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['visualizer_color_source'] = Variable<String>(visualizerColorSource);
     map['visualizer_color_map_json'] = Variable<String>(visualizerColorMapJson);
     map['visualizer_color_mode'] = Variable<String>(visualizerColorMode);
+    map['visualizer_random_colors'] = Variable<bool>(visualizerRandomColors);
+    map['lyrics_animation_style'] = Variable<String>(lyricsAnimationStyle);
     map['player_visual_scene'] = Variable<int>(playerVisualScene);
     map['player_scene_aspect_ratio'] = Variable<int>(playerSceneAspectRatio);
     map['player_control_preset'] = Variable<String>(playerControlPreset);
@@ -7824,6 +7889,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       visualizerColorSource: Value(visualizerColorSource),
       visualizerColorMapJson: Value(visualizerColorMapJson),
       visualizerColorMode: Value(visualizerColorMode),
+      visualizerRandomColors: Value(visualizerRandomColors),
+      lyricsAnimationStyle: Value(lyricsAnimationStyle),
       playerVisualScene: Value(playerVisualScene),
       playerSceneAspectRatio: Value(playerSceneAspectRatio),
       playerControlPreset: Value(playerControlPreset),
@@ -7924,6 +7991,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       visualizerColorMode: serializer.fromJson<String>(
         json['visualizerColorMode'],
       ),
+      visualizerRandomColors: serializer.fromJson<bool>(
+        json['visualizerRandomColors'],
+      ),
+      lyricsAnimationStyle: serializer.fromJson<String>(
+        json['lyricsAnimationStyle'],
+      ),
       playerVisualScene: serializer.fromJson<int>(json['playerVisualScene']),
       playerSceneAspectRatio: serializer.fromJson<int>(
         json['playerSceneAspectRatio'],
@@ -8019,6 +8092,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         visualizerColorMapJson,
       ),
       'visualizerColorMode': serializer.toJson<String>(visualizerColorMode),
+      'visualizerRandomColors': serializer.toJson<bool>(visualizerRandomColors),
+      'lyricsAnimationStyle': serializer.toJson<String>(lyricsAnimationStyle),
       'playerVisualScene': serializer.toJson<int>(playerVisualScene),
       'playerSceneAspectRatio': serializer.toJson<int>(playerSceneAspectRatio),
       'playerControlPreset': serializer.toJson<String>(playerControlPreset),
@@ -8098,6 +8173,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     String? visualizerColorSource,
     String? visualizerColorMapJson,
     String? visualizerColorMode,
+    bool? visualizerRandomColors,
+    String? lyricsAnimationStyle,
     int? playerVisualScene,
     int? playerSceneAspectRatio,
     String? playerControlPreset,
@@ -8169,6 +8246,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     visualizerColorMapJson:
         visualizerColorMapJson ?? this.visualizerColorMapJson,
     visualizerColorMode: visualizerColorMode ?? this.visualizerColorMode,
+    visualizerRandomColors:
+        visualizerRandomColors ?? this.visualizerRandomColors,
+    lyricsAnimationStyle: lyricsAnimationStyle ?? this.lyricsAnimationStyle,
     playerVisualScene: playerVisualScene ?? this.playerVisualScene,
     playerSceneAspectRatio:
         playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -8348,6 +8428,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       visualizerColorMode: data.visualizerColorMode.present
           ? data.visualizerColorMode.value
           : this.visualizerColorMode,
+      visualizerRandomColors: data.visualizerRandomColors.present
+          ? data.visualizerRandomColors.value
+          : this.visualizerRandomColors,
+      lyricsAnimationStyle: data.lyricsAnimationStyle.present
+          ? data.lyricsAnimationStyle.value
+          : this.lyricsAnimationStyle,
       playerVisualScene: data.playerVisualScene.present
           ? data.playerVisualScene.value
           : this.playerVisualScene,
@@ -8439,6 +8525,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('visualizerColorSource: $visualizerColorSource, ')
           ..write('visualizerColorMapJson: $visualizerColorMapJson, ')
           ..write('visualizerColorMode: $visualizerColorMode, ')
+          ..write('visualizerRandomColors: $visualizerRandomColors, ')
+          ..write('lyricsAnimationStyle: $lyricsAnimationStyle, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -8510,6 +8598,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     visualizerColorSource,
     visualizerColorMapJson,
     visualizerColorMode,
+    visualizerRandomColors,
+    lyricsAnimationStyle,
     playerVisualScene,
     playerSceneAspectRatio,
     playerControlPreset,
@@ -8580,6 +8670,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.visualizerColorSource == this.visualizerColorSource &&
           other.visualizerColorMapJson == this.visualizerColorMapJson &&
           other.visualizerColorMode == this.visualizerColorMode &&
+          other.visualizerRandomColors == this.visualizerRandomColors &&
+          other.lyricsAnimationStyle == this.lyricsAnimationStyle &&
           other.playerVisualScene == this.playerVisualScene &&
           other.playerSceneAspectRatio == this.playerSceneAspectRatio &&
           other.playerControlPreset == this.playerControlPreset &&
@@ -8648,6 +8740,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<String> visualizerColorSource;
   final Value<String> visualizerColorMapJson;
   final Value<String> visualizerColorMode;
+  final Value<bool> visualizerRandomColors;
+  final Value<String> lyricsAnimationStyle;
   final Value<int> playerVisualScene;
   final Value<int> playerSceneAspectRatio;
   final Value<String> playerControlPreset;
@@ -8714,6 +8808,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.visualizerColorSource = const Value.absent(),
     this.visualizerColorMapJson = const Value.absent(),
     this.visualizerColorMode = const Value.absent(),
+    this.visualizerRandomColors = const Value.absent(),
+    this.lyricsAnimationStyle = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8781,6 +8877,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.visualizerColorSource = const Value.absent(),
     this.visualizerColorMapJson = const Value.absent(),
     this.visualizerColorMode = const Value.absent(),
+    this.visualizerRandomColors = const Value.absent(),
+    this.lyricsAnimationStyle = const Value.absent(),
     this.playerVisualScene = const Value.absent(),
     this.playerSceneAspectRatio = const Value.absent(),
     this.playerControlPreset = const Value.absent(),
@@ -8848,6 +8946,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<String>? visualizerColorSource,
     Expression<String>? visualizerColorMapJson,
     Expression<String>? visualizerColorMode,
+    Expression<bool>? visualizerRandomColors,
+    Expression<String>? lyricsAnimationStyle,
     Expression<int>? playerVisualScene,
     Expression<int>? playerSceneAspectRatio,
     Expression<String>? playerControlPreset,
@@ -8932,6 +9032,10 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'visualizer_color_map_json': visualizerColorMapJson,
       if (visualizerColorMode != null)
         'visualizer_color_mode': visualizerColorMode,
+      if (visualizerRandomColors != null)
+        'visualizer_random_colors': visualizerRandomColors,
+      if (lyricsAnimationStyle != null)
+        'lyrics_animation_style': lyricsAnimationStyle,
       if (playerVisualScene != null) 'player_visual_scene': playerVisualScene,
       if (playerSceneAspectRatio != null)
         'player_scene_aspect_ratio': playerSceneAspectRatio,
@@ -9009,6 +9113,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<String>? visualizerColorSource,
     Value<String>? visualizerColorMapJson,
     Value<String>? visualizerColorMode,
+    Value<bool>? visualizerRandomColors,
+    Value<String>? lyricsAnimationStyle,
     Value<int>? playerVisualScene,
     Value<int>? playerSceneAspectRatio,
     Value<String>? playerControlPreset,
@@ -9086,6 +9192,9 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
       visualizerColorMapJson:
           visualizerColorMapJson ?? this.visualizerColorMapJson,
       visualizerColorMode: visualizerColorMode ?? this.visualizerColorMode,
+      visualizerRandomColors:
+          visualizerRandomColors ?? this.visualizerRandomColors,
+      lyricsAnimationStyle: lyricsAnimationStyle ?? this.lyricsAnimationStyle,
       playerVisualScene: playerVisualScene ?? this.playerVisualScene,
       playerSceneAspectRatio:
           playerSceneAspectRatio ?? this.playerSceneAspectRatio,
@@ -9296,6 +9405,16 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         visualizerColorMode.value,
       );
     }
+    if (visualizerRandomColors.present) {
+      map['visualizer_random_colors'] = Variable<bool>(
+        visualizerRandomColors.value,
+      );
+    }
+    if (lyricsAnimationStyle.present) {
+      map['lyrics_animation_style'] = Variable<String>(
+        lyricsAnimationStyle.value,
+      );
+    }
     if (playerVisualScene.present) {
       map['player_visual_scene'] = Variable<int>(playerVisualScene.value);
     }
@@ -9403,6 +9522,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('visualizerColorSource: $visualizerColorSource, ')
           ..write('visualizerColorMapJson: $visualizerColorMapJson, ')
           ..write('visualizerColorMode: $visualizerColorMode, ')
+          ..write('visualizerRandomColors: $visualizerRandomColors, ')
+          ..write('lyricsAnimationStyle: $lyricsAnimationStyle, ')
           ..write('playerVisualScene: $playerVisualScene, ')
           ..write('playerSceneAspectRatio: $playerSceneAspectRatio, ')
           ..write('playerControlPreset: $playerControlPreset, ')
@@ -13370,6 +13491,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<String> visualizerColorSource,
       Value<String> visualizerColorMapJson,
       Value<String> visualizerColorMode,
+      Value<bool> visualizerRandomColors,
+      Value<String> lyricsAnimationStyle,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -13438,6 +13561,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<String> visualizerColorSource,
       Value<String> visualizerColorMapJson,
       Value<String> visualizerColorMode,
+      Value<bool> visualizerRandomColors,
+      Value<String> lyricsAnimationStyle,
       Value<int> playerVisualScene,
       Value<int> playerSceneAspectRatio,
       Value<String> playerControlPreset,
@@ -13731,6 +13856,16 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<String> get visualizerColorMode => $composableBuilder(
     column: $table.visualizerColorMode,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get visualizerRandomColors => $composableBuilder(
+    column: $table.visualizerRandomColors,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get lyricsAnimationStyle => $composableBuilder(
+    column: $table.lyricsAnimationStyle,
     builder: (column) => ColumnFilters(column),
   );
 
@@ -14069,6 +14204,16 @@ class $$AppSettingsTableOrderingComposer
     builder: (column) => ColumnOrderings(column),
   );
 
+  ColumnOrderings<bool> get visualizerRandomColors => $composableBuilder(
+    column: $table.visualizerRandomColors,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get lyricsAnimationStyle => $composableBuilder(
+    column: $table.lyricsAnimationStyle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
   ColumnOrderings<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => ColumnOrderings(column),
@@ -14398,6 +14543,16 @@ class $$AppSettingsTableAnnotationComposer
     builder: (column) => column,
   );
 
+  GeneratedColumn<bool> get visualizerRandomColors => $composableBuilder(
+    column: $table.visualizerRandomColors,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get lyricsAnimationStyle => $composableBuilder(
+    column: $table.lyricsAnimationStyle,
+    builder: (column) => column,
+  );
+
   GeneratedColumn<int> get playerVisualScene => $composableBuilder(
     column: $table.playerVisualScene,
     builder: (column) => column,
@@ -14535,6 +14690,8 @@ class $$AppSettingsTableTableManager
                 Value<String> visualizerColorSource = const Value.absent(),
                 Value<String> visualizerColorMapJson = const Value.absent(),
                 Value<String> visualizerColorMode = const Value.absent(),
+                Value<bool> visualizerRandomColors = const Value.absent(),
+                Value<String> lyricsAnimationStyle = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -14601,6 +14758,8 @@ class $$AppSettingsTableTableManager
                 visualizerColorSource: visualizerColorSource,
                 visualizerColorMapJson: visualizerColorMapJson,
                 visualizerColorMode: visualizerColorMode,
+                visualizerRandomColors: visualizerRandomColors,
+                lyricsAnimationStyle: lyricsAnimationStyle,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,
@@ -14669,6 +14828,8 @@ class $$AppSettingsTableTableManager
                 Value<String> visualizerColorSource = const Value.absent(),
                 Value<String> visualizerColorMapJson = const Value.absent(),
                 Value<String> visualizerColorMode = const Value.absent(),
+                Value<bool> visualizerRandomColors = const Value.absent(),
+                Value<String> lyricsAnimationStyle = const Value.absent(),
                 Value<int> playerVisualScene = const Value.absent(),
                 Value<int> playerSceneAspectRatio = const Value.absent(),
                 Value<String> playerControlPreset = const Value.absent(),
@@ -14735,6 +14896,8 @@ class $$AppSettingsTableTableManager
                 visualizerColorSource: visualizerColorSource,
                 visualizerColorMapJson: visualizerColorMapJson,
                 visualizerColorMode: visualizerColorMode,
+                visualizerRandomColors: visualizerRandomColors,
+                lyricsAnimationStyle: lyricsAnimationStyle,
                 playerVisualScene: playerVisualScene,
                 playerSceneAspectRatio: playerSceneAspectRatio,
                 playerControlPreset: playerControlPreset,

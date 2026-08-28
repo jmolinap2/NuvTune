@@ -63,6 +63,26 @@ void main() {
       expect(find.byIcon(Icons.skip_next_rounded), findsOneWidget);
       expect(find.byIcon(Icons.queue_music_rounded), findsOneWidget);
     });
+
+    testWidgets('los controles principales usan objetivos táctiles ampliados', (
+      tester,
+    ) async {
+      await _pumpControls(
+        tester,
+        layout: PlayerControlLayout(
+          primary: const [
+            PlayerControlId.previous,
+            PlayerControlId.playPause,
+            PlayerControlId.next,
+          ],
+          secondary: const [],
+        ),
+      );
+
+      expect(tester.getSize(find.byTooltip('Reproducir')), const Size(68, 68));
+      expect(tester.getSize(find.byTooltip('Anterior')), const Size(54, 54));
+      expect(tester.getSize(find.byTooltip('Siguiente')), const Size(54, 54));
+    });
   });
 }
 

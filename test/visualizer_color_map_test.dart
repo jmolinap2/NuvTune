@@ -3,6 +3,36 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:nuvtune/features/player/visualizer_color_map.dart';
 
 void main() {
+  group('color aleatorio fluido', () {
+    test('es determinista por canción y continuo entre fotogramas', () {
+      final first = fluidRandomHueOffset(
+        seed: 42,
+        elapsedSeconds: 12,
+        energy: 0.7,
+        beatImpulse: 0.2,
+      );
+      final same = fluidRandomHueOffset(
+        seed: 42,
+        elapsedSeconds: 12,
+        energy: 0.7,
+        beatImpulse: 0.2,
+      );
+      final next = fluidRandomHueOffset(
+        seed: 42,
+        elapsedSeconds: 12.016,
+        energy: 0.7,
+        beatImpulse: 0.2,
+      );
+      final rawDistance = (next - first).abs();
+      final circularDistance = rawDistance > 0.5
+          ? 1 - rawDistance
+          : rawDistance;
+
+      expect(same, first);
+      expect(circularDistance, lessThan(0.01));
+    });
+  });
+
   group('VisualizerColorMap.colorAt', () {
     test('devuelve el color exacto de cada parada', () {
       final map = VisualizerColorMap.defaults;

@@ -24,13 +24,13 @@ Future<void> useDefaultSystemUi() async {
 }
 
 /// Reproductor completo: conserva la barra de estado y oculta solo la barra de
-/// navegacion inferior. Un deslizamiento desde el borde permite recuperarla,
-/// como corresponde al modo inmersivo de Android.
+/// navegacion inferior de NuvTune. Las barras del sistema permanecen visibles
+/// y el contenido acepta tanto orientación vertical como horizontal.
 Future<void> usePlayerSystemUi() async {
-  await SystemChrome.setPreferredOrientations(_portraitOrientations);
+  await SystemChrome.setPreferredOrientations(DeviceOrientation.values);
   await SystemChrome.setEnabledSystemUIMode(
     SystemUiMode.manual,
-    overlays: const [SystemUiOverlay.top],
+    overlays: const [SystemUiOverlay.top, SystemUiOverlay.bottom],
   );
   SystemChrome.setSystemUIOverlayStyle(_darkSystemBars);
 }

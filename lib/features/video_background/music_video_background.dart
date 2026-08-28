@@ -9,18 +9,22 @@ enum MusicVideoBackgroundPhase { loading, ready, error }
 
 /// Como se encaja el video 16:9 dentro del contenedor del [MusicVideoBackground].
 enum MusicVideoFit {
-  /// Recorta los laterales para llenar el contenedor por completo (hack de
-  /// zoom por CSS). Es el comportamiento historico, usado como fondo
-  /// ambiental detras de la interfaz normal, donde no importa perder los
-  /// bordes del video.
+  /// Llena cualquier contenedor conservando 16:9 y recorta únicamente el
+  /// excedente. El tamaño se calcula con CSS a partir del viewport.
   cover,
 
-  /// Muestra el video 16:9 completo, sin recortar, dentro de un contenedor
-  /// que ya tiene esa proporcion exacta (ver [PlayerSceneAspectRatio] y el
-  /// letterbox de pantalla completa). No hace falta el hack de zoom porque
-  /// el llamador ya entrega una caja 16:9.
+  /// Muestra el video completo y permite franjas si el contenedor no es 16:9.
   contain,
 }
+
+String musicVideoPlayerCss(MusicVideoFit fit) => switch (fit) {
+  MusicVideoFit.cover =>
+    '#player { position: absolute; top: 50%; left: 50%; '
+        'width: 177.77777778vh; height: 100vh; min-width: 100vw; '
+        'min-height: 56.25vw; transform: translate(-50%, -50%); }',
+  MusicVideoFit.contain =>
+    '#player { position: absolute; inset: 0; width: 100%; height: 100%; }',
+};
 
 /// Motivo estable y no sensible por el que el video no puede mostrarse.
 enum MusicVideoBackgroundFailure {
@@ -129,6 +133,35 @@ class MusicVideoTimeline {
       videoDurationMs > _endPaddingMs ? videoDurationMs - _endPaddingMs : 0;
 }
 
+/// Mantiene una estimación continua entre las muestras de posición del audio.
+///
+/// El proveedor del reproductor publica la posición dos veces por segundo. El
+/// reloj evita que el video persiga muestras ya antiguas y permite distinguir
+/// el avance normal de un salto manual en la barra de progreso.
+class MusicVideoSyncClock {
+  static const int discontinuityThresholdMs = 900;
+
+  static int extrapolatedPositionMs({
+    required int anchorPositionMs,
+    required int anchorElapsedMs,
+    required int nowElapsedMs,
+    required bool isPlaying,
+    required int durationMs,
+  }) {
+    final elapsedMs = (nowElapsedMs - anchorElapsedMs).clamp(0, 60000).toInt();
+    final positionMs = anchorPositionMs + (isPlaying ? elapsedMs : 0);
+    if (durationMs <= 0) return positionMs < 0 ? 0 : positionMs;
+    return positionMs.clamp(0, durationMs).toInt();
+  }
+
+  static bool isDiscontinuity({
+    required int expectedPositionMs,
+    required int reportedPositionMs,
+  }) =>
+      (reportedPositionMs - expectedPositionMs).abs() >=
+      discontinuityThresholdMs;
+}
+
 /// Fondo de video musical del reproductor (feature "video de fondo en
 /// Wi-Fi"): reproduce el video oficial de YouTube igual que su web publica,
 /// via el IFrame Player API embebido — no descarga ni reempaqueta contenido.
@@ -175,18 +208,47 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
   MusicVideoBackgroundState _loadState =
       const MusicVideoBackgroundState.loading();
   Timer? _loadTimer;
+  Timer? _playbackSyncTimer;
   int _generation = 0;
   int? _videoDurationMs;
+  final Stopwatch _playbackClock = Stopwatch();
+  late int _audioAnchorPositionMs;
+  late int _audioAnchorElapsedMs;
 
   @override
   void initState() {
     super.initState();
+    _playbackClock.start();
+    _resetAudioAnchor();
     _controller = _buildController(widget.videoId);
+    _playbackSyncTimer = Timer.periodic(const Duration(milliseconds: 500), (_) {
+      if (widget.isPlaying &&
+          _loadState.phase == MusicVideoBackgroundPhase.ready) {
+        unawaited(_syncPlayback(_controller));
+      }
+    });
   }
 
   @override
   void didUpdateWidget(covariant MusicVideoBackground oldWidget) {
     super.didUpdateWidget(oldWidget);
+    final playbackChanged = oldWidget.isPlaying != widget.isPlaying;
+    final positionChanged = oldWidget.audioPositionMs != widget.audioPositionMs;
+    final expectedPositionMs = _currentAudioPositionMs(
+      isPlaying: oldWidget.isPlaying,
+      durationMs: oldWidget.audioDurationMs,
+    );
+    final forceSeek =
+        playbackChanged ||
+        (positionChanged &&
+            MusicVideoSyncClock.isDiscontinuity(
+              expectedPositionMs: expectedPositionMs,
+              reportedPositionMs: widget.audioPositionMs,
+            ));
+    if (playbackChanged || positionChanged) {
+      _resetAudioAnchor();
+    }
+
     var replacedController = false;
     if (oldWidget.videoId != widget.videoId || oldWidget.fit != widget.fit) {
       _controller = _buildController(widget.videoId);
@@ -194,7 +256,7 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
     } else if (oldWidget.isPlaying != widget.isPlaying ||
         oldWidget.audioPositionMs != widget.audioPositionMs ||
         oldWidget.audioDurationMs != widget.audioDurationMs) {
-      unawaited(_syncPlayback(_controller));
+      unawaited(_syncPlayback(_controller, forceSeek: forceSeek));
     } else if (oldWidget.loadTimeout != widget.loadTimeout &&
         _loadState.phase == MusicVideoBackgroundPhase.loading) {
       _startTimeout(_generation);
@@ -320,17 +382,35 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
     }
   }
 
-  Future<void> _syncPlayback(WebViewController controller) async {
+  void _resetAudioAnchor() {
+    _audioAnchorPositionMs = widget.audioPositionMs;
+    _audioAnchorElapsedMs = _playbackClock.elapsedMilliseconds;
+  }
+
+  int _currentAudioPositionMs({bool? isPlaying, int? durationMs}) =>
+      MusicVideoSyncClock.extrapolatedPositionMs(
+        anchorPositionMs: _audioAnchorPositionMs,
+        anchorElapsedMs: _audioAnchorElapsedMs,
+        nowElapsedMs: _playbackClock.elapsedMilliseconds,
+        isPlaying: isPlaying ?? widget.isPlaying,
+        durationMs: durationMs ?? widget.audioDurationMs,
+      );
+
+  Future<void> _syncPlayback(
+    WebViewController controller, {
+    bool forceSeek = false,
+  }) async {
     try {
+      final audioPositionMs = _currentAudioPositionMs();
       final targetMs = _videoDurationMs == null
-          ? null
+          ? audioPositionMs
           : MusicVideoTimeline.positionMs(
-              audioPositionMs: widget.audioPositionMs,
+              audioPositionMs: audioPositionMs,
               audioDurationMs: widget.audioDurationMs,
               videoDurationMs: _videoDurationMs!,
             );
       await controller.runJavaScript(
-        'setPlayback(${widget.isPlaying}, ${targetMs == null ? 'null' : targetMs / 1000});',
+        'setPlayback(${widget.isPlaying}, ${targetMs / 1000}, $forceSeek);',
       );
     } catch (_) {
       // La pagina puede no estar lista. El valor actual se vuelve a aplicar
@@ -347,11 +427,12 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
       switch (decoded['type']) {
         case 'ready':
           final rawDuration = decoded['duration'];
+          final durationWasUnknown = _videoDurationMs == null;
           if (rawDuration is num && rawDuration.isFinite && rawDuration > 0) {
             _videoDurationMs = (rawDuration * 1000).round();
           }
           _transition(generation, const MusicVideoBackgroundState.ready());
-          unawaited(_syncPlayback(_controller));
+          unawaited(_syncPlayback(_controller, forceSeek: durationWasUnknown));
         case 'error':
           final rawCode = decoded['code'];
           if (rawCode is num) {
@@ -473,6 +554,8 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
   void dispose() {
     _generation++;
     _loadTimer?.cancel();
+    _playbackSyncTimer?.cancel();
+    _playbackClock.stop();
     super.dispose();
   }
 
@@ -495,17 +578,7 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
 
   static String _html(String videoId, bool isPlaying, MusicVideoFit fit) {
     final encodedVideoId = jsonEncode(videoId);
-    // `cover` recorta los laterales con un zoom calibrado a ojo: existe para
-    // llenar contenedores que no son 16:9 (fondo ambiental). `contain` no
-    // necesita ese hack porque el llamador ya entrega una caja 16:9 exacta
-    // (letterbox de pantalla completa), asi que el iframe simplemente ocupa
-    // el 100% del contenedor sin recorte ni zoom.
-    final playerCss = switch (fit) {
-      MusicVideoFit.cover =>
-        '#player { position: absolute; top: 50%; left: 50%; width: 100%; height: 100%; transform: translate(-50%, -50%) scale(1.6); }',
-      MusicVideoFit.contain =>
-        '#player { position: absolute; inset: 0; width: 100%; height: 100%; }',
-    };
+    final playerCss = musicVideoPlayerCss(fit);
     return '''
 <!DOCTYPE html>
 <html>
@@ -520,11 +593,17 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
 <body>
   <div id="player"></div>
   <script>
-    function notifyHost(type, code) {
+    function notifyHost(type, value) {
       if (!window.$_javaScriptChannel ||
           typeof window.$_javaScriptChannel.postMessage !== 'function') return;
       var payload = {type: type};
-      if (typeof code === 'number') payload.code = code;
+      if (typeof value === 'number') {
+        if (type === 'ready') {
+          payload.duration = value;
+        } else {
+          payload.code = value;
+        }
+      }
       window.$_javaScriptChannel.postMessage(JSON.stringify(payload));
     }
   </script>
@@ -533,24 +612,35 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
   <script>
     var player;
     var shouldPlay = $isPlaying;
-    function setPlayback(value, targetSeconds) {
+    var pendingTargetSeconds = null;
+    var lastSeekAtMs = 0;
+    function setPlayback(value, targetSeconds, forceSeek) {
       shouldPlay = value;
+      if (typeof targetSeconds === 'number' && isFinite(targetSeconds)) {
+        pendingTargetSeconds = Math.max(0, targetSeconds);
+      }
       if (!player || typeof player.playVideo !== 'function') return;
       player.mute();
-      if (typeof targetSeconds === 'number' && isFinite(targetSeconds)) {
+      if (pendingTargetSeconds !== null) {
         var currentSeconds = player.getCurrentTime();
-        // No se busca cada medio segundo: solo se corrige una deriva visible
-        // (salto manual, carga tardía o buffering del iframe).
-        if (typeof currentSeconds !== 'number' ||
-            Math.abs(currentSeconds - targetSeconds) > 1.25) {
-          player.seekTo(targetSeconds, true);
+        var driftSeconds = typeof currentSeconds === 'number'
+            ? Math.abs(currentSeconds - pendingTargetSeconds)
+            : Number.POSITIVE_INFINITY;
+        var nowMs = Date.now();
+        // Los saltos manuales se aplican inmediatamente. Durante reproducción,
+        // una tolerancia corta corrige buffering sin buscar en cada muestra.
+        if (forceSeek ||
+            (driftSeconds > 0.65 && nowMs - lastSeekAtMs >= 750)) {
+          player.seekTo(pendingTargetSeconds, true);
+          lastSeekAtMs = nowMs;
         }
       }
       if (shouldPlay) {
-        player.playVideo();
+        if (player.getPlayerState() !== YT.PlayerState.PLAYING) {
+          player.playVideo();
+        }
       } else {
         player.pauseVideo();
-        notifyHost('ready');
       }
     }
     function onYouTubeIframeAPIReady() {
@@ -574,7 +664,7 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
         events: {
           onReady: function () {
             notifyHost('ready', player.getDuration());
-            setPlayback(shouldPlay);
+            setPlayback(shouldPlay, pendingTargetSeconds, true);
           },
           onError: function (event) {
             notifyHost('error', Number(event.data));
