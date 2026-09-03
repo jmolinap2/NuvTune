@@ -165,6 +165,25 @@ class ControlsAndGesturesScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SettingsSectionLabel('Modo entrenamiento'),
+          SettingsGroup(
+            children: [
+              SwitchListTile(
+                secondary: const Icon(Icons.directions_run_rounded),
+                title: const Text('Detectar entrenamiento automáticamente'),
+                subtitle: const Text(
+                  'Al notar cadencia sostenida de trote o caminata, cambia a '
+                  'una vista simplificada con texto grande.',
+                ),
+                value: settings.trainingModeDetectionEnabled,
+                onChanged: (value) => mutation.save(
+                  AppSettingsCompanion(
+                    trainingModeDetectionEnabled: Value(value),
+                  ),
+                ),
+              ),
+            ],
+          ),
           const SizedBox(height: Tokens.space4),
           const SettingsInfoPanel(
             icon: Icons.favorite_border_rounded,

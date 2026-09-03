@@ -24,11 +24,13 @@ class MainActivity : FlutterActivity() {
     companion object {
         private const val SYSTEM_VOLUME_CHANNEL = "com.nuvtune.app/system_volume"
         private const val GIFT_INTENT_CHANNEL = "com.nuvtune.app/gift_intent"
+        private const val SCREEN_WAKE_CHANNEL = "com.nuvtune.app/screen_wake"
     }
 
     private var plugin: FlutterMusicPlugin? = null
     private var systemVolumeChannel: MethodChannel? = null
     private var giftIntentChannel: MethodChannel? = null
+    private var screenWakeChannel: MethodChannel? = null
     private var visualizerPowerMonitor: VisualizerPowerMonitor? = null
 
     /**
@@ -119,6 +121,34 @@ class MainActivity : FlutterActivity() {
         // motor de reproduccion, no necesita resultados de actividad, asi que
         // se registra por el mecanismo estandar de plugins de Flutter.
         flutterEngine.plugins.add(DownloadEnginePlugin())
+
+        // Mantener la pantalla encendida es una bandera de ventana, que solo
+        // existe mientras esta actividad esta en primer plano: el sistema la
+        // retira sola al salir, de modo que no puede quedarse encendida por
+        // olvido como pasaria con un WakeLock propio.
+        screenWakeChannel = MethodChannel(
+            flutterEngine.dartExecutor.binaryMessenger,
+            SCREEN_WAKE_CHANNEL,
+        ).also { channel ->
+            channel.setMethodCallHandler { call, result ->
+                when (call.method) {
+                    "setKeepScreenOn" -> {
+                        val enabled = call.argument<Boolean>("enabled") == true
+                        if (enabled) {
+                            window.addFlags(
+                                android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                            )
+                        } else {
+                            window.clearFlags(
+                                android.view.WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON,
+                            )
+                        }
+                        result.success(null)
+                    }
+                    else -> result.notImplemented()
+                }
+            }
+        }
 
         systemVolumeChannel = MethodChannel(
             flutterEngine.dartExecutor.binaryMessenger,
@@ -214,6 +244,8 @@ class MainActivity : FlutterActivity() {
         visualizerPowerMonitor = null
         systemVolumeChannel?.setMethodCallHandler(null)
         systemVolumeChannel = null
+        screenWakeChannel?.setMethodCallHandler(null)
+        screenWakeChannel = null
         giftIntentChannel?.setMethodCallHandler(null)
         giftIntentChannel = null
         plugin?.let {

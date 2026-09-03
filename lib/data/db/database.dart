@@ -264,6 +264,42 @@ class SongVideoIds extends Table {
   Set<Column<Object>> get primaryKey => {songKey};
 }
 
+/// Que candidatos devolvio cada busqueda de video musical y cual gano.
+///
+/// Existe para afinar el algoritmo de seleccion con datos del telefono real:
+/// cuando el fondo muestra un video que no es el oficial, la unica forma de
+/// saber por que es ver que candidatos llegaron, con que señales, y como los
+/// puntuo el matcher. Adivinarlo leyendo el codigo ya fallo antes: el badge
+/// de verificado nunca llegaba porque la busqueda movil de YouTube no lo
+/// incluye, y eso solo se vio midiendo.
+///
+/// Guarda solo lo que alimenta la decision: nada de URLs de reproduccion ni
+/// datos del usuario.
+class VideoMatchLog extends Table {
+  IntColumn get id => integer().autoIncrement()();
+  DateTimeColumn get resolvedAt =>
+      dateTime().withDefault(currentDateAndTime)();
+
+  /// Cancion local que pidio el video.
+  TextColumn get songTitle => text()();
+  TextColumn get songArtist => text()();
+  IntColumn get songDurationSeconds => integer()();
+
+  /// Consulta enviada a la fuente de busqueda.
+  TextColumn get query => text()();
+
+  /// Ganador, o vacio si ningun candidato supero el umbral.
+  TextColumn get chosenVideoId => text().withDefault(const Constant(''))();
+  IntColumn get chosenScore => integer().nullable()();
+  TextColumn get chosenSourceType => text().nullable()();
+  TextColumn get chosenConfidence => text().nullable()();
+
+  /// Todos los candidatos evaluados con sus señales, como JSON: titulo,
+  /// canal, duracion, vistas, verificado y categoria musical. Es una lista de
+  /// longitud variable, de modo que no cabe en columnas tipadas.
+  TextColumn get candidatesJson => text().withDefault(const Constant('[]'))();
+}
+
 /// Preferencias de la aplicacion. Una sola fila con [id] fijo en 0; columnas
 /// tipadas en lugar de pares clave/valor para que el compilador valide cada
 /// ajuste.
@@ -467,6 +503,13 @@ class AppSettings extends Table {
   BoolColumn get playerGestureSwipeDismiss =>
       boolean().withDefault(const Constant(true))();
 
+  /// Cambia automáticamente a una vista simplificada del reproductor al
+  /// detectar cadencia sostenida de trote o caminata (acelerómetro). El
+  /// usuario puede desactivarlo si prefiere que el reproductor no reaccione
+  /// al movimiento del teléfono.
+  BoolColumn get trainingModeDetectionEnabled =>
+      boolean().withDefault(const Constant(false))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -492,6 +535,7 @@ class AppSettings extends Table {
     LyricsOverrides,
     AppSettings,
     SongVideoIds,
+    VideoMatchLog,
   ],
 )
 class NuvTuneDatabase extends _$NuvTuneDatabase {
@@ -500,7 +544,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 19;
+  int get schemaVersion => 21;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -528,6 +572,9 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   /// - Version 17: reparto del mapa por fila o por columna.
   /// - Version 18: identidades visuales completas y sus desvíos por eje.
   /// - Version 19: color fluido del visualizador y animación de letras.
+  /// - Version 20: deteccion de trote por acelerometro (modo entrenamiento).
+  /// - Version 21: registro de seleccion de video musical, para afinar el
+  ///   algoritmo con datos del telefono real.
   @override
   MigrationStrategy get migration => MigrationStrategy(
     onCreate: (migrator) => migrator.createAll(),
@@ -705,6 +752,15 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
           appSettings.visualizerRandomColors,
         );
         await migrator.addColumn(appSettings, appSettings.lyricsAnimationStyle);
+      }
+      if (from < 20) {
+        await migrator.addColumn(
+          appSettings,
+          appSettings.trainingModeDetectionEnabled,
+        );
+      }
+      if (from < 21) {
+        await migrator.createTable(videoMatchLog);
       }
     },
   );

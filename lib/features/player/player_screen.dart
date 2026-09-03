@@ -18,6 +18,7 @@ import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/platform/engine_bridge.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
+import 'package:nuvtune/core/platform/screen_wake.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/core/utils/formatters.dart';
 import 'package:nuvtune/data/db/database.dart';
@@ -34,6 +35,7 @@ import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
 import 'package:nuvtune/features/player/sleep_timer_sheet.dart';
 import 'package:nuvtune/features/player/system_volume.dart';
+import 'package:nuvtune/features/player/training_mode_view.dart';
 import 'package:nuvtune/features/player/visualization_picker.dart';
 import 'package:nuvtune/features/queue/queue_list.dart';
 import 'package:nuvtune/features/settings/player_control_layout.dart';
@@ -1305,6 +1307,12 @@ class _ImmersivePlayerBackgroundState
   final Set<String> _transientRetries = <String>{};
 
   @override
+  void initState() {
+    super.initState();
+    _syncScreenWake();
+  }
+
+  @override
   void didUpdateWidget(covariant _ImmersivePlayerBackground oldWidget) {
     super.didUpdateWidget(oldWidget);
     if (oldWidget.song.id != widget.song.id ||
@@ -1312,6 +1320,29 @@ class _ImmersivePlayerBackgroundState
       _failedVideoId = null;
       _transientRetries.clear();
     }
+    _syncScreenWake();
+  }
+
+  @override
+  void dispose() {
+    // El fondo se desmonta al salir del reproductor: la razon deja de existir
+    // con el, sin depender de que alguien se acuerde de apagarla.
+    unawaited(
+      ScreenWake.setReason(ScreenWakeReason.videoBackground, active: false),
+    );
+    super.dispose();
+  }
+
+  /// Un video visible y sonando es lo unico que se mira sin tocar la pantalla;
+  /// con la portada estatica o en pausa, apagarla es lo correcto.
+  void _syncScreenWake() {
+    final showsVideo = widget.videoId != null && widget.videoId != _failedVideoId;
+    unawaited(
+      ScreenWake.setReason(
+        ScreenWakeReason.videoBackground,
+        active: showsVideo && widget.isPlaying,
+      ),
+    );
   }
 
   void _handleVideoState(MusicVideoBackgroundState state) {
@@ -1342,6 +1373,8 @@ class _ImmersivePlayerBackgroundState
     setState(() {
       _failedVideoId = videoId;
     });
+    // Sin video que mirar, la pantalla vuelve a apagarse por si sola.
+    _syncScreenWake();
 
     final rejectCandidate = switch (state.failure) {
       MusicVideoBackgroundFailure.invalidVideoId ||
@@ -1686,6 +1719,25 @@ class _NowPlayingTab extends ConsumerStatefulWidget {
 /// Con la autoridad explicita el dato tiene un unico origen en cada estado, y
 /// las transiciones entre estados son las de la propia interaccion: no hay
 /// banderas defensivas ni temporizadores.
+/// Quien decide si se muestra la vista simplificada de entrenamiento.
+///
+/// El sensor y el usuario compiten por la misma vista: sin una autoridad
+/// explícita, un booleano `_showTrainingView` tendría que combinarse a mano
+/// con "¿el usuario lo apagó a propósito?", que es justo la clase de estado
+/// implícito que las reglas de este archivo prohíben.
+enum _TrainingModeAuthority {
+  /// No hay cadencia sostenida, o el ajuste está desactivado: vista normal.
+  off,
+
+  /// El sensor detectó cadencia sostenida y decide la vista por sí solo.
+  sensorSuggested,
+
+  /// El usuario salió de la vista de entrenamiento a mano durante esta
+  /// cadencia. El sensor deja de mandar hasta que la cadencia se interrumpa
+  /// y vuelva a empezar, para no pelear con la elección del usuario.
+  manualOverride,
+}
+
 enum _CarouselAuthority {
   /// Manda el motor: la portada visible es la que suena. Las notificaciones de
   /// scroll se ignoran porque son el eco de una animacion que pedimos nosotros.
@@ -1721,6 +1773,8 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
 
   _CarouselAuthority _authority = _CarouselAuthority.engine;
 
+  _TrainingModeAuthority _trainingAuthority = _TrainingModeAuthority.off;
+
   /// Impide encolar mas de una sincronizacion por fotograma.
   bool _syncScheduled = false;
 
@@ -1755,6 +1809,9 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
   void dispose() {
     _volumeIndicatorTimer?.cancel();
     _pageController.dispose();
+    unawaited(
+      ScreenWake.setReason(ScreenWakeReason.trainingMode, active: false),
+    );
     super.dispose();
   }
 
@@ -1886,6 +1943,44 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     // Mientras el dedo manda, el carrusel no se toca.
     if (_authority == _CarouselAuthority.drag) return;
     _scheduleCarouselSync();
+  }
+
+  /// Incorpora la señal del sensor a la autoridad de entrenamiento. Se llama
+  /// desde `build`, igual que [_syncWithEngine]: el propio fotograma que
+  /// recibe el dato ya pinta con el valor nuevo.
+  void _syncWithMotion(bool jogging) {
+    if (jogging) {
+      if (_trainingAuthority == _TrainingModeAuthority.off) {
+        _trainingAuthority = _TrainingModeAuthority.sensorSuggested;
+      }
+      // Si la autoridad es `manualOverride`, la cadencia sigue en curso y el
+      // sensor no vuelve a mandar: eso solo ocurre cuando esta cadencia
+      // termine y una nueva la reactive.
+      _syncTrainingScreenWake();
+      return;
+    }
+    // Sin cadencia sostenida, cualquier autoridad vuelve a `off`: tanto la
+    // sugerencia del sensor como una anulación manual que ya cumplió su
+    // propósito.
+    _trainingAuthority = _TrainingModeAuthority.off;
+    _syncTrainingScreenWake();
+  }
+
+  /// Trotando no hay manos libres para tocar la pantalla cada minuto.
+  void _syncTrainingScreenWake() {
+    unawaited(
+      ScreenWake.setReason(
+        ScreenWakeReason.trainingMode,
+        active: _trainingAuthority == _TrainingModeAuthority.sensorSuggested,
+      ),
+    );
+  }
+
+  /// El usuario salió de la vista de entrenamiento a mano mientras la
+  /// cadencia seguía activa.
+  void _dismissTrainingMode() {
+    setState(() => _trainingAuthority = _TrainingModeAuthority.manualOverride);
+    _syncTrainingScreenWake();
   }
 
   void _scheduleCarouselSync() {
@@ -2046,6 +2141,22 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     final favorites = ref.watch(favoriteIdsProvider).valueOrNull ?? const {};
     final isFavorite = favorites.contains(displaySong.id);
     final appSettings = ref.watch(settingsProvider).valueOrNull;
+
+    final trainingDetectionEnabled =
+        appSettings?.trainingModeDetectionEnabled ?? false;
+    final jogging = trainingDetectionEnabled
+        ? ref.watch(isJoggingProvider).valueOrNull ?? false
+        : false;
+    _syncWithMotion(jogging);
+    if (_trainingAuthority == _TrainingModeAuthority.sensorSuggested &&
+        state.currentSong != null) {
+      return TrainingModeView(
+        song: state.currentSong!,
+        state: state,
+        controller: controller,
+        onDismiss: _dismissTrainingMode,
+      );
+    }
     final controlPreset = PlayerControlPreset.byId(
       appSettings?.playerControlPreset ?? PlayerControlPreset.complete.id,
     );
@@ -2076,9 +2187,16 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
       builder: (context, constraints) {
         final stageWidth = constraints.maxWidth;
         final stageHeight = constraints.maxHeight;
-        final coverSize = math
-            .min(stageWidth * density.coverFraction, stageHeight)
-            .clamp(120.0, 460.0)
+        // La portada es cuadrada: su lado no puede pasar del menor de los dos
+        // lados del escenario. Antes la fraccion de densidad se aplicaba solo
+        // al ancho y la altura entraba cruda en el `min`, de modo que en una
+        // pantalla alta la portada se quedaba en el 80% del ancho con la
+        // altura sobrando a su alrededor. Aplicarla al lado que manda deja la
+        // portada tan grande como el escenario permita, sin comerse el aire
+        // que la densidad pide.
+        final coverSize = (math.min(stageWidth, stageHeight) *
+                density.coverFraction)
+            .clamp(120.0, 560.0)
             .toDouble();
         return _VolumeDragTarget(
           enabled: volumeGestureEnabled,

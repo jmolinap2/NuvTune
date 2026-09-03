@@ -53,6 +53,52 @@ void main() {
       client.dispose();
     });
 
+    test(
+      'extrae videoWithContextRenderer de la busqueda movil '
+      '(ytInitialData como cadena con escapes hex)',
+      () async {
+        // La busqueda con user-agent de telefono redirige a m.youtube.com,
+        // que sirve ytInitialData como cadena JS de comilla simple con
+        // escapes \xNN, y usa `videoWithContextRenderer`/`headline` en vez de
+        // `videoRenderer`/`title`. Sin decodificar la cadena y reconocer ese
+        // renderer, esta fuente (la primaria, ver comentario en
+        // searchMusicVideo) siempre devolvia una lista vacia de candidatos
+        // con metadatos, y el matcher terminaba eligiendo un resultado peor
+        // de un respaldo con menos señal.
+        const jsonBody =
+            '{"contents":{"videoWithContextRenderer":{'
+            '"videoId":"MobileId01_",'
+            '"headline":{"runs":[{"text":"Linkin Park - Numb (Official Video)"}]},'
+            '"shortBylineText":{"runs":[{"text":"Some Records and Linkin Park"}]},'
+            '"lengthText":{"simpleText":"3:20"}'
+            '}}}';
+        final hexEscaped = jsonBody.codeUnits
+            .map(
+              (unit) =>
+                  '\\x${unit.toRadixString(16).padLeft(2, '0')}',
+            )
+            .join();
+        final httpClient = MockClient((request) async {
+          return http.Response(
+            "<script>var ytInitialData = '$hexEscaped';</script>",
+            200,
+          );
+        });
+        final client = PipedClient(httpClient: httpClient, instances: const []);
+
+        final result = await client.searchMusicVideoCandidates(
+          'Linkin Park Numb',
+        );
+
+        expect(result, hasLength(1));
+        expect(result.single.videoId, 'MobileId01_');
+        expect(result.single.title, 'Linkin Park - Numb (Official Video)');
+        expect(result.single.uploaderName, 'Some Records and Linkin Park');
+        expect(result.single.durationSeconds, 200);
+        client.dispose();
+      },
+    );
+
     test('usa Piped como respaldo si YouTube no devuelve videos', () async {
       final requestedHosts = <String>[];
       final httpClient = MockClient((request) async {

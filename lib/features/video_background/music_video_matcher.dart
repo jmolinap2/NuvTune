@@ -222,9 +222,24 @@ class MusicVideoMatcher {
     final corroboratedArtist =
         _containsPhrase(normalizedTitle, normalizedArtist) ||
         _containsPhrase(normalizedDescription, normalizedArtist);
+    // El insignia de verificado no siempre llega: la busqueda movil de
+    // YouTube (a la que redirige el user-agent de telefono) no la incluye en
+    // absoluto para ningun resultado. Sin esta señal alternativa, un canal de
+    // sello real como el de un video oficial con millones de vistas quedaria
+    // permanentemente clasificado como `unknown`. El titulo declarando
+    // explicitamente "official video" es una señal que el propio canal no
+    // puede fingir sin que YouTube la retire, asi que sirve de sustituto
+    // cuando el badge no esta disponible.
+    final titleDeclaresOfficial = _containsPhrase(
+          normalizedTitle,
+          'official music video',
+        ) ||
+        _containsPhrase(normalizedTitle, 'official video') ||
+        _containsPhrase(normalizedTitle, 'video oficial');
     final reliableChannelEvidence =
         candidate.uploaderVerified ||
-        (candidate.isMusicCategory && corroboratedArtist);
+        (candidate.isMusicCategory && corroboratedArtist) ||
+        (titleDeclaresOfficial && corroboratedArtist);
 
     final isTopic =
         channelMatchesArtist &&
@@ -244,18 +259,20 @@ class MusicVideoMatcher {
         normalizedUploader == normalizedArtist ||
         normalizedUploader == '$normalizedArtist official' ||
         normalizedUploader == 'official $normalizedArtist';
-    if (exactArtistChannel && candidate.uploaderVerified) {
+    if (exactArtistChannel && reliableChannelEvidence) {
       return MusicVideoSourceType.officialArtistChannel;
     }
 
     final looksLikeLabel = _labelTerms.any(
       (term) => _containsPhrase(normalizedUploader, term),
     );
-    if (looksLikeLabel && candidate.uploaderVerified && corroboratedArtist) {
+    if (looksLikeLabel && reliableChannelEvidence) {
       return MusicVideoSourceType.officialLabel;
     }
 
-    if (candidate.isMusicCategory || candidate.uploaderVerified) {
+    if (candidate.isMusicCategory ||
+        candidate.uploaderVerified ||
+        reliableChannelEvidence) {
       return MusicVideoSourceType.otherMusicChannel;
     }
     return MusicVideoSourceType.unknown;

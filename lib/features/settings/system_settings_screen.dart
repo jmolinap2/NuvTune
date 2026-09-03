@@ -197,6 +197,12 @@ class DiagnosticsSettingsScreen extends StatelessWidget {
               subtitle: 'Canciones que fallaron y la causa detectada.',
               onTap: () => context.push('/settings/playback-failure-log'),
             ),
+            SettingsNavigationRow(
+              icon: Icons.smart_display_outlined,
+              title: 'Selección de video',
+              subtitle: 'Qué candidatos hubo y por qué ganó el elegido.',
+              onTap: () => context.push('/settings/video-match-log'),
+            ),
           ],
         ),
       ],

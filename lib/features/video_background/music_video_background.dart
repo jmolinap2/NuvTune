@@ -658,6 +658,7 @@ class _MusicVideoBackgroundState extends State<MusicVideoBackground> {
           rel: 0,
           fs: 0,
           iv_load_policy: 3,
+          cc_load_policy: 0,
           origin: '$_applicationOrigin',
           widget_referrer: '$_applicationOrigin/'
         },

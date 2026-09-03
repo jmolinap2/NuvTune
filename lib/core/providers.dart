@@ -2,6 +2,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/network/connectivity_service.dart';
 import 'package:nuvtune/core/network/piped_client.dart';
 import 'package:nuvtune/core/permissions/permission_service.dart';
+import 'package:nuvtune/core/sensors/motion_service.dart';
 import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/platform/engine_bridge.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
@@ -16,6 +17,7 @@ import 'package:nuvtune/data/repositories/lyrics_repository.dart';
 import 'package:nuvtune/data/repositories/playlist_repository.dart';
 import 'package:nuvtune/data/repositories/queue_repository.dart';
 import 'package:nuvtune/data/repositories/settings_repository.dart';
+import 'package:nuvtune/data/repositories/video_match_log_repository.dart';
 import 'package:nuvtune/features/video_background/video_repository.dart';
 
 /// Base de datos local. Vive mientras vive la aplicacion.
@@ -103,11 +105,32 @@ final connectivityIsOnWifiProvider = StreamProvider<bool>(
   (ref) => ref.watch(connectivityServiceProvider).isOnWifi,
 );
 
+final motionServiceProvider = Provider<MotionService>(
+  (ref) => MotionService(),
+);
+
+/// Cadencia sostenida de trote o caminata, para el modo entrenamiento del
+/// reproductor. Un solo listener del acelerómetro compartido por toda la
+/// aplicación, en vez de que cada pantalla abra el suyo.
+final isJoggingProvider = StreamProvider<bool>(
+  (ref) => ref.watch(motionServiceProvider).isJogging,
+);
+
+final videoMatchLogRepositoryProvider = Provider<VideoMatchLogRepository>(
+  (ref) => VideoMatchLogRepository(ref.watch(databaseProvider)),
+);
+
+/// Como se eligio el video de fondo de cada cancion, para afinar el algoritmo.
+final videoMatchLogProvider = StreamProvider<List<VideoMatchLogData>>(
+  (ref) => ref.watch(videoMatchLogRepositoryProvider).watchEntries(),
+);
+
 final videoRepositoryProvider = Provider<VideoRepository>(
   (ref) => VideoRepository(
     ref.watch(databaseProvider),
     ref.watch(pipedClientProvider),
     ref.watch(downloadEngineProvider),
+    ref.watch(videoMatchLogRepositoryProvider),
   ),
 );
 

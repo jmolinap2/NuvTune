@@ -27,6 +27,7 @@ import 'package:nuvtune/features/settings/system_settings_screen.dart';
 import 'package:nuvtune/features/settings/visualizer_color_map_screen.dart';
 import 'package:nuvtune/features/settings/folders_screen.dart';
 import 'package:nuvtune/features/settings/playback_failure_log_screen.dart';
+import 'package:nuvtune/features/settings/video_match_log_screen.dart';
 import 'package:nuvtune/features/settings/settings_category_screens.dart';
 import 'package:nuvtune/features/settings/settings_screen.dart';
 
@@ -393,6 +394,11 @@ GoRouter createRouter() {
         path: '/settings/playback-failure-log',
         parentNavigatorKey: rootNavigatorKey,
         builder: (context, state) => const PlaybackFailureLogScreen(),
+      ),
+      GoRoute(
+        path: '/settings/video-match-log',
+        parentNavigatorKey: rootNavigatorKey,
+        builder: (context, state) => const VideoMatchLogScreen(),
       ),
     ],
   );

@@ -6593,6 +6593,21 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(true),
       );
+  static const VerificationMeta _trainingModeDetectionEnabledMeta =
+      const VerificationMeta('trainingModeDetectionEnabled');
+  @override
+  late final GeneratedColumn<bool> trainingModeDetectionEnabled =
+      GeneratedColumn<bool>(
+        'training_mode_detection_enabled',
+        aliasedName,
+        false,
+        type: DriftSqlType.bool,
+        requiredDuringInsert: false,
+        defaultConstraints: GeneratedColumn.constraintIsAlways(
+          'CHECK ("training_mode_detection_enabled" IN (0, 1))',
+        ),
+        defaultValue: const Constant(false),
+      );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6662,6 +6677,7 @@ class $AppSettingsTable extends AppSettings
     playerGestureSwipeTrack,
     playerGestureSwipeVolume,
     playerGestureSwipeDismiss,
+    trainingModeDetectionEnabled,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7260,6 +7276,15 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('training_mode_detection_enabled')) {
+      context.handle(
+        _trainingModeDetectionEnabledMeta,
+        trainingModeDetectionEnabled.isAcceptableOrUnknown(
+          data['training_mode_detection_enabled']!,
+          _trainingModeDetectionEnabledMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7537,6 +7562,10 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}player_gesture_swipe_dismiss'],
       )!,
+      trainingModeDetectionEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}training_mode_detection_enabled'],
+      )!,
     );
   }
 
@@ -7676,6 +7705,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   final bool playerGestureSwipeTrack;
   final bool playerGestureSwipeVolume;
   final bool playerGestureSwipeDismiss;
+
+  /// Cambia automáticamente a una vista simplificada del reproductor al
+  /// detectar cadencia sostenida de trote o caminata (acelerómetro). El
+  /// usuario puede desactivarlo si prefiere que el reproductor no reaccione
+  /// al movimiento del teléfono.
+  final bool trainingModeDetectionEnabled;
   const AppSetting({
     required this.id,
     required this.scanOnStart,
@@ -7744,6 +7779,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.playerGestureSwipeTrack,
     required this.playerGestureSwipeVolume,
     required this.playerGestureSwipeDismiss,
+    required this.trainingModeDetectionEnabled,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7827,6 +7863,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['player_gesture_swipe_dismiss'] = Variable<bool>(
       playerGestureSwipeDismiss,
     );
+    map['training_mode_detection_enabled'] = Variable<bool>(
+      trainingModeDetectionEnabled,
+    );
     return map;
   }
 
@@ -7901,6 +7940,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerGestureSwipeTrack: Value(playerGestureSwipeTrack),
       playerGestureSwipeVolume: Value(playerGestureSwipeVolume),
       playerGestureSwipeDismiss: Value(playerGestureSwipeDismiss),
+      trainingModeDetectionEnabled: Value(trainingModeDetectionEnabled),
     );
   }
 
@@ -8023,6 +8063,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerGestureSwipeDismiss: serializer.fromJson<bool>(
         json['playerGestureSwipeDismiss'],
       ),
+      trainingModeDetectionEnabled: serializer.fromJson<bool>(
+        json['trainingModeDetectionEnabled'],
+      ),
     );
   }
   @override
@@ -8114,6 +8157,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'playerGestureSwipeDismiss': serializer.toJson<bool>(
         playerGestureSwipeDismiss,
       ),
+      'trainingModeDetectionEnabled': serializer.toJson<bool>(
+        trainingModeDetectionEnabled,
+      ),
     };
   }
 
@@ -8185,6 +8231,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? playerGestureSwipeTrack,
     bool? playerGestureSwipeVolume,
     bool? playerGestureSwipeDismiss,
+    bool? trainingModeDetectionEnabled,
   }) => AppSetting(
     id: id ?? this.id,
     scanOnStart: scanOnStart ?? this.scanOnStart,
@@ -8266,6 +8313,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         playerGestureSwipeVolume ?? this.playerGestureSwipeVolume,
     playerGestureSwipeDismiss:
         playerGestureSwipeDismiss ?? this.playerGestureSwipeDismiss,
+    trainingModeDetectionEnabled:
+        trainingModeDetectionEnabled ?? this.trainingModeDetectionEnabled,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -8464,6 +8513,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerGestureSwipeDismiss: data.playerGestureSwipeDismiss.present
           ? data.playerGestureSwipeDismiss.value
           : this.playerGestureSwipeDismiss,
+      trainingModeDetectionEnabled: data.trainingModeDetectionEnabled.present
+          ? data.trainingModeDetectionEnabled.value
+          : this.trainingModeDetectionEnabled,
     );
   }
 
@@ -8536,7 +8588,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('playerGestureDoubleTap: $playerGestureDoubleTap, ')
           ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
           ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
-          ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss')
+          ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss, ')
+          ..write('trainingModeDetectionEnabled: $trainingModeDetectionEnabled')
           ..write(')'))
         .toString();
   }
@@ -8610,6 +8663,7 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     playerGestureSwipeTrack,
     playerGestureSwipeVolume,
     playerGestureSwipeDismiss,
+    trainingModeDetectionEnabled,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -8681,7 +8735,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.playerGestureDoubleTap == this.playerGestureDoubleTap &&
           other.playerGestureSwipeTrack == this.playerGestureSwipeTrack &&
           other.playerGestureSwipeVolume == this.playerGestureSwipeVolume &&
-          other.playerGestureSwipeDismiss == this.playerGestureSwipeDismiss);
+          other.playerGestureSwipeDismiss == this.playerGestureSwipeDismiss &&
+          other.trainingModeDetectionEnabled ==
+              this.trainingModeDetectionEnabled);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -8752,6 +8808,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> playerGestureSwipeTrack;
   final Value<bool> playerGestureSwipeVolume;
   final Value<bool> playerGestureSwipeDismiss;
+  final Value<bool> trainingModeDetectionEnabled;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.scanOnStart = const Value.absent(),
@@ -8820,6 +8877,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerGestureSwipeTrack = const Value.absent(),
     this.playerGestureSwipeVolume = const Value.absent(),
     this.playerGestureSwipeDismiss = const Value.absent(),
+    this.trainingModeDetectionEnabled = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -8889,6 +8947,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerGestureSwipeTrack = const Value.absent(),
     this.playerGestureSwipeVolume = const Value.absent(),
     this.playerGestureSwipeDismiss = const Value.absent(),
+    this.trainingModeDetectionEnabled = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -8958,6 +9017,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? playerGestureSwipeTrack,
     Expression<bool>? playerGestureSwipeVolume,
     Expression<bool>? playerGestureSwipeDismiss,
+    Expression<bool>? trainingModeDetectionEnabled,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -9054,6 +9114,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'player_gesture_swipe_volume': playerGestureSwipeVolume,
       if (playerGestureSwipeDismiss != null)
         'player_gesture_swipe_dismiss': playerGestureSwipeDismiss,
+      if (trainingModeDetectionEnabled != null)
+        'training_mode_detection_enabled': trainingModeDetectionEnabled,
     });
   }
 
@@ -9125,6 +9187,7 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? playerGestureSwipeTrack,
     Value<bool>? playerGestureSwipeVolume,
     Value<bool>? playerGestureSwipeDismiss,
+    Value<bool>? trainingModeDetectionEnabled,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -9212,6 +9275,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           playerGestureSwipeVolume ?? this.playerGestureSwipeVolume,
       playerGestureSwipeDismiss:
           playerGestureSwipeDismiss ?? this.playerGestureSwipeDismiss,
+      trainingModeDetectionEnabled:
+          trainingModeDetectionEnabled ?? this.trainingModeDetectionEnabled,
     );
   }
 
@@ -9461,6 +9526,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         playerGestureSwipeDismiss.value,
       );
     }
+    if (trainingModeDetectionEnabled.present) {
+      map['training_mode_detection_enabled'] = Variable<bool>(
+        trainingModeDetectionEnabled.value,
+      );
+    }
     return map;
   }
 
@@ -9533,7 +9603,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('playerGestureDoubleTap: $playerGestureDoubleTap, ')
           ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
           ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
-          ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss')
+          ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss, ')
+          ..write('trainingModeDetectionEnabled: $trainingModeDetectionEnabled')
           ..write(')'))
         .toString();
   }
@@ -9851,6 +9922,698 @@ class SongVideoIdsCompanion extends UpdateCompanion<SongVideoId> {
   }
 }
 
+class $VideoMatchLogTable extends VideoMatchLog
+    with TableInfo<$VideoMatchLogTable, VideoMatchLogData> {
+  @override
+  final GeneratedDatabase attachedDatabase;
+  final String? _alias;
+  $VideoMatchLogTable(this.attachedDatabase, [this._alias]);
+  static const VerificationMeta _idMeta = const VerificationMeta('id');
+  @override
+  late final GeneratedColumn<int> id = GeneratedColumn<int>(
+    'id',
+    aliasedName,
+    false,
+    hasAutoIncrement: true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'PRIMARY KEY AUTOINCREMENT',
+    ),
+  );
+  static const VerificationMeta _resolvedAtMeta = const VerificationMeta(
+    'resolvedAt',
+  );
+  @override
+  late final GeneratedColumn<DateTime> resolvedAt = GeneratedColumn<DateTime>(
+    'resolved_at',
+    aliasedName,
+    false,
+    type: DriftSqlType.dateTime,
+    requiredDuringInsert: false,
+    defaultValue: currentDateAndTime,
+  );
+  static const VerificationMeta _songTitleMeta = const VerificationMeta(
+    'songTitle',
+  );
+  @override
+  late final GeneratedColumn<String> songTitle = GeneratedColumn<String>(
+    'song_title',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _songArtistMeta = const VerificationMeta(
+    'songArtist',
+  );
+  @override
+  late final GeneratedColumn<String> songArtist = GeneratedColumn<String>(
+    'song_artist',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _songDurationSecondsMeta =
+      const VerificationMeta('songDurationSeconds');
+  @override
+  late final GeneratedColumn<int> songDurationSeconds = GeneratedColumn<int>(
+    'song_duration_seconds',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _queryMeta = const VerificationMeta('query');
+  @override
+  late final GeneratedColumn<String> query = GeneratedColumn<String>(
+    'query',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: true,
+  );
+  static const VerificationMeta _chosenVideoIdMeta = const VerificationMeta(
+    'chosenVideoId',
+  );
+  @override
+  late final GeneratedColumn<String> chosenVideoId = GeneratedColumn<String>(
+    'chosen_video_id',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(''),
+  );
+  static const VerificationMeta _chosenScoreMeta = const VerificationMeta(
+    'chosenScore',
+  );
+  @override
+  late final GeneratedColumn<int> chosenScore = GeneratedColumn<int>(
+    'chosen_score',
+    aliasedName,
+    true,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _chosenSourceTypeMeta = const VerificationMeta(
+    'chosenSourceType',
+  );
+  @override
+  late final GeneratedColumn<String> chosenSourceType = GeneratedColumn<String>(
+    'chosen_source_type',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _chosenConfidenceMeta = const VerificationMeta(
+    'chosenConfidence',
+  );
+  @override
+  late final GeneratedColumn<String> chosenConfidence = GeneratedColumn<String>(
+    'chosen_confidence',
+    aliasedName,
+    true,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+  );
+  static const VerificationMeta _candidatesJsonMeta = const VerificationMeta(
+    'candidatesJson',
+  );
+  @override
+  late final GeneratedColumn<String> candidatesJson = GeneratedColumn<String>(
+    'candidates_json',
+    aliasedName,
+    false,
+    type: DriftSqlType.string,
+    requiredDuringInsert: false,
+    defaultValue: const Constant('[]'),
+  );
+  @override
+  List<GeneratedColumn> get $columns => [
+    id,
+    resolvedAt,
+    songTitle,
+    songArtist,
+    songDurationSeconds,
+    query,
+    chosenVideoId,
+    chosenScore,
+    chosenSourceType,
+    chosenConfidence,
+    candidatesJson,
+  ];
+  @override
+  String get aliasedName => _alias ?? actualTableName;
+  @override
+  String get actualTableName => $name;
+  static const String $name = 'video_match_log';
+  @override
+  VerificationContext validateIntegrity(
+    Insertable<VideoMatchLogData> instance, {
+    bool isInserting = false,
+  }) {
+    final context = VerificationContext();
+    final data = instance.toColumns(true);
+    if (data.containsKey('id')) {
+      context.handle(_idMeta, id.isAcceptableOrUnknown(data['id']!, _idMeta));
+    }
+    if (data.containsKey('resolved_at')) {
+      context.handle(
+        _resolvedAtMeta,
+        resolvedAt.isAcceptableOrUnknown(data['resolved_at']!, _resolvedAtMeta),
+      );
+    }
+    if (data.containsKey('song_title')) {
+      context.handle(
+        _songTitleMeta,
+        songTitle.isAcceptableOrUnknown(data['song_title']!, _songTitleMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_songTitleMeta);
+    }
+    if (data.containsKey('song_artist')) {
+      context.handle(
+        _songArtistMeta,
+        songArtist.isAcceptableOrUnknown(data['song_artist']!, _songArtistMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_songArtistMeta);
+    }
+    if (data.containsKey('song_duration_seconds')) {
+      context.handle(
+        _songDurationSecondsMeta,
+        songDurationSeconds.isAcceptableOrUnknown(
+          data['song_duration_seconds']!,
+          _songDurationSecondsMeta,
+        ),
+      );
+    } else if (isInserting) {
+      context.missing(_songDurationSecondsMeta);
+    }
+    if (data.containsKey('query')) {
+      context.handle(
+        _queryMeta,
+        query.isAcceptableOrUnknown(data['query']!, _queryMeta),
+      );
+    } else if (isInserting) {
+      context.missing(_queryMeta);
+    }
+    if (data.containsKey('chosen_video_id')) {
+      context.handle(
+        _chosenVideoIdMeta,
+        chosenVideoId.isAcceptableOrUnknown(
+          data['chosen_video_id']!,
+          _chosenVideoIdMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chosen_score')) {
+      context.handle(
+        _chosenScoreMeta,
+        chosenScore.isAcceptableOrUnknown(
+          data['chosen_score']!,
+          _chosenScoreMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chosen_source_type')) {
+      context.handle(
+        _chosenSourceTypeMeta,
+        chosenSourceType.isAcceptableOrUnknown(
+          data['chosen_source_type']!,
+          _chosenSourceTypeMeta,
+        ),
+      );
+    }
+    if (data.containsKey('chosen_confidence')) {
+      context.handle(
+        _chosenConfidenceMeta,
+        chosenConfidence.isAcceptableOrUnknown(
+          data['chosen_confidence']!,
+          _chosenConfidenceMeta,
+        ),
+      );
+    }
+    if (data.containsKey('candidates_json')) {
+      context.handle(
+        _candidatesJsonMeta,
+        candidatesJson.isAcceptableOrUnknown(
+          data['candidates_json']!,
+          _candidatesJsonMeta,
+        ),
+      );
+    }
+    return context;
+  }
+
+  @override
+  Set<GeneratedColumn> get $primaryKey => {id};
+  @override
+  VideoMatchLogData map(Map<String, dynamic> data, {String? tablePrefix}) {
+    final effectivePrefix = tablePrefix != null ? '$tablePrefix.' : '';
+    return VideoMatchLogData(
+      id: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}id'],
+      )!,
+      resolvedAt: attachedDatabase.typeMapping.read(
+        DriftSqlType.dateTime,
+        data['${effectivePrefix}resolved_at'],
+      )!,
+      songTitle: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}song_title'],
+      )!,
+      songArtist: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}song_artist'],
+      )!,
+      songDurationSeconds: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}song_duration_seconds'],
+      )!,
+      query: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}query'],
+      )!,
+      chosenVideoId: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chosen_video_id'],
+      )!,
+      chosenScore: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}chosen_score'],
+      ),
+      chosenSourceType: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chosen_source_type'],
+      ),
+      chosenConfidence: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}chosen_confidence'],
+      ),
+      candidatesJson: attachedDatabase.typeMapping.read(
+        DriftSqlType.string,
+        data['${effectivePrefix}candidates_json'],
+      )!,
+    );
+  }
+
+  @override
+  $VideoMatchLogTable createAlias(String alias) {
+    return $VideoMatchLogTable(attachedDatabase, alias);
+  }
+}
+
+class VideoMatchLogData extends DataClass
+    implements Insertable<VideoMatchLogData> {
+  final int id;
+  final DateTime resolvedAt;
+
+  /// Cancion local que pidio el video.
+  final String songTitle;
+  final String songArtist;
+  final int songDurationSeconds;
+
+  /// Consulta enviada a la fuente de busqueda.
+  final String query;
+
+  /// Ganador, o vacio si ningun candidato supero el umbral.
+  final String chosenVideoId;
+  final int? chosenScore;
+  final String? chosenSourceType;
+  final String? chosenConfidence;
+
+  /// Todos los candidatos evaluados con sus señales, como JSON: titulo,
+  /// canal, duracion, vistas, verificado y categoria musical. Es una lista de
+  /// longitud variable, de modo que no cabe en columnas tipadas.
+  final String candidatesJson;
+  const VideoMatchLogData({
+    required this.id,
+    required this.resolvedAt,
+    required this.songTitle,
+    required this.songArtist,
+    required this.songDurationSeconds,
+    required this.query,
+    required this.chosenVideoId,
+    this.chosenScore,
+    this.chosenSourceType,
+    this.chosenConfidence,
+    required this.candidatesJson,
+  });
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    map['id'] = Variable<int>(id);
+    map['resolved_at'] = Variable<DateTime>(resolvedAt);
+    map['song_title'] = Variable<String>(songTitle);
+    map['song_artist'] = Variable<String>(songArtist);
+    map['song_duration_seconds'] = Variable<int>(songDurationSeconds);
+    map['query'] = Variable<String>(query);
+    map['chosen_video_id'] = Variable<String>(chosenVideoId);
+    if (!nullToAbsent || chosenScore != null) {
+      map['chosen_score'] = Variable<int>(chosenScore);
+    }
+    if (!nullToAbsent || chosenSourceType != null) {
+      map['chosen_source_type'] = Variable<String>(chosenSourceType);
+    }
+    if (!nullToAbsent || chosenConfidence != null) {
+      map['chosen_confidence'] = Variable<String>(chosenConfidence);
+    }
+    map['candidates_json'] = Variable<String>(candidatesJson);
+    return map;
+  }
+
+  VideoMatchLogCompanion toCompanion(bool nullToAbsent) {
+    return VideoMatchLogCompanion(
+      id: Value(id),
+      resolvedAt: Value(resolvedAt),
+      songTitle: Value(songTitle),
+      songArtist: Value(songArtist),
+      songDurationSeconds: Value(songDurationSeconds),
+      query: Value(query),
+      chosenVideoId: Value(chosenVideoId),
+      chosenScore: chosenScore == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chosenScore),
+      chosenSourceType: chosenSourceType == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chosenSourceType),
+      chosenConfidence: chosenConfidence == null && nullToAbsent
+          ? const Value.absent()
+          : Value(chosenConfidence),
+      candidatesJson: Value(candidatesJson),
+    );
+  }
+
+  factory VideoMatchLogData.fromJson(
+    Map<String, dynamic> json, {
+    ValueSerializer? serializer,
+  }) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return VideoMatchLogData(
+      id: serializer.fromJson<int>(json['id']),
+      resolvedAt: serializer.fromJson<DateTime>(json['resolvedAt']),
+      songTitle: serializer.fromJson<String>(json['songTitle']),
+      songArtist: serializer.fromJson<String>(json['songArtist']),
+      songDurationSeconds: serializer.fromJson<int>(
+        json['songDurationSeconds'],
+      ),
+      query: serializer.fromJson<String>(json['query']),
+      chosenVideoId: serializer.fromJson<String>(json['chosenVideoId']),
+      chosenScore: serializer.fromJson<int?>(json['chosenScore']),
+      chosenSourceType: serializer.fromJson<String?>(json['chosenSourceType']),
+      chosenConfidence: serializer.fromJson<String?>(json['chosenConfidence']),
+      candidatesJson: serializer.fromJson<String>(json['candidatesJson']),
+    );
+  }
+  @override
+  Map<String, dynamic> toJson({ValueSerializer? serializer}) {
+    serializer ??= driftRuntimeOptions.defaultSerializer;
+    return <String, dynamic>{
+      'id': serializer.toJson<int>(id),
+      'resolvedAt': serializer.toJson<DateTime>(resolvedAt),
+      'songTitle': serializer.toJson<String>(songTitle),
+      'songArtist': serializer.toJson<String>(songArtist),
+      'songDurationSeconds': serializer.toJson<int>(songDurationSeconds),
+      'query': serializer.toJson<String>(query),
+      'chosenVideoId': serializer.toJson<String>(chosenVideoId),
+      'chosenScore': serializer.toJson<int?>(chosenScore),
+      'chosenSourceType': serializer.toJson<String?>(chosenSourceType),
+      'chosenConfidence': serializer.toJson<String?>(chosenConfidence),
+      'candidatesJson': serializer.toJson<String>(candidatesJson),
+    };
+  }
+
+  VideoMatchLogData copyWith({
+    int? id,
+    DateTime? resolvedAt,
+    String? songTitle,
+    String? songArtist,
+    int? songDurationSeconds,
+    String? query,
+    String? chosenVideoId,
+    Value<int?> chosenScore = const Value.absent(),
+    Value<String?> chosenSourceType = const Value.absent(),
+    Value<String?> chosenConfidence = const Value.absent(),
+    String? candidatesJson,
+  }) => VideoMatchLogData(
+    id: id ?? this.id,
+    resolvedAt: resolvedAt ?? this.resolvedAt,
+    songTitle: songTitle ?? this.songTitle,
+    songArtist: songArtist ?? this.songArtist,
+    songDurationSeconds: songDurationSeconds ?? this.songDurationSeconds,
+    query: query ?? this.query,
+    chosenVideoId: chosenVideoId ?? this.chosenVideoId,
+    chosenScore: chosenScore.present ? chosenScore.value : this.chosenScore,
+    chosenSourceType: chosenSourceType.present
+        ? chosenSourceType.value
+        : this.chosenSourceType,
+    chosenConfidence: chosenConfidence.present
+        ? chosenConfidence.value
+        : this.chosenConfidence,
+    candidatesJson: candidatesJson ?? this.candidatesJson,
+  );
+  VideoMatchLogData copyWithCompanion(VideoMatchLogCompanion data) {
+    return VideoMatchLogData(
+      id: data.id.present ? data.id.value : this.id,
+      resolvedAt: data.resolvedAt.present
+          ? data.resolvedAt.value
+          : this.resolvedAt,
+      songTitle: data.songTitle.present ? data.songTitle.value : this.songTitle,
+      songArtist: data.songArtist.present
+          ? data.songArtist.value
+          : this.songArtist,
+      songDurationSeconds: data.songDurationSeconds.present
+          ? data.songDurationSeconds.value
+          : this.songDurationSeconds,
+      query: data.query.present ? data.query.value : this.query,
+      chosenVideoId: data.chosenVideoId.present
+          ? data.chosenVideoId.value
+          : this.chosenVideoId,
+      chosenScore: data.chosenScore.present
+          ? data.chosenScore.value
+          : this.chosenScore,
+      chosenSourceType: data.chosenSourceType.present
+          ? data.chosenSourceType.value
+          : this.chosenSourceType,
+      chosenConfidence: data.chosenConfidence.present
+          ? data.chosenConfidence.value
+          : this.chosenConfidence,
+      candidatesJson: data.candidatesJson.present
+          ? data.candidatesJson.value
+          : this.candidatesJson,
+    );
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VideoMatchLogData(')
+          ..write('id: $id, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('songTitle: $songTitle, ')
+          ..write('songArtist: $songArtist, ')
+          ..write('songDurationSeconds: $songDurationSeconds, ')
+          ..write('query: $query, ')
+          ..write('chosenVideoId: $chosenVideoId, ')
+          ..write('chosenScore: $chosenScore, ')
+          ..write('chosenSourceType: $chosenSourceType, ')
+          ..write('chosenConfidence: $chosenConfidence, ')
+          ..write('candidatesJson: $candidatesJson')
+          ..write(')'))
+        .toString();
+  }
+
+  @override
+  int get hashCode => Object.hash(
+    id,
+    resolvedAt,
+    songTitle,
+    songArtist,
+    songDurationSeconds,
+    query,
+    chosenVideoId,
+    chosenScore,
+    chosenSourceType,
+    chosenConfidence,
+    candidatesJson,
+  );
+  @override
+  bool operator ==(Object other) =>
+      identical(this, other) ||
+      (other is VideoMatchLogData &&
+          other.id == this.id &&
+          other.resolvedAt == this.resolvedAt &&
+          other.songTitle == this.songTitle &&
+          other.songArtist == this.songArtist &&
+          other.songDurationSeconds == this.songDurationSeconds &&
+          other.query == this.query &&
+          other.chosenVideoId == this.chosenVideoId &&
+          other.chosenScore == this.chosenScore &&
+          other.chosenSourceType == this.chosenSourceType &&
+          other.chosenConfidence == this.chosenConfidence &&
+          other.candidatesJson == this.candidatesJson);
+}
+
+class VideoMatchLogCompanion extends UpdateCompanion<VideoMatchLogData> {
+  final Value<int> id;
+  final Value<DateTime> resolvedAt;
+  final Value<String> songTitle;
+  final Value<String> songArtist;
+  final Value<int> songDurationSeconds;
+  final Value<String> query;
+  final Value<String> chosenVideoId;
+  final Value<int?> chosenScore;
+  final Value<String?> chosenSourceType;
+  final Value<String?> chosenConfidence;
+  final Value<String> candidatesJson;
+  const VideoMatchLogCompanion({
+    this.id = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    this.songTitle = const Value.absent(),
+    this.songArtist = const Value.absent(),
+    this.songDurationSeconds = const Value.absent(),
+    this.query = const Value.absent(),
+    this.chosenVideoId = const Value.absent(),
+    this.chosenScore = const Value.absent(),
+    this.chosenSourceType = const Value.absent(),
+    this.chosenConfidence = const Value.absent(),
+    this.candidatesJson = const Value.absent(),
+  });
+  VideoMatchLogCompanion.insert({
+    this.id = const Value.absent(),
+    this.resolvedAt = const Value.absent(),
+    required String songTitle,
+    required String songArtist,
+    required int songDurationSeconds,
+    required String query,
+    this.chosenVideoId = const Value.absent(),
+    this.chosenScore = const Value.absent(),
+    this.chosenSourceType = const Value.absent(),
+    this.chosenConfidence = const Value.absent(),
+    this.candidatesJson = const Value.absent(),
+  }) : songTitle = Value(songTitle),
+       songArtist = Value(songArtist),
+       songDurationSeconds = Value(songDurationSeconds),
+       query = Value(query);
+  static Insertable<VideoMatchLogData> custom({
+    Expression<int>? id,
+    Expression<DateTime>? resolvedAt,
+    Expression<String>? songTitle,
+    Expression<String>? songArtist,
+    Expression<int>? songDurationSeconds,
+    Expression<String>? query,
+    Expression<String>? chosenVideoId,
+    Expression<int>? chosenScore,
+    Expression<String>? chosenSourceType,
+    Expression<String>? chosenConfidence,
+    Expression<String>? candidatesJson,
+  }) {
+    return RawValuesInsertable({
+      if (id != null) 'id': id,
+      if (resolvedAt != null) 'resolved_at': resolvedAt,
+      if (songTitle != null) 'song_title': songTitle,
+      if (songArtist != null) 'song_artist': songArtist,
+      if (songDurationSeconds != null)
+        'song_duration_seconds': songDurationSeconds,
+      if (query != null) 'query': query,
+      if (chosenVideoId != null) 'chosen_video_id': chosenVideoId,
+      if (chosenScore != null) 'chosen_score': chosenScore,
+      if (chosenSourceType != null) 'chosen_source_type': chosenSourceType,
+      if (chosenConfidence != null) 'chosen_confidence': chosenConfidence,
+      if (candidatesJson != null) 'candidates_json': candidatesJson,
+    });
+  }
+
+  VideoMatchLogCompanion copyWith({
+    Value<int>? id,
+    Value<DateTime>? resolvedAt,
+    Value<String>? songTitle,
+    Value<String>? songArtist,
+    Value<int>? songDurationSeconds,
+    Value<String>? query,
+    Value<String>? chosenVideoId,
+    Value<int?>? chosenScore,
+    Value<String?>? chosenSourceType,
+    Value<String?>? chosenConfidence,
+    Value<String>? candidatesJson,
+  }) {
+    return VideoMatchLogCompanion(
+      id: id ?? this.id,
+      resolvedAt: resolvedAt ?? this.resolvedAt,
+      songTitle: songTitle ?? this.songTitle,
+      songArtist: songArtist ?? this.songArtist,
+      songDurationSeconds: songDurationSeconds ?? this.songDurationSeconds,
+      query: query ?? this.query,
+      chosenVideoId: chosenVideoId ?? this.chosenVideoId,
+      chosenScore: chosenScore ?? this.chosenScore,
+      chosenSourceType: chosenSourceType ?? this.chosenSourceType,
+      chosenConfidence: chosenConfidence ?? this.chosenConfidence,
+      candidatesJson: candidatesJson ?? this.candidatesJson,
+    );
+  }
+
+  @override
+  Map<String, Expression> toColumns(bool nullToAbsent) {
+    final map = <String, Expression>{};
+    if (id.present) {
+      map['id'] = Variable<int>(id.value);
+    }
+    if (resolvedAt.present) {
+      map['resolved_at'] = Variable<DateTime>(resolvedAt.value);
+    }
+    if (songTitle.present) {
+      map['song_title'] = Variable<String>(songTitle.value);
+    }
+    if (songArtist.present) {
+      map['song_artist'] = Variable<String>(songArtist.value);
+    }
+    if (songDurationSeconds.present) {
+      map['song_duration_seconds'] = Variable<int>(songDurationSeconds.value);
+    }
+    if (query.present) {
+      map['query'] = Variable<String>(query.value);
+    }
+    if (chosenVideoId.present) {
+      map['chosen_video_id'] = Variable<String>(chosenVideoId.value);
+    }
+    if (chosenScore.present) {
+      map['chosen_score'] = Variable<int>(chosenScore.value);
+    }
+    if (chosenSourceType.present) {
+      map['chosen_source_type'] = Variable<String>(chosenSourceType.value);
+    }
+    if (chosenConfidence.present) {
+      map['chosen_confidence'] = Variable<String>(chosenConfidence.value);
+    }
+    if (candidatesJson.present) {
+      map['candidates_json'] = Variable<String>(candidatesJson.value);
+    }
+    return map;
+  }
+
+  @override
+  String toString() {
+    return (StringBuffer('VideoMatchLogCompanion(')
+          ..write('id: $id, ')
+          ..write('resolvedAt: $resolvedAt, ')
+          ..write('songTitle: $songTitle, ')
+          ..write('songArtist: $songArtist, ')
+          ..write('songDurationSeconds: $songDurationSeconds, ')
+          ..write('query: $query, ')
+          ..write('chosenVideoId: $chosenVideoId, ')
+          ..write('chosenScore: $chosenScore, ')
+          ..write('chosenSourceType: $chosenSourceType, ')
+          ..write('chosenConfidence: $chosenConfidence, ')
+          ..write('candidatesJson: $candidatesJson')
+          ..write(')'))
+        .toString();
+  }
+}
+
 abstract class _$NuvTuneDatabase extends GeneratedDatabase {
   _$NuvTuneDatabase(QueryExecutor e) : super(e);
   $NuvTuneDatabaseManager get managers => $NuvTuneDatabaseManager(this);
@@ -9884,6 +10647,7 @@ abstract class _$NuvTuneDatabase extends GeneratedDatabase {
   );
   late final $AppSettingsTable appSettings = $AppSettingsTable(this);
   late final $SongVideoIdsTable songVideoIds = $SongVideoIdsTable(this);
+  late final $VideoMatchLogTable videoMatchLog = $VideoMatchLogTable(this);
   @override
   Iterable<TableInfo<Table, Object?>> get allTables =>
       allSchemaEntities.whereType<TableInfo<Table, Object?>>();
@@ -9908,6 +10672,7 @@ abstract class _$NuvTuneDatabase extends GeneratedDatabase {
     lyricsOverrides,
     appSettings,
     songVideoIds,
+    videoMatchLog,
   ];
   @override
   StreamQueryUpdateRules get streamUpdateRules => const StreamQueryUpdateRules([
@@ -13503,6 +14268,7 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> playerGestureSwipeTrack,
       Value<bool> playerGestureSwipeVolume,
       Value<bool> playerGestureSwipeDismiss,
+      Value<bool> trainingModeDetectionEnabled,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -13573,6 +14339,7 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> playerGestureSwipeTrack,
       Value<bool> playerGestureSwipeVolume,
       Value<bool> playerGestureSwipeDismiss,
+      Value<bool> trainingModeDetectionEnabled,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -13916,6 +14683,11 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get playerGestureSwipeDismiss => $composableBuilder(
     column: $table.playerGestureSwipeDismiss,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get trainingModeDetectionEnabled => $composableBuilder(
+    column: $table.trainingModeDetectionEnabled,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -14263,6 +15035,11 @@ class $$AppSettingsTableOrderingComposer
     column: $table.playerGestureSwipeDismiss,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get trainingModeDetectionEnabled => $composableBuilder(
+    column: $table.trainingModeDetectionEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -14602,6 +15379,11 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.playerGestureSwipeDismiss,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get trainingModeDetectionEnabled => $composableBuilder(
+    column: $table.trainingModeDetectionEnabled,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -14702,6 +15484,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> playerGestureSwipeTrack = const Value.absent(),
                 Value<bool> playerGestureSwipeVolume = const Value.absent(),
                 Value<bool> playerGestureSwipeDismiss = const Value.absent(),
+                Value<bool> trainingModeDetectionEnabled = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -14770,6 +15553,7 @@ class $$AppSettingsTableTableManager
                 playerGestureSwipeTrack: playerGestureSwipeTrack,
                 playerGestureSwipeVolume: playerGestureSwipeVolume,
                 playerGestureSwipeDismiss: playerGestureSwipeDismiss,
+                trainingModeDetectionEnabled: trainingModeDetectionEnabled,
               ),
           createCompanionCallback:
               ({
@@ -14840,6 +15624,7 @@ class $$AppSettingsTableTableManager
                 Value<bool> playerGestureSwipeTrack = const Value.absent(),
                 Value<bool> playerGestureSwipeVolume = const Value.absent(),
                 Value<bool> playerGestureSwipeDismiss = const Value.absent(),
+                Value<bool> trainingModeDetectionEnabled = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -14908,6 +15693,7 @@ class $$AppSettingsTableTableManager
                 playerGestureSwipeTrack: playerGestureSwipeTrack,
                 playerGestureSwipeVolume: playerGestureSwipeVolume,
                 playerGestureSwipeDismiss: playerGestureSwipeDismiss,
+                trainingModeDetectionEnabled: trainingModeDetectionEnabled,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
@@ -15117,6 +15903,340 @@ typedef $$SongVideoIdsTableProcessedTableManager =
       SongVideoId,
       PrefetchHooks Function()
     >;
+typedef $$VideoMatchLogTableCreateCompanionBuilder =
+    VideoMatchLogCompanion Function({
+      Value<int> id,
+      Value<DateTime> resolvedAt,
+      required String songTitle,
+      required String songArtist,
+      required int songDurationSeconds,
+      required String query,
+      Value<String> chosenVideoId,
+      Value<int?> chosenScore,
+      Value<String?> chosenSourceType,
+      Value<String?> chosenConfidence,
+      Value<String> candidatesJson,
+    });
+typedef $$VideoMatchLogTableUpdateCompanionBuilder =
+    VideoMatchLogCompanion Function({
+      Value<int> id,
+      Value<DateTime> resolvedAt,
+      Value<String> songTitle,
+      Value<String> songArtist,
+      Value<int> songDurationSeconds,
+      Value<String> query,
+      Value<String> chosenVideoId,
+      Value<int?> chosenScore,
+      Value<String?> chosenSourceType,
+      Value<String?> chosenConfidence,
+      Value<String> candidatesJson,
+    });
+
+class $$VideoMatchLogTableFilterComposer
+    extends Composer<_$NuvTuneDatabase, $VideoMatchLogTable> {
+  $$VideoMatchLogTableFilterComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnFilters<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get songTitle => $composableBuilder(
+    column: $table.songTitle,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get songArtist => $composableBuilder(
+    column: $table.songArtist,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get songDurationSeconds => $composableBuilder(
+    column: $table.songDurationSeconds,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get query => $composableBuilder(
+    column: $table.query,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chosenVideoId => $composableBuilder(
+    column: $table.chosenVideoId,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get chosenScore => $composableBuilder(
+    column: $table.chosenScore,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chosenSourceType => $composableBuilder(
+    column: $table.chosenSourceType,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get chosenConfidence => $composableBuilder(
+    column: $table.chosenConfidence,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<String> get candidatesJson => $composableBuilder(
+    column: $table.candidatesJson,
+    builder: (column) => ColumnFilters(column),
+  );
+}
+
+class $$VideoMatchLogTableOrderingComposer
+    extends Composer<_$NuvTuneDatabase, $VideoMatchLogTable> {
+  $$VideoMatchLogTableOrderingComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  ColumnOrderings<int> get id => $composableBuilder(
+    column: $table.id,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get songTitle => $composableBuilder(
+    column: $table.songTitle,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get songArtist => $composableBuilder(
+    column: $table.songArtist,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get songDurationSeconds => $composableBuilder(
+    column: $table.songDurationSeconds,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get query => $composableBuilder(
+    column: $table.query,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get chosenVideoId => $composableBuilder(
+    column: $table.chosenVideoId,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get chosenScore => $composableBuilder(
+    column: $table.chosenScore,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get chosenSourceType => $composableBuilder(
+    column: $table.chosenSourceType,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get chosenConfidence => $composableBuilder(
+    column: $table.chosenConfidence,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<String> get candidatesJson => $composableBuilder(
+    column: $table.candidatesJson,
+    builder: (column) => ColumnOrderings(column),
+  );
+}
+
+class $$VideoMatchLogTableAnnotationComposer
+    extends Composer<_$NuvTuneDatabase, $VideoMatchLogTable> {
+  $$VideoMatchLogTableAnnotationComposer({
+    required super.$db,
+    required super.$table,
+    super.joinBuilder,
+    super.$addJoinBuilderToRootComposer,
+    super.$removeJoinBuilderFromRootComposer,
+  });
+  GeneratedColumn<int> get id =>
+      $composableBuilder(column: $table.id, builder: (column) => column);
+
+  GeneratedColumn<DateTime> get resolvedAt => $composableBuilder(
+    column: $table.resolvedAt,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get songTitle =>
+      $composableBuilder(column: $table.songTitle, builder: (column) => column);
+
+  GeneratedColumn<String> get songArtist => $composableBuilder(
+    column: $table.songArtist,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get songDurationSeconds => $composableBuilder(
+    column: $table.songDurationSeconds,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get query =>
+      $composableBuilder(column: $table.query, builder: (column) => column);
+
+  GeneratedColumn<String> get chosenVideoId => $composableBuilder(
+    column: $table.chosenVideoId,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get chosenScore => $composableBuilder(
+    column: $table.chosenScore,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get chosenSourceType => $composableBuilder(
+    column: $table.chosenSourceType,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get chosenConfidence => $composableBuilder(
+    column: $table.chosenConfidence,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<String> get candidatesJson => $composableBuilder(
+    column: $table.candidatesJson,
+    builder: (column) => column,
+  );
+}
+
+class $$VideoMatchLogTableTableManager
+    extends
+        RootTableManager<
+          _$NuvTuneDatabase,
+          $VideoMatchLogTable,
+          VideoMatchLogData,
+          $$VideoMatchLogTableFilterComposer,
+          $$VideoMatchLogTableOrderingComposer,
+          $$VideoMatchLogTableAnnotationComposer,
+          $$VideoMatchLogTableCreateCompanionBuilder,
+          $$VideoMatchLogTableUpdateCompanionBuilder,
+          (
+            VideoMatchLogData,
+            BaseReferences<
+              _$NuvTuneDatabase,
+              $VideoMatchLogTable,
+              VideoMatchLogData
+            >,
+          ),
+          VideoMatchLogData,
+          PrefetchHooks Function()
+        > {
+  $$VideoMatchLogTableTableManager(
+    _$NuvTuneDatabase db,
+    $VideoMatchLogTable table,
+  ) : super(
+        TableManagerState(
+          db: db,
+          table: table,
+          createFilteringComposer: () =>
+              $$VideoMatchLogTableFilterComposer($db: db, $table: table),
+          createOrderingComposer: () =>
+              $$VideoMatchLogTableOrderingComposer($db: db, $table: table),
+          createComputedFieldComposer: () =>
+              $$VideoMatchLogTableAnnotationComposer($db: db, $table: table),
+          updateCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> resolvedAt = const Value.absent(),
+                Value<String> songTitle = const Value.absent(),
+                Value<String> songArtist = const Value.absent(),
+                Value<int> songDurationSeconds = const Value.absent(),
+                Value<String> query = const Value.absent(),
+                Value<String> chosenVideoId = const Value.absent(),
+                Value<int?> chosenScore = const Value.absent(),
+                Value<String?> chosenSourceType = const Value.absent(),
+                Value<String?> chosenConfidence = const Value.absent(),
+                Value<String> candidatesJson = const Value.absent(),
+              }) => VideoMatchLogCompanion(
+                id: id,
+                resolvedAt: resolvedAt,
+                songTitle: songTitle,
+                songArtist: songArtist,
+                songDurationSeconds: songDurationSeconds,
+                query: query,
+                chosenVideoId: chosenVideoId,
+                chosenScore: chosenScore,
+                chosenSourceType: chosenSourceType,
+                chosenConfidence: chosenConfidence,
+                candidatesJson: candidatesJson,
+              ),
+          createCompanionCallback:
+              ({
+                Value<int> id = const Value.absent(),
+                Value<DateTime> resolvedAt = const Value.absent(),
+                required String songTitle,
+                required String songArtist,
+                required int songDurationSeconds,
+                required String query,
+                Value<String> chosenVideoId = const Value.absent(),
+                Value<int?> chosenScore = const Value.absent(),
+                Value<String?> chosenSourceType = const Value.absent(),
+                Value<String?> chosenConfidence = const Value.absent(),
+                Value<String> candidatesJson = const Value.absent(),
+              }) => VideoMatchLogCompanion.insert(
+                id: id,
+                resolvedAt: resolvedAt,
+                songTitle: songTitle,
+                songArtist: songArtist,
+                songDurationSeconds: songDurationSeconds,
+                query: query,
+                chosenVideoId: chosenVideoId,
+                chosenScore: chosenScore,
+                chosenSourceType: chosenSourceType,
+                chosenConfidence: chosenConfidence,
+                candidatesJson: candidatesJson,
+              ),
+          withReferenceMapper: (p0) => p0
+              .map((e) => (e.readTable(table), BaseReferences(db, table, e)))
+              .toList(),
+          prefetchHooksCallback: null,
+        ),
+      );
+}
+
+typedef $$VideoMatchLogTableProcessedTableManager =
+    ProcessedTableManager<
+      _$NuvTuneDatabase,
+      $VideoMatchLogTable,
+      VideoMatchLogData,
+      $$VideoMatchLogTableFilterComposer,
+      $$VideoMatchLogTableOrderingComposer,
+      $$VideoMatchLogTableAnnotationComposer,
+      $$VideoMatchLogTableCreateCompanionBuilder,
+      $$VideoMatchLogTableUpdateCompanionBuilder,
+      (
+        VideoMatchLogData,
+        BaseReferences<
+          _$NuvTuneDatabase,
+          $VideoMatchLogTable,
+          VideoMatchLogData
+        >,
+      ),
+      VideoMatchLogData,
+      PrefetchHooks Function()
+    >;
 
 class $NuvTuneDatabaseManager {
   final _$NuvTuneDatabase _db;
@@ -15159,4 +16279,6 @@ class $NuvTuneDatabaseManager {
       $$AppSettingsTableTableManager(_db, _db.appSettings);
   $$SongVideoIdsTableTableManager get songVideoIds =>
       $$SongVideoIdsTableTableManager(_db, _db.songVideoIds);
+  $$VideoMatchLogTableTableManager get videoMatchLog =>
+      $$VideoMatchLogTableTableManager(_db, _db.videoMatchLog);
 }

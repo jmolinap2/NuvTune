@@ -39,6 +39,47 @@ void main() {
       expect(result?.confidence, MusicVideoConfidence.high);
     });
 
+    // La busqueda movil de YouTube no incluye `ownerBadges` en ningun
+    // resultado, de modo que exigir la insignia dejaba a todo canal de sello
+    // como origen desconocido. El titulo declarando el video como oficial es
+    // la evidencia que la sustituye.
+    test('reconoce un sello sin insignia cuando el titulo declara oficial', () {
+      final result = matcher.selectBestMatch(numb, const [
+        YouTubeCandidate(
+          videoId: 'FanAnim0001',
+          title: 'Numb - Linkin Park (animacion)',
+          uploaderName: 'Fan Channel',
+          durationSeconds: 185,
+          searchRank: 0,
+        ),
+        YouTubeCandidate(
+          videoId: 'LabelOff001',
+          title: 'Linkin Park - Numb (Official Video)',
+          uploaderName: 'Some Records and Linkin Park',
+          durationSeconds: 185,
+          views: 23000000,
+          searchRank: 1,
+        ),
+      ]);
+
+      expect(result?.videoId, 'LabelOff001');
+      expect(result?.sourceType, MusicVideoSourceType.officialLabel);
+    });
+
+    test('acepta «Video Oficial» en espanol como declaracion oficial', () {
+      final result = matcher.selectBestMatch(numb, const [
+        YouTubeCandidate(
+          videoId: 'LabelEs0001',
+          title: 'Linkin Park - Numb (Video Oficial)',
+          uploaderName: 'Some Records',
+          durationSeconds: 185,
+          searchRank: 0,
+        ),
+      ]);
+
+      expect(result?.sourceType, MusicVideoSourceType.officialLabel);
+    });
+
     test('reconoce Artist - Topic como fuente oficial', () {
       final result = matcher.selectBestMatch(numb, const [
         YouTubeCandidate(

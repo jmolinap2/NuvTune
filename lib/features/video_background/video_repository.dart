@@ -3,6 +3,7 @@ import 'package:nuvtune/core/network/piped_client.dart';
 import 'package:nuvtune/core/platform/download_engine_bridge.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/data/db/database.dart';
+import 'package:nuvtune/data/repositories/video_match_log_repository.dart';
 import 'package:nuvtune/features/video_background/music_video_matcher.dart';
 
 /// Resuelve el video musical de una cancion para el fondo del reproductor
@@ -14,13 +15,15 @@ class VideoRepository {
   VideoRepository(
     this._database,
     this._piped,
-    this._downloadEngine, {
+    this._downloadEngine,
+    this._matchLog, {
     this._matcher = const MusicVideoMatcher(),
   });
 
   final NuvTuneDatabase _database;
   final PipedClient _piped;
   final DownloadEngineBridge _downloadEngine;
+  final VideoMatchLogRepository _matchLog;
   final MusicVideoMatcher _matcher;
 
   static const _negativeCacheTtl = Duration(minutes: 2);
@@ -103,6 +106,33 @@ class VideoRepository {
         ? '$_cacheSourcePrefix:no_match'
         : '$_cacheSourcePrefix:${match.sourceType.name}:'
               '${match.confidence.name}:${match.score}';
+
+    // Se registra cada resolucion, tanto la acertada como la que no encuentra
+    // nada: para afinar el algoritmo hace falta ver que candidatos habia
+    // cuando eligio mal, no solo cuando fallo del todo.
+    await _matchLog.record(
+      songTitle: song.title,
+      songArtist: _knownValue(song.artist) ?? '',
+      songDurationSeconds: song.durationMs > 0 ? song.durationMs ~/ 1000 : 0,
+      query: query,
+      chosenVideoId: found,
+      chosenScore: match?.score,
+      chosenSourceType: match?.sourceType.name,
+      chosenConfidence: match?.confidence.name,
+      candidates: [
+        for (final candidate in candidates)
+          {
+            'videoId': candidate.videoId,
+            'title': candidate.title,
+            'uploader': candidate.uploaderName,
+            'durationSeconds': candidate.durationSeconds,
+            'views': candidate.views,
+            'verified': candidate.uploaderVerified,
+            'musicCategory': candidate.isMusicCategory,
+            'rank': candidate.searchRank,
+          },
+      ],
+    );
     await _database
         .into(_database.songVideoIds)
         .insertOnConflictUpdate(

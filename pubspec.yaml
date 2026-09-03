@@ -32,6 +32,9 @@ dependencies:
   intl: ^0.20.3
   collection: ^1.19.1
 
+  # Sensores
+  sensors_plus: ^6.1.1
+
   # Red y contenido en linea
   http: ^1.2.2
   connectivity_plus: ^7.0.0

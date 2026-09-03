@@ -163,6 +163,20 @@ internal class FlutterMusicPlugin(
         val target = controller ?: return
         val items = songs.map { MediaItemFactory.toMediaItem(it) }
         target.setMediaItems(items, startIndex.toInt(), positionMs)
+        // El orden aleatorio se genera aqui, con el tamaño de la cola que se
+        // acaba de fijar, y no en `setShuffle`: ese comando puede llegar antes
+        // de que esta cola exista (la app llama setShuffle y luego setQueue en
+        // sucesion), y en ese momento `mediaItemCount` es el de la cola
+        // anterior o cero. Un orden generado para un tamaño equivocado hace
+        // que ExoPlayer caiga en el orden por defecto al reemplazar los
+        // items, que ancla el inicio siempre en la misma cancion. El servicio
+        // corre en el mismo proceso que este plugin, asi que siempre esta
+        // disponible mientras exista un MediaController conectado a el.
+        if (target.shuffleModeEnabled) {
+            MusicPlayerService.instance?.handleEngineCommand(
+                EngineCommand.SetShuffle(true),
+            )
+        }
         target.prepare()
         if (startPlaying) {
             target.play()

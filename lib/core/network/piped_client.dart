@@ -275,7 +275,19 @@ class PipedClient {
   List<PipedSearchResult> _parseYouTubeInitialData(String body) {
     Object? initialData;
     for (final marker in const ['var ytInitialData =', 'ytInitialData =']) {
-      final rawJson = _jsonObjectAfter(body, marker);
+      final markerIndex = body.indexOf(marker);
+      if (markerIndex < 0) continue;
+      final afterMarker = body.substring(markerIndex + marker.length);
+
+      // La version movil (m.youtube.com, a la que redirige la busqueda con
+      // user-agent de telefono) no incrusta un objeto literal: asigna una
+      // cadena JS con escapes \xNN, p.ej. `var ytInitialData = '\x7b...';`.
+      // Sin decodificarla antes de buscar el primer `{`, el resto del parseo
+      // no encuentra ningun objeto y cae siempre al respaldo de solo IDs, sin
+      // titulo ni canal.
+      final rawJson = afterMarker.trimLeft().startsWith("'")
+          ? _decodeHexEscapedJsString(afterMarker.trimLeft())
+          : _jsonObjectAfter(body, marker);
       if (rawJson == null) continue;
       try {
         initialData = jsonDecode(rawJson);
@@ -300,10 +312,13 @@ class PipedClient {
       final uploader = _textOf(renderer['ownerText']).isNotEmpty
           ? _textOf(renderer['ownerText'])
           : _textOf(renderer['shortBylineText']);
+      final title = _textOf(renderer['title']).isNotEmpty
+          ? _textOf(renderer['title'])
+          : _textOf(renderer['headline']);
       results.add(
         PipedSearchResult(
           videoId: videoId,
-          title: _textOf(renderer['title']),
+          title: title,
           uploaderName: uploader,
           durationSeconds: _durationFromRenderer(renderer),
           description: _descriptionOf(renderer),
@@ -314,6 +329,37 @@ class PipedClient {
       );
     }
     return results;
+  }
+
+  /// Decodifica `'\x7b\x22...\x22\x7d'`: una cadena JS de comilla simple con
+  /// escapes hexadecimales, tal como la sirve la variante movil de YouTube.
+  /// Se detiene en la primera comilla simple sin escapar, que cierra la
+  /// cadena.
+  static String? _decodeHexEscapedJsString(String source) {
+    if (!source.startsWith("'")) return null;
+    final buffer = StringBuffer();
+    var index = 1;
+    while (index < source.length) {
+      final char = source[index];
+      if (char == "'") return buffer.toString();
+      if (char == r'\' && index + 1 < source.length) {
+        final next = source[index + 1];
+        if (next == 'x' && index + 3 < source.length) {
+          final code = int.tryParse(source.substring(index + 2, index + 4), radix: 16);
+          if (code != null) {
+            buffer.writeCharCode(code);
+            index += 4;
+            continue;
+          }
+        }
+        buffer.write(next);
+        index += 2;
+        continue;
+      }
+      buffer.write(char);
+      index++;
+    }
+    return null;
   }
 
   static String? _jsonObjectAfter(String source, String marker) {
@@ -351,8 +397,14 @@ class PipedClient {
 
   static void _collectVideoRenderers(Object? node, List<Map> output) {
     if (node is Map) {
-      final renderer = node['videoRenderer'];
-      if (renderer is Map) output.add(renderer);
+      // `videoRenderer` es el de la busqueda de escritorio; `m.youtube.com`
+      // (a la que redirige la busqueda con user-agent movil) devuelve
+      // `videoWithContextRenderer` en su lugar, con el titulo en `headline`
+      // en vez de `title`.
+      for (final key in const ['videoRenderer', 'videoWithContextRenderer']) {
+        final renderer = node[key];
+        if (renderer is Map) output.add(renderer);
+      }
       for (final value in node.values) {
         _collectVideoRenderers(value, output);
       }
