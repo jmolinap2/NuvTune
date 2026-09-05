@@ -6608,6 +6608,33 @@ class $AppSettingsTable extends AppSettings
         ),
         defaultValue: const Constant(false),
       );
+  static const VerificationMeta _aurisCameoEnabledMeta = const VerificationMeta(
+    'aurisCameoEnabled',
+  );
+  @override
+  late final GeneratedColumn<bool> aurisCameoEnabled = GeneratedColumn<bool>(
+    'auris_cameo_enabled',
+    aliasedName,
+    false,
+    type: DriftSqlType.bool,
+    requiredDuringInsert: false,
+    defaultConstraints: GeneratedColumn.constraintIsAlways(
+      'CHECK ("auris_cameo_enabled" IN (0, 1))',
+    ),
+    defaultValue: const Constant(true),
+  );
+  static const VerificationMeta _screenWakeModeMeta = const VerificationMeta(
+    'screenWakeMode',
+  );
+  @override
+  late final GeneratedColumn<int> screenWakeMode = GeneratedColumn<int>(
+    'screen_wake_mode',
+    aliasedName,
+    false,
+    type: DriftSqlType.int,
+    requiredDuringInsert: false,
+    defaultValue: const Constant(0),
+  );
   @override
   List<GeneratedColumn> get $columns => [
     id,
@@ -6678,6 +6705,8 @@ class $AppSettingsTable extends AppSettings
     playerGestureSwipeVolume,
     playerGestureSwipeDismiss,
     trainingModeDetectionEnabled,
+    aurisCameoEnabled,
+    screenWakeMode,
   ];
   @override
   String get aliasedName => _alias ?? actualTableName;
@@ -7285,6 +7314,24 @@ class $AppSettingsTable extends AppSettings
         ),
       );
     }
+    if (data.containsKey('auris_cameo_enabled')) {
+      context.handle(
+        _aurisCameoEnabledMeta,
+        aurisCameoEnabled.isAcceptableOrUnknown(
+          data['auris_cameo_enabled']!,
+          _aurisCameoEnabledMeta,
+        ),
+      );
+    }
+    if (data.containsKey('screen_wake_mode')) {
+      context.handle(
+        _screenWakeModeMeta,
+        screenWakeMode.isAcceptableOrUnknown(
+          data['screen_wake_mode']!,
+          _screenWakeModeMeta,
+        ),
+      );
+    }
     return context;
   }
 
@@ -7566,6 +7613,14 @@ class $AppSettingsTable extends AppSettings
         DriftSqlType.bool,
         data['${effectivePrefix}training_mode_detection_enabled'],
       )!,
+      aurisCameoEnabled: attachedDatabase.typeMapping.read(
+        DriftSqlType.bool,
+        data['${effectivePrefix}auris_cameo_enabled'],
+      )!,
+      screenWakeMode: attachedDatabase.typeMapping.read(
+        DriftSqlType.int,
+        data['${effectivePrefix}screen_wake_mode'],
+      )!,
     );
   }
 
@@ -7711,6 +7766,16 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
   /// usuario puede desactivarlo si prefiere que el reproductor no reaccione
   /// al movimiento del teléfono.
   final bool trainingModeDetectionEnabled;
+
+  /// Auris aparece ocasionalmente bailando al ritmo dentro del visualizador.
+  /// Activado por defecto: es un cameo chico y de aparición discreta, no un
+  /// cambio visual grande como el fondo de video.
+  final bool aurisCameoEnabled;
+
+  /// Indice de `ScreenWakeMode`. Por defecto conserva el comportamiento
+  /// anterior a este ajuste: la pantalla solo se mantiene encendida durante
+  /// el video de fondo o el modo entrenamiento.
+  final int screenWakeMode;
   const AppSetting({
     required this.id,
     required this.scanOnStart,
@@ -7780,6 +7845,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     required this.playerGestureSwipeVolume,
     required this.playerGestureSwipeDismiss,
     required this.trainingModeDetectionEnabled,
+    required this.aurisCameoEnabled,
+    required this.screenWakeMode,
   });
   @override
   Map<String, Expression> toColumns(bool nullToAbsent) {
@@ -7866,6 +7933,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     map['training_mode_detection_enabled'] = Variable<bool>(
       trainingModeDetectionEnabled,
     );
+    map['auris_cameo_enabled'] = Variable<bool>(aurisCameoEnabled);
+    map['screen_wake_mode'] = Variable<int>(screenWakeMode);
     return map;
   }
 
@@ -7941,6 +8010,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       playerGestureSwipeVolume: Value(playerGestureSwipeVolume),
       playerGestureSwipeDismiss: Value(playerGestureSwipeDismiss),
       trainingModeDetectionEnabled: Value(trainingModeDetectionEnabled),
+      aurisCameoEnabled: Value(aurisCameoEnabled),
+      screenWakeMode: Value(screenWakeMode),
     );
   }
 
@@ -8066,6 +8137,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       trainingModeDetectionEnabled: serializer.fromJson<bool>(
         json['trainingModeDetectionEnabled'],
       ),
+      aurisCameoEnabled: serializer.fromJson<bool>(json['aurisCameoEnabled']),
+      screenWakeMode: serializer.fromJson<int>(json['screenWakeMode']),
     );
   }
   @override
@@ -8160,6 +8233,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       'trainingModeDetectionEnabled': serializer.toJson<bool>(
         trainingModeDetectionEnabled,
       ),
+      'aurisCameoEnabled': serializer.toJson<bool>(aurisCameoEnabled),
+      'screenWakeMode': serializer.toJson<int>(screenWakeMode),
     };
   }
 
@@ -8232,6 +8307,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     bool? playerGestureSwipeVolume,
     bool? playerGestureSwipeDismiss,
     bool? trainingModeDetectionEnabled,
+    bool? aurisCameoEnabled,
+    int? screenWakeMode,
   }) => AppSetting(
     id: id ?? this.id,
     scanOnStart: scanOnStart ?? this.scanOnStart,
@@ -8315,6 +8392,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
         playerGestureSwipeDismiss ?? this.playerGestureSwipeDismiss,
     trainingModeDetectionEnabled:
         trainingModeDetectionEnabled ?? this.trainingModeDetectionEnabled,
+    aurisCameoEnabled: aurisCameoEnabled ?? this.aurisCameoEnabled,
+    screenWakeMode: screenWakeMode ?? this.screenWakeMode,
   );
   AppSetting copyWithCompanion(AppSettingsCompanion data) {
     return AppSetting(
@@ -8516,6 +8595,12 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
       trainingModeDetectionEnabled: data.trainingModeDetectionEnabled.present
           ? data.trainingModeDetectionEnabled.value
           : this.trainingModeDetectionEnabled,
+      aurisCameoEnabled: data.aurisCameoEnabled.present
+          ? data.aurisCameoEnabled.value
+          : this.aurisCameoEnabled,
+      screenWakeMode: data.screenWakeMode.present
+          ? data.screenWakeMode.value
+          : this.screenWakeMode,
     );
   }
 
@@ -8589,7 +8674,11 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
           ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
           ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss, ')
-          ..write('trainingModeDetectionEnabled: $trainingModeDetectionEnabled')
+          ..write(
+            'trainingModeDetectionEnabled: $trainingModeDetectionEnabled, ',
+          )
+          ..write('aurisCameoEnabled: $aurisCameoEnabled, ')
+          ..write('screenWakeMode: $screenWakeMode')
           ..write(')'))
         .toString();
   }
@@ -8664,6 +8753,8 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
     playerGestureSwipeVolume,
     playerGestureSwipeDismiss,
     trainingModeDetectionEnabled,
+    aurisCameoEnabled,
+    screenWakeMode,
   ]);
   @override
   bool operator ==(Object other) =>
@@ -8737,7 +8828,9 @@ class AppSetting extends DataClass implements Insertable<AppSetting> {
           other.playerGestureSwipeVolume == this.playerGestureSwipeVolume &&
           other.playerGestureSwipeDismiss == this.playerGestureSwipeDismiss &&
           other.trainingModeDetectionEnabled ==
-              this.trainingModeDetectionEnabled);
+              this.trainingModeDetectionEnabled &&
+          other.aurisCameoEnabled == this.aurisCameoEnabled &&
+          other.screenWakeMode == this.screenWakeMode);
 }
 
 class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
@@ -8809,6 +8902,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
   final Value<bool> playerGestureSwipeVolume;
   final Value<bool> playerGestureSwipeDismiss;
   final Value<bool> trainingModeDetectionEnabled;
+  final Value<bool> aurisCameoEnabled;
+  final Value<int> screenWakeMode;
   const AppSettingsCompanion({
     this.id = const Value.absent(),
     this.scanOnStart = const Value.absent(),
@@ -8878,6 +8973,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerGestureSwipeVolume = const Value.absent(),
     this.playerGestureSwipeDismiss = const Value.absent(),
     this.trainingModeDetectionEnabled = const Value.absent(),
+    this.aurisCameoEnabled = const Value.absent(),
+    this.screenWakeMode = const Value.absent(),
   });
   AppSettingsCompanion.insert({
     this.id = const Value.absent(),
@@ -8948,6 +9045,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     this.playerGestureSwipeVolume = const Value.absent(),
     this.playerGestureSwipeDismiss = const Value.absent(),
     this.trainingModeDetectionEnabled = const Value.absent(),
+    this.aurisCameoEnabled = const Value.absent(),
+    this.screenWakeMode = const Value.absent(),
   });
   static Insertable<AppSetting> custom({
     Expression<int>? id,
@@ -9018,6 +9117,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Expression<bool>? playerGestureSwipeVolume,
     Expression<bool>? playerGestureSwipeDismiss,
     Expression<bool>? trainingModeDetectionEnabled,
+    Expression<bool>? aurisCameoEnabled,
+    Expression<int>? screenWakeMode,
   }) {
     return RawValuesInsertable({
       if (id != null) 'id': id,
@@ -9116,6 +9217,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         'player_gesture_swipe_dismiss': playerGestureSwipeDismiss,
       if (trainingModeDetectionEnabled != null)
         'training_mode_detection_enabled': trainingModeDetectionEnabled,
+      if (aurisCameoEnabled != null) 'auris_cameo_enabled': aurisCameoEnabled,
+      if (screenWakeMode != null) 'screen_wake_mode': screenWakeMode,
     });
   }
 
@@ -9188,6 +9291,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
     Value<bool>? playerGestureSwipeVolume,
     Value<bool>? playerGestureSwipeDismiss,
     Value<bool>? trainingModeDetectionEnabled,
+    Value<bool>? aurisCameoEnabled,
+    Value<int>? screenWakeMode,
   }) {
     return AppSettingsCompanion(
       id: id ?? this.id,
@@ -9277,6 +9382,8 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           playerGestureSwipeDismiss ?? this.playerGestureSwipeDismiss,
       trainingModeDetectionEnabled:
           trainingModeDetectionEnabled ?? this.trainingModeDetectionEnabled,
+      aurisCameoEnabled: aurisCameoEnabled ?? this.aurisCameoEnabled,
+      screenWakeMode: screenWakeMode ?? this.screenWakeMode,
     );
   }
 
@@ -9531,6 +9638,12 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
         trainingModeDetectionEnabled.value,
       );
     }
+    if (aurisCameoEnabled.present) {
+      map['auris_cameo_enabled'] = Variable<bool>(aurisCameoEnabled.value);
+    }
+    if (screenWakeMode.present) {
+      map['screen_wake_mode'] = Variable<int>(screenWakeMode.value);
+    }
     return map;
   }
 
@@ -9604,7 +9717,11 @@ class AppSettingsCompanion extends UpdateCompanion<AppSetting> {
           ..write('playerGestureSwipeTrack: $playerGestureSwipeTrack, ')
           ..write('playerGestureSwipeVolume: $playerGestureSwipeVolume, ')
           ..write('playerGestureSwipeDismiss: $playerGestureSwipeDismiss, ')
-          ..write('trainingModeDetectionEnabled: $trainingModeDetectionEnabled')
+          ..write(
+            'trainingModeDetectionEnabled: $trainingModeDetectionEnabled, ',
+          )
+          ..write('aurisCameoEnabled: $aurisCameoEnabled, ')
+          ..write('screenWakeMode: $screenWakeMode')
           ..write(')'))
         .toString();
   }
@@ -14269,6 +14386,8 @@ typedef $$AppSettingsTableCreateCompanionBuilder =
       Value<bool> playerGestureSwipeVolume,
       Value<bool> playerGestureSwipeDismiss,
       Value<bool> trainingModeDetectionEnabled,
+      Value<bool> aurisCameoEnabled,
+      Value<int> screenWakeMode,
     });
 typedef $$AppSettingsTableUpdateCompanionBuilder =
     AppSettingsCompanion Function({
@@ -14340,6 +14459,8 @@ typedef $$AppSettingsTableUpdateCompanionBuilder =
       Value<bool> playerGestureSwipeVolume,
       Value<bool> playerGestureSwipeDismiss,
       Value<bool> trainingModeDetectionEnabled,
+      Value<bool> aurisCameoEnabled,
+      Value<int> screenWakeMode,
     });
 
 class $$AppSettingsTableFilterComposer
@@ -14688,6 +14809,16 @@ class $$AppSettingsTableFilterComposer
 
   ColumnFilters<bool> get trainingModeDetectionEnabled => $composableBuilder(
     column: $table.trainingModeDetectionEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<bool> get aurisCameoEnabled => $composableBuilder(
+    column: $table.aurisCameoEnabled,
+    builder: (column) => ColumnFilters(column),
+  );
+
+  ColumnFilters<int> get screenWakeMode => $composableBuilder(
+    column: $table.screenWakeMode,
     builder: (column) => ColumnFilters(column),
   );
 }
@@ -15040,6 +15171,16 @@ class $$AppSettingsTableOrderingComposer
     column: $table.trainingModeDetectionEnabled,
     builder: (column) => ColumnOrderings(column),
   );
+
+  ColumnOrderings<bool> get aurisCameoEnabled => $composableBuilder(
+    column: $table.aurisCameoEnabled,
+    builder: (column) => ColumnOrderings(column),
+  );
+
+  ColumnOrderings<int> get screenWakeMode => $composableBuilder(
+    column: $table.screenWakeMode,
+    builder: (column) => ColumnOrderings(column),
+  );
 }
 
 class $$AppSettingsTableAnnotationComposer
@@ -15384,6 +15525,16 @@ class $$AppSettingsTableAnnotationComposer
     column: $table.trainingModeDetectionEnabled,
     builder: (column) => column,
   );
+
+  GeneratedColumn<bool> get aurisCameoEnabled => $composableBuilder(
+    column: $table.aurisCameoEnabled,
+    builder: (column) => column,
+  );
+
+  GeneratedColumn<int> get screenWakeMode => $composableBuilder(
+    column: $table.screenWakeMode,
+    builder: (column) => column,
+  );
 }
 
 class $$AppSettingsTableTableManager
@@ -15485,6 +15636,8 @@ class $$AppSettingsTableTableManager
                 Value<bool> playerGestureSwipeVolume = const Value.absent(),
                 Value<bool> playerGestureSwipeDismiss = const Value.absent(),
                 Value<bool> trainingModeDetectionEnabled = const Value.absent(),
+                Value<bool> aurisCameoEnabled = const Value.absent(),
+                Value<int> screenWakeMode = const Value.absent(),
               }) => AppSettingsCompanion(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -15554,6 +15707,8 @@ class $$AppSettingsTableTableManager
                 playerGestureSwipeVolume: playerGestureSwipeVolume,
                 playerGestureSwipeDismiss: playerGestureSwipeDismiss,
                 trainingModeDetectionEnabled: trainingModeDetectionEnabled,
+                aurisCameoEnabled: aurisCameoEnabled,
+                screenWakeMode: screenWakeMode,
               ),
           createCompanionCallback:
               ({
@@ -15625,6 +15780,8 @@ class $$AppSettingsTableTableManager
                 Value<bool> playerGestureSwipeVolume = const Value.absent(),
                 Value<bool> playerGestureSwipeDismiss = const Value.absent(),
                 Value<bool> trainingModeDetectionEnabled = const Value.absent(),
+                Value<bool> aurisCameoEnabled = const Value.absent(),
+                Value<int> screenWakeMode = const Value.absent(),
               }) => AppSettingsCompanion.insert(
                 id: id,
                 scanOnStart: scanOnStart,
@@ -15694,6 +15851,8 @@ class $$AppSettingsTableTableManager
                 playerGestureSwipeVolume: playerGestureSwipeVolume,
                 playerGestureSwipeDismiss: playerGestureSwipeDismiss,
                 trainingModeDetectionEnabled: trainingModeDetectionEnabled,
+                aurisCameoEnabled: aurisCameoEnabled,
+                screenWakeMode: screenWakeMode,
               ),
           withReferenceMapper: (p0) => p0
               .map((e) => (e.readTable(table), BaseReferences(db, table, e)))

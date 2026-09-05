@@ -30,6 +30,7 @@ import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 import 'package:nuvtune/features/lyrics/lyrics_view.dart';
 import 'package:nuvtune/features/player/audio_visualizer.dart';
 import 'package:nuvtune/features/player/customizable_player_controls.dart';
+import 'package:nuvtune/features/player/dancing_auris.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
@@ -233,6 +234,12 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
   bool? _audioAnalysisEnabled;
   String? _videoReadinessId;
   bool _videoReady = false;
+  // Vive aqui y no en _NowPlayingTabState porque _PlayerAppBar (el boton
+  // manual) y _NowPlayingTab (la vista simplificada) son hermanos bajo este
+  // widget: ninguno de los dos puede ser dueño de un dato que el otro
+  // tambien necesita leer o escribir.
+  _TrainingModeAuthority _trainingAuthority = _TrainingModeAuthority.off;
+  ScreenWakeMode _screenWakeMode = ScreenWakeMode.automatic;
 
   @override
   void initState() {
@@ -317,12 +324,84 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
     setState(() => _videoReady = ready);
   }
 
+  /// Incorpora la señal del sensor a la autoridad de entrenamiento. Se llama
+  /// desde `build`: el propio fotograma que recibe el dato ya pinta con el
+  /// valor nuevo.
+  void _syncWithMotion(bool jogging) {
+    // Una sesion iniciada a mano no depende de la cadencia: no se toca aqui,
+    // solo termina cuando el usuario la cierra explicitamente.
+    if (_trainingAuthority == _TrainingModeAuthority.manualEnter) return;
+    if (jogging) {
+      if (_trainingAuthority == _TrainingModeAuthority.off) {
+        _trainingAuthority = _TrainingModeAuthority.sensorSuggested;
+      }
+      // Si la autoridad es `manualOverride`, la cadencia sigue en curso y el
+      // sensor no vuelve a mandar: eso solo ocurre cuando esta cadencia
+      // termine y una nueva la reactive.
+    } else {
+      // Sin cadencia sostenida, cualquier autoridad restante vuelve a `off`:
+      // tanto la sugerencia del sensor como una anulación manual que ya
+      // cumplió su propósito.
+      _trainingAuthority = _TrainingModeAuthority.off;
+    }
+    _syncTrainingScreenWake();
+  }
+
+  /// Trotando, o en bici/pesas con el modo manual activo, no hay manos libres
+  /// para tocar la pantalla cada minuto. Si el usuario eligio "Nunca" en
+  /// Ajustes, esa eleccion manda incluso sobre el entrenamiento.
+  void _syncTrainingScreenWake() {
+    unawaited(
+      ScreenWake.setReason(
+        ScreenWakeReason.trainingMode,
+        active:
+            _screenWakeMode != ScreenWakeMode.never &&
+            (_trainingAuthority == _TrainingModeAuthority.sensorSuggested ||
+                _trainingAuthority == _TrainingModeAuthority.manualEnter),
+      ),
+    );
+  }
+
+  /// El usuario eligio "Siempre": la pantalla no se apaga mientras este
+  /// widget siga montado, sin importar que se este mirando.
+  void _syncAlwaysAwake() {
+    unawaited(
+      ScreenWake.setReason(
+        ScreenWakeReason.always,
+        active: _screenWakeMode == ScreenWakeMode.always,
+      ),
+    );
+  }
+
+  /// El usuario salió de la vista de entrenamiento a mano. Si quien mandaba
+  /// era el sensor, la cadencia puede seguir y hay que bloquear que la
+  /// reclame de nuevo (`manualOverride`); si el usuario la habia abierto el
+  /// mismo, no hay nada del sensor que bloquear.
+  void _dismissTrainingMode() {
+    setState(() {
+      _trainingAuthority =
+          _trainingAuthority == _TrainingModeAuthority.manualEnter
+          ? _TrainingModeAuthority.off
+          : _TrainingModeAuthority.manualOverride;
+    });
+    _syncTrainingScreenWake();
+  }
+
+  void _enterTrainingModeManually() {
+    setState(() => _trainingAuthority = _TrainingModeAuthority.manualEnter);
+    _syncTrainingScreenWake();
+  }
+
   @override
   void dispose() {
     useDefaultSystemUi();
     // Riverpod invalida `ref` durante el desmontaje. Se conserva el API que ya
     // estaba vivo para cerrar el analisis sin leer providers desde dispose.
     unawaited(_engineApi.setAudioAnalysisEnabled(false));
+    unawaited(
+      ScreenWake.setReason(ScreenWakeReason.trainingMode, active: false),
+    );
+    unawaited(ScreenWake.setReason(ScreenWakeReason.always, active: false));
     _tabController.removeListener(_syncAudioAnalysis);
     WidgetsBinding.instance.removeObserver(this);
     _tabController.dispose();
@@ -367,6 +446,14 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
         ? appearance.accent
         : AccentIdentity.fromCover(dominant);
     final settings = ref.watch(settingsProvider).valueOrNull;
+    _screenWakeMode = ScreenWakeMode.fromIndex(settings?.screenWakeMode ?? 0);
+    _syncAlwaysAwake();
+    final trainingDetectionEnabled =
+        settings?.trainingModeDetectionEnabled ?? false;
+    final jogging = trainingDetectionEnabled
+        ? ref.watch(isJoggingProvider).valueOrNull ?? false
+        : false;
+    _syncWithMotion(jogging);
     final visualScene = PlayerVisualScene.fromIndex(
       settings?.playerVisualScene ?? 0,
     );
@@ -415,6 +502,7 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                       videoId: videoBackgroundId,
                       animateFallback: false,
                       onVideoReadinessChanged: _handleVideoReadiness,
+                      screenWakeMode: _screenWakeMode,
                     ),
                   DecoratedBox(
                     decoration: BoxDecoration(
@@ -459,6 +547,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                           song: song,
                           onOpenFullscreen: (scene) =>
                               _showFullscreenPlayer(song, scene),
+                          trainingAuthority: _trainingAuthority,
+                          onEnterTrainingMode: _enterTrainingModeManually,
                         ),
                         TabBar(
                           controller: _tabController,
@@ -494,6 +584,8 @@ class _PlayerScreenState extends ConsumerState<PlayerScreen>
                                   onOpenLyrics: () =>
                                       _tabController.animateTo(1),
                                   onOpenFullscreen: _showFullscreenPlayer,
+                                  trainingAuthority: _trainingAuthority,
+                                  onDismissTraining: _dismissTrainingMode,
                                 ),
                               ),
                               LyricsView(song: song),
@@ -788,6 +880,9 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
     required BoxConstraints constraints,
     required String? videoId,
   }) {
+    final screenWakeMode = ScreenWakeMode.fromIndex(
+      ref.watch(settingsProvider).valueOrNull?.screenWakeMode ?? 0,
+    );
     Widget coverBackdrop({String? activeVideoId}) => _ImmersivePlayerBackground(
       key: ValueKey(
         'fullscreen-background-${song.id}-${activeVideoId ?? 'cover'}',
@@ -797,6 +892,7 @@ class _FullscreenPlayerPageState extends ConsumerState<_FullscreenPlayerPage>
       videoId: activeVideoId,
       animateFallback: false,
       onVideoReadinessChanged: (_, _) {},
+      screenWakeMode: screenWakeMode,
       letterbox: true,
     );
 
@@ -1280,6 +1376,7 @@ class _ImmersivePlayerBackground extends ConsumerStatefulWidget {
     required this.videoId,
     required this.animateFallback,
     required this.onVideoReadinessChanged,
+    required this.screenWakeMode,
     this.letterbox = false,
     super.key,
   });
@@ -1289,6 +1386,7 @@ class _ImmersivePlayerBackground extends ConsumerStatefulWidget {
   final String? videoId;
   final bool animateFallback;
   final void Function(String videoId, bool ready) onVideoReadinessChanged;
+  final ScreenWakeMode screenWakeMode;
 
   /// Indica que la escena pertenece al visor fullscreen. El video sigue
   /// llenando el marco elegido; la diferencia solo se conserva para las keys
@@ -1305,6 +1403,11 @@ class _ImmersivePlayerBackgroundState
   String? _failedVideoId;
   bool _discardingVideo = false;
   final Set<String> _transientRetries = <String>{};
+  // Distinto de `_failedVideoId`: ese se limpia con cada candidato nuevo
+  // dentro de la misma cancion (para poder reintentar), pero el aviso al
+  // usuario debe salir como maximo una vez por cancion, no una vez por
+  // candidato descartado.
+  int? _notifiedFailureSongId;
 
   @override
   void initState() {
@@ -1319,6 +1422,9 @@ class _ImmersivePlayerBackgroundState
         oldWidget.videoId != widget.videoId) {
       _failedVideoId = null;
       _transientRetries.clear();
+    }
+    if (oldWidget.song.id != widget.song.id) {
+      _notifiedFailureSongId = null;
     }
     _syncScreenWake();
   }
@@ -1336,11 +1442,15 @@ class _ImmersivePlayerBackgroundState
   /// Un video visible y sonando es lo unico que se mira sin tocar la pantalla;
   /// con la portada estatica o en pausa, apagarla es lo correcto.
   void _syncScreenWake() {
-    final showsVideo = widget.videoId != null && widget.videoId != _failedVideoId;
+    final showsVideo =
+        widget.videoId != null && widget.videoId != _failedVideoId;
     unawaited(
       ScreenWake.setReason(
         ScreenWakeReason.videoBackground,
-        active: showsVideo && widget.isPlaying,
+        active:
+            showsVideo &&
+            widget.isPlaying &&
+            widget.screenWakeMode != ScreenWakeMode.never,
       ),
     );
   }
@@ -1375,6 +1485,16 @@ class _ImmersivePlayerBackgroundState
     });
     // Sin video que mirar, la pantalla vuelve a apagarse por si sola.
     _syncScreenWake();
+
+    // El resto de los fallos de la aplicacion (busqueda, descarga, letras)
+    // avisan con un SnackBar; este quedaba mudo y el usuario solo veia la
+    // portada de vuelta sin saber por que.
+    if (_notifiedFailureSongId != widget.song.id) {
+      _notifiedFailureSongId = widget.song.id;
+      ScaffoldMessenger.of(context).showSnackBar(
+        const SnackBar(content: Text(AppStrings.videoBackgroundUnavailable)),
+      );
+    }
 
     final rejectCandidate = switch (state.failure) {
       MusicVideoBackgroundFailure.invalidVideoId ||
@@ -1503,10 +1623,17 @@ class _ImmersivePlayerBackgroundState
 }
 
 class _PlayerAppBar extends ConsumerWidget {
-  const _PlayerAppBar({required this.song, required this.onOpenFullscreen});
+  const _PlayerAppBar({
+    required this.song,
+    required this.onOpenFullscreen,
+    required this.trainingAuthority,
+    required this.onEnterTrainingMode,
+  });
 
   final Song song;
   final Future<void> Function(PlayerVisualScene scene) onOpenFullscreen;
+  final _TrainingModeAuthority trainingAuthority;
+  final VoidCallback onEnterTrainingMode;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -1578,6 +1705,25 @@ class _PlayerAppBar extends ConsumerWidget {
               onOpenFullscreen: onOpenFullscreen,
             ),
           ),
+          // No aparece mientras la vista de entrenamiento ya esta activa: esa
+          // vista reemplaza esta barra por completo (ver el early return en
+          // _NowPlayingTabState.build), asi que el boton solo tiene sentido
+          // cuando la barra normal es justamente lo que se ve.
+          if (trainingAuthority != _TrainingModeAuthority.sensorSuggested &&
+              trainingAuthority != _TrainingModeAuthority.manualEnter)
+            IconButton(
+              tooltip: 'Modo entrenamiento',
+              icon: const Icon(Icons.directions_run_rounded),
+              // `manualOverride` es el unico estado, con esta barra visible,
+              // en que el sensor todavia detecta movimiento: en cuanto deja
+              // de detectarlo, _syncWithMotion ya volvio a `off` ese mismo
+              // fotograma. Resaltar aqui no necesita leer isJoggingProvider
+              // de nuevo.
+              color: trainingAuthority == _TrainingModeAuthority.manualOverride
+                  ? Theme.of(context).colorScheme.primary
+                  : null,
+              onPressed: onEnterTrainingMode,
+            ),
           IconButton(
             tooltip: 'Más opciones',
             icon: const Icon(Icons.more_vert_rounded),
@@ -1693,6 +1839,8 @@ class _NowPlayingTab extends ConsumerStatefulWidget {
     required this.videoAvailable,
     required this.onOpenLyrics,
     required this.onOpenFullscreen,
+    required this.trainingAuthority,
+    required this.onDismissTraining,
   });
 
   final Song song;
@@ -1701,6 +1849,8 @@ class _NowPlayingTab extends ConsumerStatefulWidget {
   final VoidCallback onOpenLyrics;
   final Future<void> Function(Song song, PlayerVisualScene scene)
   onOpenFullscreen;
+  final _TrainingModeAuthority trainingAuthority;
+  final VoidCallback onDismissTraining;
 
   @override
   ConsumerState<_NowPlayingTab> createState() => _NowPlayingTabState();
@@ -1736,6 +1886,11 @@ enum _TrainingModeAuthority {
   /// cadencia. El sensor deja de mandar hasta que la cadencia se interrumpa
   /// y vuelva a empezar, para no pelear con la elección del usuario.
   manualOverride,
+
+  /// El usuario entró a mano (bici, pesas...) sin que el sensor detectara
+  /// nada. No depende de la cadencia: una sesión sin pasos no debe volver a
+  /// `off` solo porque el acelerómetro no ve picos.
+  manualEnter,
 }
 
 enum _CarouselAuthority {
@@ -1773,8 +1928,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
 
   _CarouselAuthority _authority = _CarouselAuthority.engine;
 
-  _TrainingModeAuthority _trainingAuthority = _TrainingModeAuthority.off;
-
   /// Impide encolar mas de una sincronizacion por fotograma.
   bool _syncScheduled = false;
 
@@ -1809,9 +1962,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
   void dispose() {
     _volumeIndicatorTimer?.cancel();
     _pageController.dispose();
-    unawaited(
-      ScreenWake.setReason(ScreenWakeReason.trainingMode, active: false),
-    );
     super.dispose();
   }
 
@@ -1943,44 +2093,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     // Mientras el dedo manda, el carrusel no se toca.
     if (_authority == _CarouselAuthority.drag) return;
     _scheduleCarouselSync();
-  }
-
-  /// Incorpora la señal del sensor a la autoridad de entrenamiento. Se llama
-  /// desde `build`, igual que [_syncWithEngine]: el propio fotograma que
-  /// recibe el dato ya pinta con el valor nuevo.
-  void _syncWithMotion(bool jogging) {
-    if (jogging) {
-      if (_trainingAuthority == _TrainingModeAuthority.off) {
-        _trainingAuthority = _TrainingModeAuthority.sensorSuggested;
-      }
-      // Si la autoridad es `manualOverride`, la cadencia sigue en curso y el
-      // sensor no vuelve a mandar: eso solo ocurre cuando esta cadencia
-      // termine y una nueva la reactive.
-      _syncTrainingScreenWake();
-      return;
-    }
-    // Sin cadencia sostenida, cualquier autoridad vuelve a `off`: tanto la
-    // sugerencia del sensor como una anulación manual que ya cumplió su
-    // propósito.
-    _trainingAuthority = _TrainingModeAuthority.off;
-    _syncTrainingScreenWake();
-  }
-
-  /// Trotando no hay manos libres para tocar la pantalla cada minuto.
-  void _syncTrainingScreenWake() {
-    unawaited(
-      ScreenWake.setReason(
-        ScreenWakeReason.trainingMode,
-        active: _trainingAuthority == _TrainingModeAuthority.sensorSuggested,
-      ),
-    );
-  }
-
-  /// El usuario salió de la vista de entrenamiento a mano mientras la
-  /// cadencia seguía activa.
-  void _dismissTrainingMode() {
-    setState(() => _trainingAuthority = _TrainingModeAuthority.manualOverride);
-    _syncTrainingScreenWake();
   }
 
   void _scheduleCarouselSync() {
@@ -2142,19 +2254,14 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     final isFavorite = favorites.contains(displaySong.id);
     final appSettings = ref.watch(settingsProvider).valueOrNull;
 
-    final trainingDetectionEnabled =
-        appSettings?.trainingModeDetectionEnabled ?? false;
-    final jogging = trainingDetectionEnabled
-        ? ref.watch(isJoggingProvider).valueOrNull ?? false
-        : false;
-    _syncWithMotion(jogging);
-    if (_trainingAuthority == _TrainingModeAuthority.sensorSuggested &&
+    if ((widget.trainingAuthority == _TrainingModeAuthority.sensorSuggested ||
+            widget.trainingAuthority == _TrainingModeAuthority.manualEnter) &&
         state.currentSong != null) {
       return TrainingModeView(
         song: state.currentSong!,
         state: state,
         controller: controller,
-        onDismiss: _dismissTrainingMode,
+        onDismiss: widget.onDismissTraining,
       );
     }
     final controlPreset = PlayerControlPreset.byId(
@@ -2183,174 +2290,190 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
     final showSingleVisualizer =
         !showCleanVideo && !showLyrics && forceVisualizer;
 
-    final stage = LayoutBuilder(
-      builder: (context, constraints) {
-        final stageWidth = constraints.maxWidth;
-        final stageHeight = constraints.maxHeight;
-        // La portada es cuadrada: su lado no puede pasar del menor de los dos
-        // lados del escenario. Antes la fraccion de densidad se aplicaba solo
-        // al ancho y la altura entraba cruda en el `min`, de modo que en una
-        // pantalla alta la portada se quedaba en el 80% del ancho con la
-        // altura sobrando a su alrededor. Aplicarla al lado que manda deja la
-        // portada tan grande como el escenario permita, sin comerse el aire
-        // que la densidad pide.
-        final coverSize = (math.min(stageWidth, stageHeight) *
-                density.coverFraction)
-            .clamp(120.0, 560.0)
-            .toDouble();
-        return _VolumeDragTarget(
-          enabled: volumeGestureEnabled,
-          indicator: _volumeIndicator,
-          onStart: _startVolumeDrag,
-          onUpdate: (dy) => _updateVolumeDrag(dy, stageHeight),
-          onEnd: _endVolumeDrag,
-          child: AnimatedSwitcher(
-            duration: motionPreferences.scale(
-              Tokens.durationMedium,
-              systemReduceMotion: reduceSystemMotion,
-            ),
-            switchInCurve: motionPreferences.curve,
-            switchOutCurve: motionPreferences.curve,
-            child: showCleanVideo
-                ? const SizedBox.expand(key: ValueKey('clean-video-stage'))
-                : showLyrics
-                ? _PlayerLyricsSceneStage(
-                    key: ValueKey('lyrics-stage-${displaySong.id}'),
-                    song: displaySong,
-                    onOpenLyrics: widget.onOpenLyrics,
-                    videoOverlay: widget.visualScene == PlayerVisualScene.both,
-                  )
-                : showSingleVisualizer
-                ? SizedBox.expand(
-                    key: ValueKey('single-visualizer-${activeSong.id}'),
-                    child: Semantics(
-                      label: 'Visualización de ${activeSong.title}',
-                      hint:
-                          'Toca para abrir en pantalla completa. '
-                          'Desliza para cambiar de canción.',
-                      button: true,
-                      onTap: () async {
-                        await widget.onOpenFullscreen(
-                          activeSong,
-                          widget.visualScene,
-                        );
-                      },
-                      onIncrease: () => _skipFromVisualizer(next: true),
-                      onDecrease: () => _skipFromVisualizer(next: false),
-                      child: GestureDetector(
-                        behavior: HitTestBehavior.opaque,
-                        onTap: () async {
-                          await widget.onOpenFullscreen(
-                            activeSong,
-                            widget.visualScene,
-                          );
-                        },
-                        onHorizontalDragStart: (_) {
-                          _visualizerDragDx = 0;
-                        },
-                        onHorizontalDragUpdate: (details) {
-                          _visualizerDragDx += details.primaryDelta ?? 0;
-                        },
-                        onHorizontalDragCancel: () {
-                          _visualizerDragDx = 0;
-                        },
-                        onHorizontalDragEnd: _finishVisualizerDrag,
-                        child: ReactiveAudioVisualizer(
-                          key: ValueKey('stage-visualizer-${activeSong.id}'),
-                          song: activeSong,
-                          size: stageWidth,
-                          height: stageHeight,
-                          borderRadius: 0,
-                          isPlaying: state.isPlaying,
-                          immersive: true,
-                        ),
-                      ),
-                    ),
-                  )
-                : OverflowBox(
-                    key: const ValueKey('cover-carousel-stage'),
-                    alignment: Alignment.center,
-                    minWidth: stageWidth,
-                    maxWidth: stageWidth,
-                    child: SizedBox(
-                      width: stageWidth,
-                      height: stageHeight,
-                      child: NotificationListener<ScrollNotification>(
-                        onNotification: _handleCarouselScroll,
-                        child: PageView.builder(
-                          controller: _pageController,
-                          itemCount: state.queue.length,
-                          physics: state.queue.length > 1
-                              ? const PageScrollPhysics()
-                              : const NeverScrollableScrollPhysics(),
-                          itemBuilder: (context, index) {
-                            final item = state.queue[index];
-                            final hasArtwork = _songHasArtwork(
-                              item,
-                              customCovers,
+    final stage = Stack(
+      children: [
+        LayoutBuilder(
+          builder: (context, constraints) {
+            final stageWidth = constraints.maxWidth;
+            final stageHeight = constraints.maxHeight;
+            // La portada es cuadrada: su lado no puede pasar del menor de los dos
+            // lados del escenario. Antes la fraccion de densidad se aplicaba solo
+            // al ancho y la altura entraba cruda en el `min`, de modo que en una
+            // pantalla alta la portada se quedaba en el 80% del ancho con la
+            // altura sobrando a su alrededor. Aplicarla al lado que manda deja la
+            // portada tan grande como el escenario permita, sin comerse el aire
+            // que la densidad pide.
+            final coverSize =
+                (math.min(stageWidth, stageHeight) * density.coverFraction)
+                    .clamp(120.0, 560.0)
+                    .toDouble();
+            return _VolumeDragTarget(
+              enabled: volumeGestureEnabled,
+              indicator: _volumeIndicator,
+              onStart: _startVolumeDrag,
+              onUpdate: (dy) => _updateVolumeDrag(dy, stageHeight),
+              onEnd: _endVolumeDrag,
+              child: AnimatedSwitcher(
+                duration: motionPreferences.scale(
+                  Tokens.durationMedium,
+                  systemReduceMotion: reduceSystemMotion,
+                ),
+                switchInCurve: motionPreferences.curve,
+                switchOutCurve: motionPreferences.curve,
+                child: showCleanVideo
+                    ? const SizedBox.expand(key: ValueKey('clean-video-stage'))
+                    : showLyrics
+                    ? _PlayerLyricsSceneStage(
+                        key: ValueKey('lyrics-stage-${displaySong.id}'),
+                        song: displaySong,
+                        onOpenLyrics: widget.onOpenLyrics,
+                        videoOverlay:
+                            widget.visualScene == PlayerVisualScene.both,
+                      )
+                    : showSingleVisualizer
+                    ? SizedBox.expand(
+                        key: ValueKey('single-visualizer-${activeSong.id}'),
+                        child: Semantics(
+                          label: 'Visualización de ${activeSong.title}',
+                          hint:
+                              'Toca para abrir en pantalla completa. '
+                              'Desliza para cambiar de canción.',
+                          button: true,
+                          onTap: () async {
+                            await widget.onOpenFullscreen(
+                              activeSong,
+                              widget.visualScene,
                             );
-                            final itemSize = coverSize;
-                            return AnimatedBuilder(
-                              animation: _pageController,
-                              builder: (context, child) {
-                                final page = _pageController.hasClients
-                                    ? (_pageController.page ??
-                                          engineIndex.toDouble())
-                                    : engineIndex.toDouble();
-                                final distance = (page - index)
-                                    .abs()
-                                    .clamp(0.0, 1.0)
-                                    .toDouble();
-                                return Transform.translate(
-                                  offset: Offset(0, distance * 8),
-                                  child: Transform.scale(
-                                    scale: 1 - distance * 0.065,
-                                    child: Opacity(
-                                      opacity: 1 - distance * 0.28,
-                                      child: child,
+                          },
+                          onIncrease: () => _skipFromVisualizer(next: true),
+                          onDecrease: () => _skipFromVisualizer(next: false),
+                          child: GestureDetector(
+                            behavior: HitTestBehavior.opaque,
+                            onTap: () async {
+                              await widget.onOpenFullscreen(
+                                activeSong,
+                                widget.visualScene,
+                              );
+                            },
+                            onHorizontalDragStart: (_) {
+                              _visualizerDragDx = 0;
+                            },
+                            onHorizontalDragUpdate: (details) {
+                              _visualizerDragDx += details.primaryDelta ?? 0;
+                            },
+                            onHorizontalDragCancel: () {
+                              _visualizerDragDx = 0;
+                            },
+                            onHorizontalDragEnd: _finishVisualizerDrag,
+                            child: ReactiveAudioVisualizer(
+                              key: ValueKey(
+                                'stage-visualizer-${activeSong.id}',
+                              ),
+                              song: activeSong,
+                              size: stageWidth,
+                              height: stageHeight,
+                              borderRadius: 0,
+                              isPlaying: state.isPlaying,
+                              immersive: true,
+                            ),
+                          ),
+                        ),
+                      )
+                    : OverflowBox(
+                        key: const ValueKey('cover-carousel-stage'),
+                        alignment: Alignment.center,
+                        minWidth: stageWidth,
+                        maxWidth: stageWidth,
+                        child: SizedBox(
+                          width: stageWidth,
+                          height: stageHeight,
+                          child: NotificationListener<ScrollNotification>(
+                            onNotification: _handleCarouselScroll,
+                            child: PageView.builder(
+                              controller: _pageController,
+                              itemCount: state.queue.length,
+                              physics: state.queue.length > 1
+                                  ? const PageScrollPhysics()
+                                  : const NeverScrollableScrollPhysics(),
+                              itemBuilder: (context, index) {
+                                final item = state.queue[index];
+                                final hasArtwork = _songHasArtwork(
+                                  item,
+                                  customCovers,
+                                );
+                                final itemSize = coverSize;
+                                return AnimatedBuilder(
+                                  animation: _pageController,
+                                  builder: (context, child) {
+                                    final page = _pageController.hasClients
+                                        ? (_pageController.page ??
+                                              engineIndex.toDouble())
+                                        : engineIndex.toDouble();
+                                    final distance = (page - index)
+                                        .abs()
+                                        .clamp(0.0, 1.0)
+                                        .toDouble();
+                                    return Transform.translate(
+                                      offset: Offset(0, distance * 8),
+                                      child: Transform.scale(
+                                        scale: 1 - distance * 0.065,
+                                        child: Opacity(
+                                          opacity: 1 - distance * 0.28,
+                                          child: child,
+                                        ),
+                                      ),
+                                    );
+                                  },
+                                  child: GestureDetector(
+                                    onTap: () async {
+                                      if (index != engineIndex) {
+                                        _requestIndex(index);
+                                        return;
+                                      }
+                                      await widget.onOpenFullscreen(
+                                        item,
+                                        widget.visualScene,
+                                      );
+                                    },
+                                    child: Center(
+                                      child: OverflowBox(
+                                        alignment: Alignment.center,
+                                        minWidth: itemSize,
+                                        maxWidth: itemSize,
+                                        minHeight: itemSize,
+                                        maxHeight: itemSize,
+                                        child: _buildCarouselArtwork(
+                                          song: item,
+                                          size: itemSize,
+                                          hasArtwork: hasArtwork,
+                                          isCurrent: index == engineIndex,
+                                          isPlaying: state.isPlaying,
+                                          scheme: scheme,
+                                          staticFallback: true,
+                                        ),
+                                      ),
                                     ),
                                   ),
                                 );
                               },
-                              child: GestureDetector(
-                                onTap: () async {
-                                  if (index != engineIndex) {
-                                    _requestIndex(index);
-                                    return;
-                                  }
-                                  await widget.onOpenFullscreen(
-                                    item,
-                                    widget.visualScene,
-                                  );
-                                },
-                                child: Center(
-                                  child: OverflowBox(
-                                    alignment: Alignment.center,
-                                    minWidth: itemSize,
-                                    maxWidth: itemSize,
-                                    minHeight: itemSize,
-                                    maxHeight: itemSize,
-                                    child: _buildCarouselArtwork(
-                                      song: item,
-                                      size: itemSize,
-                                      hasArtwork: hasArtwork,
-                                      isCurrent: index == engineIndex,
-                                      isPlaying: state.isPlaying,
-                                      scheme: scheme,
-                                      staticFallback: true,
-                                    ),
-                                  ),
-                                ),
-                              ),
-                            );
-                          },
+                            ),
+                          ),
                         ),
                       ),
-                    ),
-                  ),
+              ),
+            );
+          },
+        ),
+        if (showSingleVisualizer && (appSettings?.aurisCameoEnabled ?? true))
+          Positioned(
+            right: 16,
+            bottom: 16,
+            child: DancingAuris(
+              key: ValueKey('dancing-auris-${activeSong.id}'),
+              song: activeSong,
+            ),
           ),
-        );
-      },
+      ],
     );
     final details = Column(
       mainAxisSize: MainAxisSize.min,

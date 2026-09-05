@@ -5,6 +5,7 @@ import 'package:nuvtune/app/localization/strings.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
+import 'package:nuvtune/shared/widgets/confirm_dialog.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
 
 /// Fuentes remotas (requerimiento seccion 10).
@@ -67,7 +68,7 @@ class RemoteSourcesScreen extends ConsumerWidget {
                   ),
                   trailing: IconButton(
                     icon: const Icon(Icons.delete_outline_rounded),
-                    onPressed: () => _remove(ref, source),
+                    onPressed: () => _remove(context, ref, source),
                   ),
                   onTap: () => _open(context, ref, source),
                 ),
@@ -108,7 +109,17 @@ class RemoteSourcesScreen extends ConsumerWidget {
     await ref.read(playbackProvider.notifier).playSongs(songs);
   }
 
-  Future<void> _remove(WidgetRef ref, RemoteSource source) async {
+  Future<void> _remove(
+    BuildContext context,
+    WidgetRef ref,
+    RemoteSource source,
+  ) async {
+    final confirmed = await confirmDestructiveAction(
+      context,
+      title: 'Quitar fuente remota',
+      message: 'Se quitará "${source.name}" de las fuentes remotas.',
+    );
+    if (!confirmed) return;
     await ref.read(engineProvider).api.removeRemoteSource(source.id);
     ref.invalidate(remoteSourcesProvider);
   }
@@ -379,6 +390,7 @@ class _RemoteBrowserScreenState extends ConsumerState<RemoteBrowserScreen> {
               return const EmptyState(
                 icon: Icons.folder_open_outlined,
                 title: 'Carpeta vacía',
+                message: 'No hay archivos ni carpetas aquí.',
               );
             }
 

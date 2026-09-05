@@ -337,6 +337,17 @@ class _PlayerAppearancePanel extends ConsumerWidget {
                 AppSettingsCompanion(visualizerRandomColors: Value(value)),
               ),
             ),
+            SwitchListTile(
+              secondary: const Icon(Icons.emoji_emotions_outlined),
+              title: const Text('Cameo de Auris'),
+              subtitle: const Text(
+                'Auris aparece de vez en cuando bailando al ritmo, dentro del visualizador.',
+              ),
+              value: settings.aurisCameoEnabled,
+              onChanged: (value) => mutation.save(
+                AppSettingsCompanion(aurisCameoEnabled: Value(value)),
+              ),
+            ),
           ],
         ),
         const SettingsSectionLabel('Letras'),

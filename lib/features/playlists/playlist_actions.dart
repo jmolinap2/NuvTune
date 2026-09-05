@@ -8,6 +8,7 @@ import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/playlists/gift_send_wizard.dart';
 import 'package:nuvtune/features/playlists/m3u.dart';
 import 'package:nuvtune/shared/widgets/add_to_playlist_sheet.dart';
+import 'package:nuvtune/shared/widgets/confirm_dialog.dart';
 
 /// Acciones sobre una lista de reproduccion (requerimiento seccion 4.4):
 /// renombrar, cambiar portada, duplicar, exportar e importar M3U, compartir el
@@ -226,34 +227,17 @@ class _PlaylistActionsSheet extends ConsumerWidget {
     navigator.pop();
   }
 
-  void _confirmDelete(BuildContext context, WidgetRef ref) {
+  Future<void> _confirmDelete(BuildContext context, WidgetRef ref) async {
     final sheetNavigator = Navigator.of(context);
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.delete),
-        content: Text(
+    final confirmed = await confirmDestructiveAction(
+      context,
+      title: AppStrings.delete,
+      message:
           'Se eliminara la lista "$playlistName".\n\n'
           '${AppStrings.deletePlaylistNote}',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(AppStrings.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              await ref.read(playlistRepositoryProvider).delete(playlistId);
-              sheetNavigator.pop();
-            },
-            child: const Text(AppStrings.delete),
-          ),
-        ],
-      ),
     );
+    if (!confirmed) return;
+    await ref.read(playlistRepositoryProvider).delete(playlistId);
+    sheetNavigator.pop();
   }
 }

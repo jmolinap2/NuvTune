@@ -1,4 +1,7 @@
+import 'dart:async';
+
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/localization/strings.dart';
@@ -9,6 +12,7 @@ import 'package:nuvtune/core/utils/formatters.dart';
 import 'package:nuvtune/features/library/library_controller.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/shared/widgets/add_to_playlist_sheet.dart';
+import 'package:nuvtune/shared/widgets/confirm_dialog.dart';
 import 'package:nuvtune/shared/widgets/cover_art.dart';
 
 /// Menu contextual de una cancion con todas las acciones del requerimiento
@@ -120,6 +124,7 @@ class _SongActionsSheet extends ConsumerWidget {
               label: isFavorite ? 'Quitar de favoritos' : AppStrings.favorite,
               onTap: () {
                 Navigator.of(context).pop();
+                HapticFeedback.selectionClick();
                 playback.toggleFavorite(song.id);
               },
             ),
@@ -218,12 +223,8 @@ class _SongActionsSheet extends ConsumerWidget {
               destructive: true,
               onTap: () {
                 Navigator.of(context).pop();
-                _confirmDelete(
-                  rootContext,
-                  engine,
-                  playback,
-                  library,
-                  messenger,
+                unawaited(
+                  _confirmDelete(rootContext, engine, playback, library, messenger),
                 );
               },
             ),
@@ -286,6 +287,7 @@ class _SongActionsSheet extends ConsumerWidget {
           ),
           FilledButton(
             onPressed: () {
+              HapticFeedback.selectionClick();
               Navigator.of(dialogContext).pop();
               library.excludeFolder(song.folderPath);
             },
@@ -298,72 +300,49 @@ class _SongActionsSheet extends ConsumerWidget {
 
   /// El requerimiento seccion 16 exige diferenciar quitar de la biblioteca de
   /// eliminar del dispositivo; esta accion borra el archivo y lo advierte.
-  void _confirmDelete(
+  Future<void> _confirmDelete(
     BuildContext context,
     EngineBridge engine,
     PlaybackController playback,
     LibraryController library,
     ScaffoldMessengerState messenger,
-  ) {
-    showDialog<void>(
-      context: context,
-      builder: (dialogContext) => AlertDialog(
-        title: const Text(AppStrings.deleteFromDevice),
-        content: Text(
+  ) async {
+    final confirmed = await confirmDestructiveAction(
+      context,
+      title: AppStrings.deleteFromDevice,
+      message:
           'Se eliminara el archivo del dispositivo:\n\n${song.title}\n\n'
           'Esta acción no se puede deshacer.',
-        ),
-        actions: [
-          TextButton(
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text(AppStrings.cancel),
-          ),
-          FilledButton(
-            style: FilledButton.styleFrom(
-              backgroundColor: Theme.of(dialogContext).colorScheme.error,
-            ),
-            onPressed: () async {
-              Navigator.of(dialogContext).pop();
-              try {
-                final result = await engine.api.deleteSongFile(song.id);
-                switch (result.outcome) {
-                  case WriteOutcome.success:
-                    await playback.removeSongById(song.id);
-                    await library.scan();
-                    messenger.showSnackBar(
-                      const SnackBar(
-                        content: Text('Canción eliminada del dispositivo'),
-                      ),
-                    );
-                  case WriteOutcome.deniedByUser:
-                    messenger.showSnackBar(
-                      const SnackBar(content: Text('Eliminación cancelada')),
-                    );
-                  case WriteOutcome.needsUserConsent:
-                  case WriteOutcome.unsupportedFormat:
-                  case WriteOutcome.integrityCheckFailed:
-                    messenger.showSnackBar(
-                      SnackBar(
-                        content: Text(
-                          result.message ?? 'No se pudo eliminar el archivo',
-                        ),
-                      ),
-                    );
-                }
-              } on Object catch (error) {
-                debugPrint('No se pudo eliminar ${song.filePath}: $error');
-                messenger.showSnackBar(
-                  const SnackBar(
-                    content: Text('No se pudo eliminar el archivo'),
-                  ),
-                );
-              }
-            },
-            child: const Text(AppStrings.delete),
-          ),
-        ],
-      ),
     );
+    if (!confirmed) return;
+    try {
+      final result = await engine.api.deleteSongFile(song.id);
+      switch (result.outcome) {
+        case WriteOutcome.success:
+          await playback.removeSongById(song.id);
+          await library.scan();
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Canción eliminada del dispositivo')),
+          );
+        case WriteOutcome.deniedByUser:
+          messenger.showSnackBar(
+            const SnackBar(content: Text('Eliminación cancelada')),
+          );
+        case WriteOutcome.needsUserConsent:
+        case WriteOutcome.unsupportedFormat:
+        case WriteOutcome.integrityCheckFailed:
+          messenger.showSnackBar(
+            SnackBar(
+              content: Text(result.message ?? 'No se pudo eliminar el archivo'),
+            ),
+          );
+      }
+    } on Object catch (error) {
+      debugPrint('No se pudo eliminar ${song.filePath}: $error');
+      messenger.showSnackBar(
+        const SnackBar(content: Text('No se pudo eliminar el archivo')),
+      );
+    }
   }
 }
 

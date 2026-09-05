@@ -49,6 +49,14 @@ class MiniPlayer extends ConsumerWidget {
                     }
                     return false;
                   },
+                  background: const _SwipeHint(
+                    icon: Icons.skip_previous_rounded,
+                    alignment: Alignment.centerLeft,
+                  ),
+                  secondaryBackground: const _SwipeHint(
+                    icon: Icons.skip_next_rounded,
+                    alignment: Alignment.centerRight,
+                  ),
                   child: Row(
                     children: [
                       Padding(
@@ -143,6 +151,27 @@ class _MiniProgressBar extends ConsumerWidget {
       backgroundColor: Theme.of(
         context,
       ).colorScheme.onSurface.withValues(alpha: 0.12),
+    );
+  }
+}
+
+/// Fondo revelado al arrastrar el mini reproductor. Antes el gesto de
+/// cambiar de pista no tenia ninguna pista visual de que existiera, a
+/// diferencia del deslizar-para-quitar de la cola.
+class _SwipeHint extends StatelessWidget {
+  const _SwipeHint({required this.icon, required this.alignment});
+
+  final IconData icon;
+  final Alignment alignment;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return Container(
+      alignment: alignment,
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      color: scheme.primaryContainer,
+      child: Icon(icon, color: scheme.onPrimaryContainer),
     );
   }
 }

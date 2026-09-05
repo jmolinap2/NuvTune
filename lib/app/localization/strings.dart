@@ -71,6 +71,8 @@ abstract final class AppStrings {
   static const repeatAll = 'Repetir lista';
   static const shuffle = 'Aleatorio';
   static const favorite = 'Favorito';
+  static const videoBackgroundUnavailable =
+      'No se pudo cargar el video musical de esta canción';
 
   // Cola
   static const saveQueueAsPlaylist = 'Guardar la cola como lista';
@@ -158,6 +160,18 @@ abstract final class AppStrings {
   static const coverEmbedInFile = 'Incrustar la portada en el archivo';
   static const coverAppOnly = 'Usar la portada solo dentro de la aplicación';
   static const batchApply = 'Aplicar en lote';
+
+  // Completar metadata con internet
+  static const metadataLookupTitle = 'Completar con internet';
+  static const metadataLookupSubtitle =
+      'Busca en MusicBrainz género, artista, compositor y portada de las '
+      'canciones a las que les falte alguno.';
+  static const metadataLookupStart = 'Buscar coincidencias';
+  static const metadataLookupStop = 'Detener búsqueda';
+  static const metadataLookupApplySelected = 'Aplicar seleccionadas';
+  static const metadataLookupNoPending =
+      'Género, artista y compositor ya están completos';
+  static const metadataLookupNoMatch = 'Sin coincidencia';
 
   // Letras
   static const noLyrics = 'Esta canción no tiene letra guardada';

@@ -1,3 +1,4 @@
+import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 
 /// Por que se pide mantener la pantalla encendida.
@@ -15,6 +16,47 @@ enum ScreenWakeReason {
   /// Modo entrenamiento: la pantalla se mira de reojo mientras se trota, sin
   /// manos libres para tocarla.
   trainingMode,
+
+  /// El usuario eligio [ScreenWakeMode.always]: la pantalla no se apaga
+  /// mientras el reproductor completo este abierto, sin importar que se este
+  /// viendo en ese momento.
+  always,
+}
+
+/// Cuando el usuario quiere que la pantalla no se apague sola.
+///
+/// No es una razon mas de [ScreenWakeReason]: decide si [videoBackground] y
+/// [trainingMode] llegan a pedir la pantalla encendida o no, ademas de poder
+/// activar [ScreenWakeReason.always] por si mismo.
+enum ScreenWakeMode {
+  automatic(
+    'Automático',
+    'Solo mientras se ve un video de fondo o el modo entrenamiento está '
+        'activo',
+    Icons.auto_awesome_rounded,
+  ),
+  always(
+    'Siempre',
+    'La pantalla no se apaga mientras el reproductor está abierto',
+    Icons.brightness_high_rounded,
+  ),
+  never(
+    'Nunca',
+    'La pantalla se apaga según el ajuste del sistema, incluso con video de '
+        'fondo o modo entrenamiento',
+    Icons.brightness_low_rounded,
+  );
+
+  const ScreenWakeMode(this.label, this.description, this.icon);
+
+  final String label;
+  final String description;
+  final IconData icon;
+
+  static ScreenWakeMode fromIndex(int index) {
+    if (index < 0 || index >= values.length) return automatic;
+    return values[index];
+  }
 }
 
 /// Mantiene la pantalla encendida mientras haya alguna razon activa.

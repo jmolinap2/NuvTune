@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/app/localization/strings.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
@@ -6,6 +7,7 @@ import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/core/utils/formatters.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/shared/widgets/add_to_playlist_sheet.dart';
+import 'package:nuvtune/shared/widgets/confirm_dialog.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
 import 'package:nuvtune/shared/widgets/song_tile.dart';
 
@@ -38,13 +40,16 @@ class QueueList extends ConsumerWidget {
           _QueueHeader(
             queue: state.queue,
             onSaveAsPlaylist: () => _saveAsPlaylist(context, ref, state.queue),
-            onClear: controller.clearQueue,
+            onClear: () => _confirmClear(context, controller),
           ),
         Expanded(
           child: ReorderableListView.builder(
             padding: const EdgeInsets.only(bottom: 24),
             itemCount: state.queue.length,
-            onReorderItem: controller.moveInQueue,
+            onReorderItem: (oldIndex, newIndex) {
+              HapticFeedback.selectionClick();
+              controller.moveInQueue(oldIndex, newIndex);
+            },
             itemBuilder: (context, index) {
               final song = state.queue[index];
               final isCurrent = index == state.snapshot.currentIndex;
@@ -58,7 +63,10 @@ class QueueList extends ConsumerWidget {
                   color: Theme.of(context).colorScheme.errorContainer,
                   child: const Icon(Icons.remove_circle_outline_rounded),
                 ),
-                onDismissed: (_) => controller.removeFromQueue(index),
+                onDismissed: (_) {
+                  HapticFeedback.selectionClick();
+                  controller.removeFromQueue(index);
+                },
                 child: SongTile(
                   song: song,
                   dense: true,
@@ -91,6 +99,20 @@ class QueueList extends ConsumerWidget {
         ),
       ],
     );
+  }
+
+  Future<void> _confirmClear(
+    BuildContext context,
+    PlaybackController controller,
+  ) async {
+    final confirmed = await confirmDestructiveAction(
+      context,
+      title: AppStrings.clearQueue,
+      message:
+          'Se quitarán todas las canciones de la cola. Esto no se puede '
+          'deshacer.',
+    );
+    if (confirmed) controller.clearQueue();
   }
 
   Future<void> _saveAsPlaylist(

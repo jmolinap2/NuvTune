@@ -1,4 +1,5 @@
 import 'dart:async';
+import 'dart:math';
 
 import 'package:collection/collection.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
@@ -270,7 +271,15 @@ class PlaybackController extends Notifier<PlaybackState> {
     final playable = songs.where((song) => song.isSupported).toList();
     if (playable.isEmpty) return;
 
-    final index = startIndex.clamp(0, playable.length - 1);
+    // El aleatorio solo reordena los "siguiente"/"anterior" a partir de la
+    // pista con la que arranca; `setQueue` la fija con una orden directa de
+    // busqueda, ajena al orden aleatorio. Si aqui siempre se pidiera el
+    // indice 0 (el valor por omision cuando quien llama no elige una
+    // cancion concreta), "reproducir aleatoriamente" empezaria siempre por
+    // la primera de la lista ordenada, cancion tras cancion.
+    final index = shuffle
+        ? Random().nextInt(playable.length)
+        : startIndex.clamp(0, playable.length - 1);
     _countedSongId = null;
     _api.setShuffle(shuffle);
     _api.setQueue(playable, index, 0, true);

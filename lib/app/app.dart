@@ -96,6 +96,16 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
     final themeMode = appearance.identity.brightness == Brightness.light
         ? ThemeMode.light
         : ThemeMode.dark;
+    // MaterialApp ya cruza-desvanece el tema por su cuenta (`AnimatedTheme`
+    // interno), pero con una duracion fija propia de Flutter. Pasarle la
+    // nuestra hace que el cambio de acento/tema respete el perfil de
+    // movimiento de Apariencia y "Reducir movimiento" del sistema, en lugar
+    // de animarse siempre igual sin importar el ajuste.
+    final themeAnimationDuration = appearance.motion.scale(
+      Tokens.durationMedium,
+      systemReduceMotion: MediaQuery.disableAnimationsOf(context),
+    );
+    final themeAnimationCurve = appearance.motion.curve;
 
     return ThemeScope(
       appearance: appearance,
@@ -106,6 +116,8 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
               theme: lightTheme,
               darkTheme: darkTheme,
               themeMode: themeMode,
+              themeAnimationDuration: themeAnimationDuration,
+              themeAnimationCurve: themeAnimationCurve,
               routerConfig: ref.watch(_routerProvider),
               builder: _wrapErrors,
             )
@@ -115,6 +127,8 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
               theme: lightTheme,
               darkTheme: darkTheme,
               themeMode: themeMode,
+              themeAnimationDuration: themeAnimationDuration,
+              themeAnimationCurve: themeAnimationCurve,
               home: _BootstrapScreen(state: bootstrap),
               builder: _wrapErrors,
             ),

@@ -1,5 +1,7 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/core/network/connectivity_service.dart';
+import 'package:nuvtune/core/network/cover_art_archive_client.dart';
+import 'package:nuvtune/core/network/musicbrainz_client.dart';
 import 'package:nuvtune/core/network/piped_client.dart';
 import 'package:nuvtune/core/permissions/permission_service.dart';
 import 'package:nuvtune/core/sensors/motion_service.dart';
@@ -98,6 +100,23 @@ final pipedClientProvider = Provider<PipedClient>((ref) {
 final connectivityServiceProvider = Provider<ConnectivityService>(
   (ref) => const ConnectivityService(),
 );
+
+/// Cliente de la API publica de MusicBrainz, usado solo para completar
+/// genero, artista y compositor de canciones cuyo archivo no los trae.
+final musicBrainzClientProvider = Provider<MusicBrainzClient>((ref) {
+  final client = MusicBrainzClient();
+  ref.onDispose(client.dispose);
+  return client;
+});
+
+/// Cliente de Cover Art Archive, usado para completar la portada de
+/// canciones sin caratula a partir del lanzamiento que ya identifico
+/// MusicBrainz.
+final coverArtArchiveClientProvider = Provider<CoverArtArchiveClient>((ref) {
+  final client = CoverArtArchiveClient();
+  ref.onDispose(client.dispose);
+  return client;
+});
 
 /// Ultimo estado de Wi-Fi conocido, compartido por todo lo que dependa de red
 /// solo-Wi-Fi.

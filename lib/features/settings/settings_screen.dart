@@ -267,6 +267,13 @@ const _settingsDestinations = <_SettingsDestination>[
     keywords: ['escanear', 'carpetas', 'excluir'],
   ),
   _SettingsDestination(
+    title: 'Completar con internet',
+    subtitle: 'Busca género, artista y compositor en MusicBrainz',
+    route: '/settings/library/metadata-lookup',
+    icon: Icons.travel_explore_rounded,
+    keywords: ['metadata', 'género', 'compositor', 'musicbrainz', 'etiquetas'],
+  ),
+  _SettingsDestination(
     title: 'Fuentes y descargas',
     subtitle: 'SMB, WebDAV, radio y búsqueda en internet',
     route: '/settings/sources',

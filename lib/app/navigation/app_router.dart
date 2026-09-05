@@ -1,7 +1,9 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
+import 'package:nuvtune/app/navigation/page_transitions.dart';
 import 'package:nuvtune/app/navigation/root_shell.dart';
+import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/downloads/song_search_screen.dart';
 import 'package:nuvtune/features/downloads/youtube_login_screen.dart';
@@ -10,6 +12,7 @@ import 'package:nuvtune/features/home/home_screen.dart';
 import 'package:nuvtune/features/library/library_screen.dart';
 import 'package:nuvtune/features/library/song_collection_screen.dart';
 import 'package:nuvtune/features/metadata_editor/batch_editor_screen.dart';
+import 'package:nuvtune/features/metadata_editor/metadata_lookup_screen.dart';
 import 'package:nuvtune/features/metadata_editor/song_editor_screen.dart';
 import 'package:nuvtune/features/player/player_screen.dart';
 import 'package:nuvtune/features/playlists/gift_intro_screen.dart';
@@ -37,7 +40,8 @@ import 'package:nuvtune/features/settings/settings_screen.dart';
 /// StatefulShellRoute, de modo que cada una conserva su propia pila y su
 /// posicion de desplazamiento al cambiar de pestana (requerimiento seccion 4.1).
 /// Las pantallas que se abren encima, como el reproductor completo o el editor,
-/// van fuera del shell para que ocupen toda la altura.
+/// van fuera del shell para que ocupen toda la altura y usan
+/// [buildFadeSlidePage] para una transicion consistente entre si.
 GoRouter createRouter() {
   final rootNavigatorKey = GlobalKey<NavigatorState>();
 
@@ -87,94 +91,134 @@ GoRouter createRouter() {
       GoRoute(
         path: '/player',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => CustomTransitionPage<void>(
-          key: state.pageKey,
-          transitionDuration: const Duration(milliseconds: 420),
-          reverseTransitionDuration: const Duration(milliseconds: 320),
-          child: const PlayerScreen(),
-          transitionsBuilder: (context, animation, secondaryAnimation, child) {
-            final curved = CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-              reverseCurve: Curves.easeInCubic,
-            );
-            return FadeTransition(
-              opacity: curved,
-              child: SlideTransition(
-                position: Tween<Offset>(
-                  begin: const Offset(0, 0.08),
-                  end: Offset.zero,
-                ).animate(curved),
-                child: child,
-              ),
-            );
-          },
-        ),
+        pageBuilder: (context, state) {
+          final motion = ThemeScope.of(context).motion;
+          final reduceMotion = MediaQuery.disableAnimationsOf(context);
+          return CustomTransitionPage<void>(
+            key: state.pageKey,
+            transitionDuration: motion.scale(
+              const Duration(milliseconds: 420),
+              systemReduceMotion: reduceMotion,
+            ),
+            reverseTransitionDuration: motion.scale(
+              const Duration(milliseconds: 320),
+              systemReduceMotion: reduceMotion,
+            ),
+            child: const PlayerScreen(),
+            transitionsBuilder: (context, animation, secondaryAnimation, child) {
+              final curved = CurvedAnimation(
+                parent: animation,
+                curve: Curves.easeOutCubic,
+                reverseCurve: Curves.easeInCubic,
+              );
+              return FadeTransition(
+                opacity: curved,
+                child: SlideTransition(
+                  position: Tween<Offset>(
+                    begin: const Offset(0, 0.08),
+                    end: Offset.zero,
+                  ).animate(curved),
+                  child: child,
+                ),
+              );
+            },
+          );
+        },
       ),
       GoRoute(
         path: '/queue',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const QueueScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const QueueScreen()),
       ),
       GoRoute(
         path: '/equalizer',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const EqualizerScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const EqualizerScreen()),
       ),
 
       GoRoute(
         path: '/album/:id',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongCollectionScreen(
-          source: CollectionSource.album(
-            int.parse(state.pathParameters['id']!),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongCollectionScreen(
+            source: CollectionSource.album(
+              int.parse(state.pathParameters['id']!),
+            ),
           ),
         ),
       ),
       GoRoute(
         path: '/artist/:id',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongCollectionScreen(
-          source: CollectionSource.artist(
-            int.parse(state.pathParameters['id']!),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongCollectionScreen(
+            source: CollectionSource.artist(
+              int.parse(state.pathParameters['id']!),
+            ),
           ),
         ),
       ),
       GoRoute(
         path: '/folder',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongCollectionScreen(
-          source: CollectionSource.folder(
-            state.uri.queryParameters['path'] ?? '',
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongCollectionScreen(
+            source: CollectionSource.folder(
+              state.uri.queryParameters['path'] ?? '',
+            ),
           ),
         ),
       ),
       GoRoute(
         path: '/genre/:name',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongCollectionScreen(
-          source: CollectionSource.genre(state.pathParameters['name']!),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongCollectionScreen(
+            source: CollectionSource.genre(state.pathParameters['name']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/composer/:name',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongCollectionScreen(
-          source: CollectionSource.composer(state.pathParameters['name']!),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongCollectionScreen(
+            source: CollectionSource.composer(state.pathParameters['name']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/collection/:kind',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongCollectionScreen(
-          source: CollectionSource.named(state.pathParameters['kind']!),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongCollectionScreen(
+            source: CollectionSource.named(state.pathParameters['kind']!),
+          ),
         ),
       ),
       GoRoute(
         path: '/smart/:kind',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => SongCollectionScreen(
-          source: CollectionSource.smart(state.pathParameters['kind']!),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongCollectionScreen(
+            source: CollectionSource.smart(state.pathParameters['kind']!),
+          ),
         ),
       ),
 
@@ -183,14 +227,19 @@ GoRouter createRouter() {
       GoRoute(
         path: '/remote-sources',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const RemoteSourcesScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const RemoteSourcesScreen()),
       ),
       GoRoute(
         path: '/remote/:id',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => RemoteBrowserScreen(
-          sourceId: int.parse(state.pathParameters['id']!),
-          title: state.uri.queryParameters['name'] ?? 'Fuente remota',
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          RemoteBrowserScreen(
+            sourceId: int.parse(state.pathParameters['id']!),
+            title: state.uri.queryParameters['name'] ?? 'Fuente remota',
+          ),
         ),
       ),
 
@@ -213,8 +262,12 @@ GoRouter createRouter() {
           }
           return null;
         },
-        builder: (context, state) => PlaylistDetailScreen(
-          playlistId: int.parse(state.pathParameters['id']!),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          PlaylistDetailScreen(
+            playlistId: int.parse(state.pathParameters['id']!),
+          ),
         ),
       ),
       // Asistente de recepcion de un regalo. `uri` llega cuando el archivo se
@@ -222,27 +275,39 @@ GoRouter createRouter() {
       GoRoute(
         path: '/gift/receive',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            GiftReceiveWizard(initialUri: state.uri.queryParameters['uri']),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          GiftReceiveWizard(initialUri: state.uri.queryParameters['uri']),
+        ),
       ),
       GoRoute(
         path: '/playlist/:id/gift',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            GiftIntroScreen(playlistId: int.parse(state.pathParameters['id']!)),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          GiftIntroScreen(playlistId: int.parse(state.pathParameters['id']!)),
+        ),
       ),
 
       GoRoute(
         path: '/song/:id/edit',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            SongEditorScreen(songId: int.parse(state.pathParameters['id']!)),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          SongEditorScreen(songId: int.parse(state.pathParameters['id']!)),
+        ),
       ),
       GoRoute(
         path: '/batch-edit',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            BatchEditorScreen(songIds: (state.extra as List<int>?) ?? const []),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          BatchEditorScreen(songIds: (state.extra as List<int>?) ?? const []),
+        ),
       ),
 
       // Descargas desde internet (feature "Buscar y descargar canciones").
@@ -252,100 +317,154 @@ GoRouter createRouter() {
       GoRoute(
         path: '/downloads',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const SongSearchScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const SongSearchScreen()),
       ),
       GoRoute(
         path: '/downloads/youtube-login',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const YouTubeLoginScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const YouTubeLoginScreen()),
       ),
 
       // Personalización
       GoRoute(
         path: '/settings/appearance',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) {
+        pageBuilder: (context, state) {
           // `?tab=` sigue existiendo solo para los accesos antiguos a
           // Movimiento y Widget, que ya no cuelgan de Apariencia.
           final tab = state.uri.queryParameters['tab'];
-          if (tab == null) return const AppThemeScreen();
-          return AppearanceScreen(initialTab: AppearanceTab.byId(tab));
+          final screen = tab == null
+              ? const AppThemeScreen()
+              : AppearanceScreen(initialTab: AppearanceTab.byId(tab));
+          return buildFadeSlidePage(context, state, screen);
         },
       ),
       GoRoute(
         path: '/settings/player',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AppearanceScreen(initialTab: AppearanceTab.player),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const AppearanceScreen(initialTab: AppearanceTab.player),
+        ),
       ),
       GoRoute(
         path: '/settings/player/visualizer',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AppearanceScreen(initialTab: AppearanceTab.player),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const AppearanceScreen(initialTab: AppearanceTab.player),
+        ),
       ),
       GoRoute(
         path: '/settings/player/visualizer/colors',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const VisualizerColorMapScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const VisualizerColorMapScreen(),
+        ),
       ),
 
       // Configuración
       GoRoute(
         path: '/settings/controls',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ControlsAndGesturesScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const ControlsAndGesturesScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/controls/layout',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ControlLayoutScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const ControlLayoutScreen()),
       ),
       GoRoute(
         path: '/settings/playback',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const PlaybackAudioSettingsScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const PlaybackAudioSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/library',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const LibrarySettingsScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const LibrarySettingsScreen(),
+        ),
+      ),
+      GoRoute(
+        path: '/settings/library/metadata-lookup',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const MetadataLookupScreen()),
       ),
       GoRoute(
         path: '/settings/sources',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const SourcesSettingsScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const SourcesSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/widget',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) =>
-            const AppearanceScreen(initialTab: AppearanceTab.widget),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const AppearanceScreen(initialTab: AppearanceTab.widget),
+        ),
       ),
       GoRoute(
         path: '/settings/system',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const SystemSettingsScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const SystemSettingsScreen()),
       ),
       GoRoute(
         path: '/settings/system/devices',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const DevicesSettingsScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const DevicesSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/system/data',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const DataFilesSettingsScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const DataFilesSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/system/diagnostics',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const DiagnosticsSettingsScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const DiagnosticsSettingsScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/system/about',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const AboutSettingsScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const AboutSettingsScreen()),
       ),
 
       // Rutas antiguas: se conservan como redirección para no romper accesos
@@ -383,22 +502,32 @@ GoRouter createRouter() {
       GoRoute(
         path: '/settings/excluded-folders',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const ExcludedFoldersScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const ExcludedFoldersScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/source-folders',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const SourceFoldersScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const SourceFoldersScreen()),
       ),
       GoRoute(
         path: '/settings/playback-failure-log',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const PlaybackFailureLogScreen(),
+        pageBuilder: (context, state) => buildFadeSlidePage(
+          context,
+          state,
+          const PlaybackFailureLogScreen(),
+        ),
       ),
       GoRoute(
         path: '/settings/video-match-log',
         parentNavigatorKey: rootNavigatorKey,
-        builder: (context, state) => const VideoMatchLogScreen(),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const VideoMatchLogScreen()),
       ),
     ],
   );

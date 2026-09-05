@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/localization/strings.dart';
@@ -77,9 +78,12 @@ class PlaylistDetailScreen extends ConsumerWidget {
                     itemCount: songs.length,
                     // onReorderItem ya entrega el indice destino ajustado al
                     // hueco que deja el elemento movido.
-                    onReorderItem: (oldIndex, newIndex) => ref
-                        .read(playlistRepositoryProvider)
-                        .move(playlistId, oldIndex, newIndex),
+                    onReorderItem: (oldIndex, newIndex) {
+                      HapticFeedback.selectionClick();
+                      ref
+                          .read(playlistRepositoryProvider)
+                          .move(playlistId, oldIndex, newIndex);
+                    },
                     itemBuilder: (context, index) {
                       final song = songs[index];
                       return _PlaylistSongTile(

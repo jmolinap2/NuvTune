@@ -4,10 +4,12 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:go_router/go_router.dart';
 import 'package:nuvtune/app/localization/strings.dart';
 import 'package:nuvtune/app/theme/design_tokens.dart';
+import 'package:nuvtune/core/platform/screen_wake.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/settings/settings_components.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
+import 'package:nuvtune/shared/widgets/option_picker.dart';
 
 /// Sistema: todo lo que toca el sistema operativo, los archivos o el
 /// diagnóstico. Sustituye a «Sistema y ayuda» y a «Datos y privacidad», que
@@ -102,6 +104,19 @@ class DevicesSettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SettingsSectionLabel('Pantalla'),
+          SettingsGroup(
+            children: [
+              SettingsNavigationRow(
+                icon: ScreenWakeMode.fromIndex(settings.screenWakeMode).icon,
+                title: 'Mantener la pantalla encendida',
+                subtitle: ScreenWakeMode.fromIndex(
+                  settings.screenWakeMode,
+                ).label,
+                onTap: () => _showScreenWakePicker(context, ref, settings),
+              ),
+            ],
+          ),
           const SettingsSectionLabel('Integraciones'),
           const SettingsInfoPanel(
             icon: Icons.bluetooth_rounded,
@@ -120,6 +135,31 @@ class DevicesSettingsScreen extends ConsumerWidget {
       ),
     );
   }
+}
+
+Future<void> _showScreenWakePicker(
+  BuildContext context,
+  WidgetRef ref,
+  AppSetting settings,
+) async {
+  final choice = await showOptionPicker<ScreenWakeMode>(
+    context,
+    title: 'Mantener la pantalla encendida',
+    selected: ScreenWakeMode.fromIndex(settings.screenWakeMode),
+    options: [
+      for (final mode in ScreenWakeMode.values)
+        OptionPickerItem(
+          value: mode,
+          icon: mode.icon,
+          label: mode.label,
+          description: mode.description,
+        ),
+    ],
+  );
+  if (choice == null) return;
+  await ref
+      .read(settingsMutationProvider.notifier)
+      .save(AppSettingsCompanion(screenWakeMode: Value(choice.index)));
 }
 
 class DataFilesSettingsScreen extends ConsumerWidget {

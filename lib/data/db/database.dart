@@ -277,8 +277,7 @@ class SongVideoIds extends Table {
 /// datos del usuario.
 class VideoMatchLog extends Table {
   IntColumn get id => integer().autoIncrement()();
-  DateTimeColumn get resolvedAt =>
-      dateTime().withDefault(currentDateAndTime)();
+  DateTimeColumn get resolvedAt => dateTime().withDefault(currentDateAndTime)();
 
   /// Cancion local que pidio el video.
   TextColumn get songTitle => text()();
@@ -510,6 +509,17 @@ class AppSettings extends Table {
   BoolColumn get trainingModeDetectionEnabled =>
       boolean().withDefault(const Constant(false))();
 
+  /// Auris aparece ocasionalmente bailando al ritmo dentro del visualizador.
+  /// Activado por defecto: es un cameo chico y de aparición discreta, no un
+  /// cambio visual grande como el fondo de video.
+  BoolColumn get aurisCameoEnabled =>
+      boolean().withDefault(const Constant(true))();
+
+  /// Indice de `ScreenWakeMode`. Por defecto conserva el comportamiento
+  /// anterior a este ajuste: la pantalla solo se mantiene encendida durante
+  /// el video de fondo o el modo entrenamiento.
+  IntColumn get screenWakeMode => integer().withDefault(const Constant(0))();
+
   @override
   Set<Column<Object>> get primaryKey => {id};
 }
@@ -544,7 +554,7 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
   NuvTuneDatabase.forTesting(super.executor);
 
   @override
-  int get schemaVersion => 21;
+  int get schemaVersion => 23;
 
   /// Las migraciones solo agregan; nunca reescriben lo existente, de modo que
   /// una instalacion previa conserva favoritos, listas, historial y cola.
@@ -761,6 +771,12 @@ class NuvTuneDatabase extends _$NuvTuneDatabase {
       }
       if (from < 21) {
         await migrator.createTable(videoMatchLog);
+      }
+      if (from < 22) {
+        await migrator.addColumn(appSettings, appSettings.aurisCameoEnabled);
+      }
+      if (from < 23) {
+        await migrator.addColumn(appSettings, appSettings.screenWakeMode);
       }
     },
   );

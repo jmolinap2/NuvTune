@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/app/localization/strings.dart';
+import 'package:nuvtune/app/theme/design_tokens.dart';
+import 'package:nuvtune/app/theme/theme_scope.dart';
 import 'package:nuvtune/core/platform/engine_bridge.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/providers.dart';
@@ -46,7 +48,8 @@ class SongTile extends ConsumerWidget {
         subtitleOverride ??
         '${song.displayArtist} · ${Formatters.duration(song.durationMs)}';
 
-    return ListTile(
+    return _PressScale(
+      child: ListTile(
       onTap: song.isSupported
           ? onTap
           : () => _showUnsupportedMessage(context, song),
@@ -108,6 +111,7 @@ class SongTile extends ConsumerWidget {
                 ),
             ],
           ),
+      ),
     );
   }
 
@@ -145,23 +149,68 @@ class GroupTile extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      onTap: onTap,
-      leading: GroupCover(
-        song: coverSong,
-        size: 52,
-        borderRadius: 12,
-        icon: icon,
+    return _PressScale(
+      child: ListTile(
+        onTap: onTap,
+        leading: GroupCover(
+          song: coverSong,
+          size: 52,
+          borderRadius: 12,
+          icon: icon,
+        ),
+        title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
+        subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
+        trailing: onMore == null
+            ? const Icon(Icons.chevron_right_rounded)
+            : IconButton(
+                onPressed: onMore,
+                icon: const Icon(Icons.more_vert_rounded),
+                tooltip: 'Más opciones',
+              ),
       ),
-      title: Text(title, maxLines: 1, overflow: TextOverflow.ellipsis),
-      subtitle: Text(subtitle, maxLines: 1, overflow: TextOverflow.ellipsis),
-      trailing: onMore == null
-          ? const Icon(Icons.chevron_right_rounded)
-          : IconButton(
-              onPressed: onMore,
-              icon: const Icon(Icons.more_vert_rounded),
-              tooltip: 'Más opciones',
-            ),
+    );
+  }
+}
+
+/// Encoge ligeramente la fila mientras el dedo la mantiene presionada.
+///
+/// Envuelve con [Listener] en lugar de [GestureDetector] a proposito: un
+/// `GestureDetector` propio compite en la arena de gestos con el `InkWell`
+/// que [ListTile] ya construye internamente y puede llegar a suprimir su
+/// ripple; `Listener` solo observa el puntero sin participar en la arena.
+class _PressScale extends StatefulWidget {
+  const _PressScale({required this.child});
+
+  final Widget child;
+
+  @override
+  State<_PressScale> createState() => _PressScaleState();
+}
+
+class _PressScaleState extends State<_PressScale> {
+  bool _pressed = false;
+
+  void _setPressed(bool value) {
+    if (_pressed == value) return;
+    setState(() => _pressed = value);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final motion = ThemeScope.of(context).motion;
+    return Listener(
+      onPointerDown: (_) => _setPressed(true),
+      onPointerUp: (_) => _setPressed(false),
+      onPointerCancel: (_) => _setPressed(false),
+      child: AnimatedScale(
+        scale: _pressed ? 0.97 : 1.0,
+        duration: motion.scale(
+          Tokens.durationFast,
+          systemReduceMotion: MediaQuery.disableAnimationsOf(context),
+        ),
+        curve: motion.curve,
+        child: widget.child,
+      ),
     );
   }
 }

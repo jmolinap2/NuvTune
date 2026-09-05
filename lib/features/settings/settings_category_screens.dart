@@ -149,6 +149,17 @@ class LibrarySettingsScreen extends ConsumerWidget {
               ),
             ],
           ),
+          const SettingsSectionLabel('Metadatos'),
+          SettingsGroup(
+            children: [
+              SettingsNavigationRow(
+                icon: Icons.travel_explore_rounded,
+                title: AppStrings.metadataLookupTitle,
+                subtitle: AppStrings.metadataLookupSubtitle,
+                onTap: () => context.push('/settings/library/metadata-lookup'),
+              ),
+            ],
+          ),
         ],
       ),
     );
