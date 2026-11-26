@@ -58,6 +58,14 @@ jobs:
           test -n "$KEYSTORE_B64" || { echo "::error::Falta el secreto ANDROID_DEBUG_KEYSTORE_B64"; exit 1; }
           mkdir -p ~/.android
           echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
+          # Que Gradle use exactamente este keystore y no otro.
+          echo "ANDROID_USER_HOME=$HOME/.android" >> "$GITHUB_ENV"
+          keytool -list -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey >/dev/null ||
+            { echo "::error::El secreto ANDROID_DEBUG_KEYSTORE_B64 no contiene un keystore valido"; exit 1; }
+          KEYSTORE_SHA256=$(keytool -list -v -keystore ~/.android/debug.keystore -storepass android -alias androiddebugkey |
+            sed -n 's/^.*SHA256: //p' | tr -d ':[:space:]' | tr 'A-Z' 'a-z')
+          echo "KEYSTORE_SHA256=$KEYSTORE_SHA256" >> "$GITHUB_ENV"
+          echo "Huella del keystore del secreto: $KEYSTORE_SHA256"
 
       - name: Compilar
         run: |
@@ -72,6 +80,16 @@ jobs:
         run: |
           mkdir site
           cp build/app/outputs/flutter-apk/app-release.apk site/NuvTune.apk
+          # Falla si el APK no quedo firmado con la clave del secreto: Android
+          # rechazaria la actualizacion sobre la app ya instalada.
+          APKSIGNER=$(find "$ANDROID_HOME/build-tools" -type f -name apksigner | sort -V | tail -1)
+          test -n "$APKSIGNER" || { echo "No se encontro apksigner"; exit 1; }
+          SIGNER_OUT=$("$APKSIGNER" verify --print-certs site/NuvTune.apk 2>&1) || true
+          echo "$SIGNER_OUT"
+          CERTIFICATE_SHA256=$(echo "$SIGNER_OUT" | sed -n 's/.*certificate SHA-256 digest: *//p' | head -1 | tr -d '[:space:]' | tr 'A-Z' 'a-z')
+          test -n "$CERTIFICATE_SHA256" || { echo "::error::No se pudo leer el certificado del APK"; exit 1; }
+          test "$CERTIFICATE_SHA256" = "$KEYSTORE_SHA256" ||
+            { echo "::error::El APK quedo firmado con $CERTIFICATE_SHA256 y no con la clave del secreto ($KEYSTORE_SHA256)"; exit 1; }
           NAME=$(sed -n 's/^version: *\([0-9A-Za-z.-]*\)+.*/\1/p' pubspec.yaml)
           jq -n \
             --argjson build "$BUILD" \
