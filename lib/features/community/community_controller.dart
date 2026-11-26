@@ -1,74 +1,66 @@
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_secure_storage/flutter_secure_storage.dart';
-import 'package:nuvtune/features/community/community_api.dart';
+import 'package:nuvtune/features/community/community_service.dart';
+import 'package:nuvtune/features/community/nostr/nostr_keys.dart';
 
-final communityApiProvider = Provider<CommunityApi>((ref) => CommunityApi());
-
-/// Sesion iniciada: quien eres y con que token se firman las peticiones.
-class CommunitySession {
-  const CommunitySession({required this.username, required this.token});
-  final String username;
-  final String token;
-}
-
-const _tokenKey = 'community_token';
+const _secretKey = 'community_secret_key';
 const _storage = FlutterSecureStorage();
 
-/// Unico escritor de la sesion de comunidad (y de su token guardado).
+/// Tu identidad de comunidad: un par de claves guardado en el almacen seguro
+/// del telefono. `null` significa que aun no tienes usuario.
 ///
-/// `null` significa sin sesion. Al arrancar se valida el token guardado contra
-/// el servidor: si ya no vale se borra, en vez de dejar una sesion fantasma.
-final communitySessionProvider =
-    AsyncNotifierProvider<CommunitySessionController, CommunitySession?>(
-      CommunitySessionController.new,
-    );
+/// Es el unico escritor de la clave guardada. No hay contraseña ni servidor:
+/// quien tiene la clave secreta es esa persona.
+final identityProvider = AsyncNotifierProvider<IdentityController, NostrKeys?>(
+  IdentityController.new,
+);
 
-class CommunitySessionController extends AsyncNotifier<CommunitySession?> {
-  CommunityApi get _api => ref.read(communityApiProvider);
-
+class IdentityController extends AsyncNotifier<NostrKeys?> {
   @override
-  Future<CommunitySession?> build() async {
-    final token = await _storage.read(key: _tokenKey);
-    if (token == null) return null;
-    try {
-      return CommunitySession(username: await _api.me(token), token: token);
-    } on CommunityException catch (error) {
-      // Solo un 401 prueba que el token murio. Sin conexion no se sabe: el
-      // error llega a la pantalla (con reintento) y el token se conserva.
-      if (!error.isUnauthorized) rethrow;
-      await _storage.delete(key: _tokenKey);
-      return null;
-    }
+  Future<NostrKeys?> build() async {
+    final secret = await _storage.read(key: _secretKey);
+    return secret == null ? null : NostrKeys.fromSecretHex(secret);
   }
 
-  Future<void> login(String username, String password) =>
-      _open(() => _api.login(username, password));
-
-  Future<void> register(String username, String password) =>
-      _open(() => _api.register(username, password));
-
-  Future<void> _open(
-    Future<({String token, String username})> Function() action,
-  ) async {
-    final result = await action();
-    await _storage.write(key: _tokenKey, value: result.token);
-    state = AsyncData(
-      CommunitySession(username: result.username, token: result.token),
-    );
+  /// Crea una identidad nueva. Primero se publica el nombre y solo si llega a
+  /// algun relay se guarda la clave: asi un fallo de red no deja un usuario a
+  /// medias.
+  Future<void> create(String name) async {
+    final keys = NostrKeys.generate();
+    await CommunityService(keys).publishName(name);
+    await _save(keys);
   }
 
-  Future<void> logout() async {
-    final session = state.valueOrNull;
-    if (session == null) return;
-    await _api.logout(session.token);
-    await _storage.delete(key: _tokenKey);
+  /// Recupera una identidad existente (por ejemplo, en un telefono nuevo).
+  Future<void> restore(String secret) => _save(NostrKeys.parseSecret(secret));
+
+  Future<void> _save(NostrKeys keys) async {
+    await _storage.write(key: _secretKey, value: keys.secretHex);
+    state = AsyncData(keys);
+  }
+
+  /// Borra la clave de este telefono. Sin copia de la clave secreta, esa
+  /// identidad y sus amistades no se pueden recuperar.
+  Future<void> signOut() async {
+    await _storage.delete(key: _secretKey);
     state = const AsyncData(null);
   }
 }
 
-/// Amigos y solicitudes de la sesion actual. Se recarga con `invalidate`.
-final friendsProvider = FutureProvider.autoDispose<Friends>((ref) async {
-  final session = await ref.watch(communitySessionProvider.future);
-  if (session == null) throw const CommunityException('Sin sesión.');
-  return ref.read(communityApiProvider).friends(session.token);
+/// Servicio de la identidad actual; `null` sin identidad.
+final communityServiceProvider = Provider<CommunityService?>((ref) {
+  final keys = ref.watch(identityProvider).valueOrNull;
+  return keys == null ? null : CommunityService(keys);
+});
+
+/// Tu nombre publicado.
+final myNameProvider = FutureProvider.autoDispose<String?>((ref) {
+  final service = ref.watch(communityServiceProvider);
+  return service?.myName() ?? Future.value();
+});
+
+/// Amigos y solicitudes. Se recarga con `ref.invalidate(friendsProvider)`.
+final friendsProvider = FutureProvider.autoDispose<Friends>((ref) {
+  final service = ref.watch(communityServiceProvider)!;
+  return service.friends();
 });

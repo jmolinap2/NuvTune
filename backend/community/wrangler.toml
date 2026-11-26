@@ -1,9 +1,0 @@
-name = "nuvtune-community"
-main = "src/index.ts"
-compatibility_date = "2025-01-01"
-
-# Tras `wrangler d1 create nuvtune-community`, pega aqui el database_id.
-[[d1_databases]]
-binding = "DB"
-database_name = "nuvtune-community"
-database_id = "REEMPLAZAR_CON_EL_ID_DE_D1"
