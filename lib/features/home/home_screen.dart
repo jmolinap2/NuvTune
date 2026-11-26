@@ -29,7 +29,7 @@ class HomeScreen extends ConsumerWidget {
   Widget build(BuildContext context, WidgetRef ref) {
     final library = ref.watch(libraryProvider);
     final settings = ref.watch(settingsProvider).valueOrNull;
-    final enabledSections = _sectionsOf(settings);
+    final enabledSections = sectionsOf(settings);
 
     return Scaffold(
       appBar: AppBar(
@@ -44,8 +44,7 @@ class HomeScreen extends ConsumerWidget {
           IconButton(
             tooltip: 'Configurar secciones',
             icon: const Icon(Icons.tune_rounded),
-            onPressed: () =>
-                _showSectionSettings(context, ref, enabledSections),
+            onPressed: () => _showSectionSettings(context),
           ),
           const SizedBox(width: Tokens.space1),
         ],
@@ -150,7 +149,9 @@ class HomeScreen extends ConsumerWidget {
     }
   }
 
-  List<HomeSection> _sectionsOf(AppSetting? settings) {
+  /// Secciones activas, en el orden en que se muestran. Unica lectura de este
+  /// dato: Inicio y la hoja de configuracion pasan por aqui.
+  static List<HomeSection> sectionsOf(AppSetting? settings) {
     if (settings == null) return HomeSection.values;
     final decoded = _decodeSections(settings.homeSectionsJson);
     return decoded.isEmpty ? HomeSection.values : decoded;
@@ -167,14 +168,11 @@ class HomeScreen extends ConsumerWidget {
         .toList();
   }
 
-  void _showSectionSettings(
-    BuildContext context,
-    WidgetRef ref,
-    List<HomeSection> enabled,
-  ) {
+  void _showSectionSettings(BuildContext context) {
     showModalBottomSheet<void>(
       context: context,
-      builder: (context) => _SectionSettingsSheet(enabled: enabled),
+      isScrollControlled: true,
+      builder: (context) => const _SectionSettingsSheet(),
     );
   }
 }
@@ -372,44 +370,91 @@ enum HomeSection {
   }
 }
 
+/// Configuracion de las secciones de Inicio: las activas se pueden arrastrar
+/// para cambiar su orden y las ocultas se reactivan con su interruptor.
+///
+/// Lee los ajustes en vivo: antes recibia una copia al abrirse y los
+/// interruptores no reflejaban el cambio que acababan de guardar.
 class _SectionSettingsSheet extends ConsumerWidget {
-  const _SectionSettingsSheet({required this.enabled});
-
-  final List<HomeSection> enabled;
+  const _SectionSettingsSheet();
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
+    final enabled = HomeScreen.sectionsOf(
+      ref.watch(settingsProvider).valueOrNull,
+    );
+    final hidden = HomeSection.values
+        .where((section) => !enabled.contains(section))
+        .toList();
+    final repository = ref.read(settingsRepositoryProvider);
+
+    void save(List<HomeSection> sections) => repository.saveHomeSections(
+      sections.map((section) => section.key).toList(),
+    );
+
     return SafeArea(
-      child: Column(
-        mainAxisSize: MainAxisSize.min,
-        children: [
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 4, 20, 8),
-            child: Align(
-              alignment: Alignment.centerLeft,
-              child: Text(
-                'Secciones de Inicio',
-                style: Theme.of(context).textTheme.titleLarge,
+      child: SingleChildScrollView(
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 4, 20, 4),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Secciones de Inicio',
+                  style: Theme.of(context).textTheme.titleLarge,
+                ),
               ),
             ),
-          ),
-          for (final section in HomeSection.values)
-            SwitchListTile(
-              title: Text(section.label),
-              value: enabled.contains(section),
-              onChanged: (value) {
-                final updated = HomeSection.values
-                    .where(
-                      (item) =>
-                          item == section ? value : enabled.contains(item),
-                    )
-                    .map((item) => item.key)
-                    .toList();
-                ref.read(settingsRepositoryProvider).saveHomeSections(updated);
+            Padding(
+              padding: const EdgeInsets.fromLTRB(20, 0, 20, 8),
+              child: Align(
+                alignment: Alignment.centerLeft,
+                child: Text(
+                  'Mantén pulsado el asa y arrastra para cambiar el orden.',
+                  style: Theme.of(context).textTheme.bodySmall,
+                ),
+              ),
+            ),
+            ReorderableListView.builder(
+              shrinkWrap: true,
+              physics: const NeverScrollableScrollPhysics(),
+              buildDefaultDragHandles: false,
+              itemCount: enabled.length,
+              onReorderItem: (oldIndex, newIndex) {
+                final reordered = [...enabled];
+                reordered.insert(newIndex, reordered.removeAt(oldIndex));
+                save(reordered);
+              },
+              itemBuilder: (context, index) {
+                final section = enabled[index];
+                return SwitchListTile(
+                  key: ValueKey(section.key),
+                  secondary: ReorderableDragStartListener(
+                    index: index,
+                    child: const Icon(Icons.drag_handle_rounded),
+                  ),
+                  title: Text(section.label),
+                  value: true,
+                  onChanged: (_) =>
+                      save(enabled.where((item) => item != section).toList()),
+                );
               },
             ),
-          const SizedBox(height: 8),
-        ],
+            if (hidden.isNotEmpty) ...[
+              const Divider(),
+              for (final section in hidden)
+                SwitchListTile(
+                  secondary: const SizedBox(width: 24),
+                  title: Text(section.label),
+                  value: false,
+                  onChanged: (_) => save([...enabled, section]),
+                ),
+            ],
+            const SizedBox(height: 8),
+          ],
+        ),
       ),
     );
   }
