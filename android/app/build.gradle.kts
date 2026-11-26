@@ -33,8 +33,12 @@ android {
         versionName = flutter.versionName
 
         ndk {
-            // ABIs que compila `flutter build apk`.
-            abiFilters += listOf("armeabi-v7a", "arm64-v8a", "x86_64")
+            // Solo arm64-v8a: es la unica arquitectura del telefono objetivo
+            // (POCO X6 Pro, SoC solo de 64 bits). Sin esto, el ffmpeg y el
+            // python de youtubedl-android (~50 MB por ABI) se empaquetan tres
+            // veces y la APK pasa de ~70 a ~166 MB. `--target-platform` no
+            // basta: este filtro lo ignora y vuelve a incluir las tres.
+            abiFilters += listOf("arm64-v8a")
         }
     }
 
