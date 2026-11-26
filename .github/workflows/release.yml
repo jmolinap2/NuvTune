@@ -53,6 +53,9 @@ jobs:
         env:
           KEYSTORE_B64: ${{ secrets.ANDROID_DEBUG_KEYSTORE_B64 }}
         run: |
+          # Sin el secreto, Gradle firmaria con una clave debug nueva y Android
+          # rechazaria la actualizacion sobre lo instalado: mejor fallar aqui.
+          test -n "$KEYSTORE_B64" || { echo "::error::Falta el secreto ANDROID_DEBUG_KEYSTORE_B64"; exit 1; }
           mkdir -p ~/.android
           echo "$KEYSTORE_B64" | base64 -d > ~/.android/debug.keystore
 
