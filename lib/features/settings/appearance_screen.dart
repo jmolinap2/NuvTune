@@ -339,9 +339,9 @@ class _PlayerAppearancePanel extends ConsumerWidget {
             ),
             SwitchListTile(
               secondary: const Icon(Icons.emoji_emotions_outlined),
-              title: const Text('Cameo de Auris'),
+              title: const Text('Auris acompaña el visualizador'),
               subtitle: const Text(
-                'Auris aparece de vez en cuando bailando al ritmo, dentro del visualizador.',
+                'Añade a Auris a cualquier estilo; adapta sus pasos a la energía, beat y género de cada canción.',
               ),
               value: settings.aurisCameoEnabled,
               onChanged: (value) => mutation.save(

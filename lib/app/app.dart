@@ -12,6 +12,7 @@ import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
 import 'package:nuvtune/shared/widgets/glass.dart';
 import 'package:nuvtune/features/settings/personalization_models.dart';
+import 'package:nuvtune/features/update/update_flow.dart';
 
 final _routerProvider = Provider<GoRouter>((ref) => createRouter());
 
@@ -83,6 +84,23 @@ class _NuvTuneAppState extends ConsumerState<NuvTuneApp> {
   @override
   Widget build(BuildContext context) {
     final bootstrap = ref.watch(bootstrapProvider);
+    // Una vez por arranque, cuando ya hay interfaz bajo el Navigator del router.
+    ref.listen(bootstrapProvider, (previous, next) {
+      if (next.isReady && !(previous?.isReady ?? false)) {
+        WidgetsBinding.instance.addPostFrameCallback((_) {
+          final navigatorKey = ref
+              .read(_routerProvider)
+              .routerDelegate
+              .navigatorKey;
+          // El contexto del propio Navigator no lo encuentra como ancestro;
+          // el de su Overlay, que va debajo, sí.
+          final navigatorContext = navigatorKey.currentState?.overlay?.context;
+          if (navigatorContext != null) {
+            checkForUpdates(navigatorContext, manual: false);
+          }
+        });
+      }
+    });
     final appearance = ref.watch(appearanceProvider);
     final darkTheme = appearance.applyIdentity(
       AppTheme.dark(accent: appearance.accent, depth: appearance.depth),

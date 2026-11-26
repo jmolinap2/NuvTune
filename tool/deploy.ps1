@@ -153,9 +153,14 @@ function Get-AppVersion {
         throw 'pubspec.yaml debe tener una version valida, por ejemplo: version: 1.3.2+9'
     }
 
+    # El numero de compilacion (versionCode) sale del numero de commits, igual
+    # que en el CI (.github/workflows/release.yml): una sola formula, para que
+    # un APK instalado por internet y uno instalado desde aqui sean comparables
+    # y ninguno cuente como "bajar de version".
+    $commits = [int](git -C $RepoRoot rev-list --count HEAD)
     [pscustomobject]@{
         Name  = $Matches[1]
-        Build = $Matches[2]
+        Build = 100 + $commits
     }
 }
 
@@ -167,7 +172,7 @@ $VersionedApkPath = Join-Path $RepoRoot $ArtifactName
 function Invoke-Build {
     $mode = "--$BuildMode"
     Write-Host "Compilando apk $mode..." -ForegroundColor Cyan
-    & $Flutter build apk $mode
+    & $Flutter build apk $mode --build-number=$($AppVersion.Build) --target-platform android-arm64
     if ($LASTEXITCODE -ne 0) { throw 'Fallo la compilacion.' }
     if (-not (Test-Path $ApkPath)) { throw "No se genero $ApkPath." }
 

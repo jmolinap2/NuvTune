@@ -20,6 +20,9 @@
     <!-- Descarga de canciones en primer plano (motor heredado de NuvClip). -->
     <uses-permission android:name="android.permission.FOREGROUND_SERVICE_DATA_SYNC" />
 
+    <!-- Instalar las actualizaciones descargadas por la propia aplicacion. -->
+    <uses-permission android:name="android.permission.REQUEST_INSTALL_PACKAGES" />
+
     <!-- Notificacion multimedia (requerimiento seccion 9.2). -->
     <uses-permission android:name="android.permission.POST_NOTIFICATIONS" />
 

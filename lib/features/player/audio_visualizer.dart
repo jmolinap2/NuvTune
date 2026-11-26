@@ -9,6 +9,7 @@ import 'package:nuvtune/core/platform/visualizer_power_monitor.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
+import 'package:nuvtune/features/player/dancing_auris.dart';
 import 'package:nuvtune/features/player/visualizer_color_map.dart';
 import 'package:nuvtune/features/player/visualizer_dynamics.dart';
 import 'package:nuvtune/features/player/visualizer_quality.dart';
@@ -211,25 +212,65 @@ class _ReactiveAudioVisualizerState
                   );
                 }
                 final renderMicros = frameBucket * renderFrameMicros;
-                return CustomPaint(
-                  painter: _VisualizerPainter(
-                    style: style,
-                    time: (renderMicros % 14000000) / 14000000,
-                    elapsedSeconds:
-                        renderMicros / Duration.microsecondsPerSecond,
-                    dynamics: _lastDynamics!,
-                    colorMap: colorMap,
-                    colorMode: colorMode,
-                    randomColors: settings?.visualizerRandomColors ?? false,
-                    seed: seed,
-                    isPlaying: widget.isPlaying,
-                    immersive: widget.immersive,
-                    hasLiveAnalysis: hasLiveAnalysis,
-                    reduceMotion: _reduceMotion,
-                    quality: quality,
-                    tuning: tuning,
-                    motionParticleScale: particleScale,
-                  ),
+                final dynamics = _lastDynamics!;
+                final visualizer = style == VisualizerStyle.aurisDance
+                    ? AurisDanceVisualizer(
+                        song: widget.song,
+                        isPlaying: widget.isPlaying,
+                        reduceMotion: _reduceMotion,
+                        energy: dynamics.energy,
+                        beatImpulse: dynamics.beatImpulse,
+                      )
+                    : CustomPaint(
+                        painter: _VisualizerPainter(
+                          style: style,
+                          time: (renderMicros % 14000000) / 14000000,
+                          elapsedSeconds:
+                              renderMicros / Duration.microsecondsPerSecond,
+                          dynamics: dynamics,
+                          colorMap: colorMap,
+                          colorMode: colorMode,
+                          randomColors:
+                              settings?.visualizerRandomColors ?? false,
+                          seed: seed,
+                          isPlaying: widget.isPlaying,
+                          immersive: widget.immersive,
+                          hasLiveAnalysis: hasLiveAnalysis,
+                          reduceMotion: _reduceMotion,
+                          quality: quality,
+                          tuning: tuning,
+                          motionParticleScale: particleScale,
+                        ),
+                      );
+                final showCompanion =
+                    widget.immersive &&
+                    style != VisualizerStyle.aurisDance &&
+                    (settings?.aurisCameoEnabled ?? false);
+                if (!showCompanion) return visualizer;
+                final companionSize = math
+                    .min(
+                      widget.size * 0.26,
+                      (widget.height ?? widget.size) * 0.3,
+                    )
+                    .clamp(72.0, 150.0)
+                    .toDouble();
+                return Stack(
+                  fit: StackFit.expand,
+                  children: [
+                    visualizer,
+                    Positioned(
+                      right: 16,
+                      bottom: 16,
+                      child: DancingAuris(
+                        key: ValueKey('dancing-auris-${widget.song.id}'),
+                        song: widget.song,
+                        size: companionSize,
+                        isPlaying: widget.isPlaying,
+                        energy: dynamics.energy,
+                        beatImpulse: dynamics.beatImpulse,
+                      ),
+                    ),
+                  ],
                 );
               },
             ),
@@ -473,6 +514,10 @@ class _VisualizerPainter extends CustomPainter {
       case VisualizerStyle.cosmicOrbs:
         _paintCosmicOrbs(canvas, size);
         break;
+      case VisualizerStyle.aurisDance:
+        // La rama de widgets sustituye este painter antes de llegar aquí.
+        _paintSpectrum(canvas, size);
+        break;
     }
   }
 
@@ -547,6 +592,7 @@ class _VisualizerPainter extends CustomPainter {
       VisualizerStyle.prism => 10,
       VisualizerStyle.electricWaves => 14,
       VisualizerStyle.cosmicOrbs => 10,
+      VisualizerStyle.aurisDance => 0,
       VisualizerStyle.automatic => 20,
     };
     final scaledParticleBudget = particleBudget(normalParticleBudget);

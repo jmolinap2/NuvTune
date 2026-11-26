@@ -449,6 +449,37 @@ class _StyleThumbnailPainter extends CustomPainter {
             paint,
           );
         }
+      case VisualizerStyle.aurisDance:
+        canvas.drawCircle(
+          Offset(center.dx, size.height * 0.38),
+          size.shortestSide * 0.13,
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx, size.height * 0.51),
+          Offset(center.dx, size.height * 0.72),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx, size.height * 0.58),
+          Offset(size.width * 0.3, size.height * 0.48),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx, size.height * 0.58),
+          Offset(size.width * 0.7, size.height * 0.68),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx, size.height * 0.72),
+          Offset(size.width * 0.35, size.height * 0.86),
+          paint,
+        );
+        canvas.drawLine(
+          Offset(center.dx, size.height * 0.72),
+          Offset(size.width * 0.68, size.height * 0.78),
+          paint,
+        );
     }
   }
 

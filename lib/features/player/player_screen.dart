@@ -30,7 +30,6 @@ import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 import 'package:nuvtune/features/lyrics/lyrics_view.dart';
 import 'package:nuvtune/features/player/audio_visualizer.dart';
 import 'package:nuvtune/features/player/customizable_player_controls.dart';
-import 'package:nuvtune/features/player/dancing_auris.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/features/player/player_scene_aspect_ratio.dart';
 import 'package:nuvtune/features/player/player_visual_scene.dart';
@@ -2464,15 +2463,6 @@ class _NowPlayingTabState extends ConsumerState<_NowPlayingTab> {
             );
           },
         ),
-        if (showSingleVisualizer && (appSettings?.aurisCameoEnabled ?? true))
-          Positioned(
-            right: 16,
-            bottom: 16,
-            child: DancingAuris(
-              key: ValueKey('dancing-auris-${activeSong.id}'),
-              song: activeSong,
-            ),
-          ),
       ],
     );
     final details = Column(
@@ -3006,22 +2996,23 @@ class _PlayerLyricsSceneStageState
       );
     }
 
+    // Reaching this point ya descarto la unica combinacion sin portada de
+    // video ni pantalla completa (esa vuelve arriba como GlassCard). Con
+    // video de fondo, un marco con borde y esquinas redondeadas se ve como una
+    // tarjeta encima del video en vez de texto flotando sobre el; ni el modo
+    // de pantalla completa ni el que comparte espacio con el video llevan
+    // marco, solo el degradado necesario para que el texto siga siendo
+    // legible.
     final overlay = DecoratedBox(
       decoration: BoxDecoration(
-        borderRadius: widget.immersive
-            ? null
-            : BorderRadius.circular(Tokens.radiusLarge),
         gradient: LinearGradient(
           begin: Alignment.topCenter,
           end: Alignment.bottomCenter,
           colors: widget.videoOverlay
-              ? const [Color(0x99000000), Color(0x28000000), Color(0xB0000000)]
+              ? const [Color(0x40000000), Color(0x00000000), Color(0x59000000)]
               : const [Color(0x66000000), Color(0x33000000), Color(0x88000000)],
           stops: const [0, 0.48, 1],
         ),
-        border: widget.immersive
-            ? null
-            : Border.all(color: Colors.white.withValues(alpha: 0.1)),
       ),
       child: Padding(
         padding: EdgeInsets.fromLTRB(
@@ -3033,14 +3024,7 @@ class _PlayerLyricsSceneStageState
         child: body,
       ),
     );
-    return SizedBox.expand(
-      child: widget.immersive
-          ? overlay
-          : ClipRRect(
-              borderRadius: BorderRadius.circular(Tokens.radiusLarge),
-              child: overlay,
-            ),
-    );
+    return SizedBox.expand(child: overlay);
   }
 
   Widget _buildLyrics(BuildContext context, ResolvedLyrics resolved) {
@@ -3071,8 +3055,8 @@ class _PlayerLyricsSceneStageState
       final baseStyle =
           (widget.immersive
               ? Theme.of(context).textTheme.headlineSmall
-              : Theme.of(context).textTheme.titleMedium) ??
-          const TextStyle(fontSize: 18);
+              : Theme.of(context).textTheme.titleLarge) ??
+          const TextStyle(fontSize: 20);
       content = Expanded(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
@@ -3159,11 +3143,7 @@ class _PlayerLyricsSceneStageState
           itemBuilder: (context, index) => Text(
             parsed.lines[index].text,
             textAlign: TextAlign.center,
-            style:
-                (widget.immersive
-                        ? Theme.of(context).textTheme.titleLarge
-                        : Theme.of(context).textTheme.titleMedium)
-                    ?.copyWith(
+            style: Theme.of(context).textTheme.titleLarge?.copyWith(
                       color: index == 0
                           ? Colors.white
                           : (widget.videoOverlay || widget.immersive

@@ -31,6 +31,7 @@ class MainActivity : FlutterActivity() {
     private var systemVolumeChannel: MethodChannel? = null
     private var giftIntentChannel: MethodChannel? = null
     private var screenWakeChannel: MethodChannel? = null
+    private var appUpdater: AppUpdaterChannel? = null
     private var visualizerPowerMonitor: VisualizerPowerMonitor? = null
 
     /**
@@ -104,6 +105,8 @@ class MainActivity : FlutterActivity() {
                 }
             }
         }
+        appUpdater = AppUpdaterChannel(this, flutterEngine.dartExecutor.binaryMessenger)
+
         val created = FlutterMusicPlugin(
             context = applicationContext,
             messenger = flutterEngine.dartExecutor.binaryMessenger,
@@ -248,6 +251,8 @@ class MainActivity : FlutterActivity() {
         screenWakeChannel = null
         giftIntentChannel?.setMethodCallHandler(null)
         giftIntentChannel = null
+        appUpdater?.dispose()
+        appUpdater = null
         plugin?.let {
             it.activity = null
             it.detach()

@@ -9,6 +9,7 @@ import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/data/db/database.dart';
 import 'package:nuvtune/features/settings/settings_components.dart';
 import 'package:nuvtune/features/settings/settings_mutation_controller.dart';
+import 'package:nuvtune/features/update/update_flow.dart';
 import 'package:nuvtune/shared/widgets/option_picker.dart';
 
 /// Sistema: todo lo que toca el sistema operativo, los archivos o el
@@ -258,13 +259,19 @@ class AboutSettingsScreen extends StatelessWidget {
     appBar: AppBar(title: const Text('Acerca de')),
     body: ListView(
       padding: const EdgeInsets.only(bottom: Tokens.space6),
-      children: const [
-        SettingsInfoPanel(
+      children: [
+        const SettingsInfoPanel(
           icon: Icons.info_outline_rounded,
           title: AppStrings.appName,
           message:
               'Reproductor local con Media3, ecualizador propio y edición real '
               'de etiquetas con TagLib.',
+        ),
+        ListTile(
+          leading: const Icon(Icons.system_update_rounded),
+          title: const Text('Buscar actualizaciones'),
+          subtitle: const Text('Cada commit publicado llega por internet'),
+          onTap: () => checkForUpdates(context, manual: true),
         ),
       ],
     ),

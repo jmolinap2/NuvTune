@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:nuvtune/app/localization/strings.dart';
+import 'package:nuvtune/app/theme/design_tokens.dart';
 import 'package:nuvtune/core/platform/music_engine.g.dart';
 import 'package:nuvtune/core/providers.dart';
 import 'package:nuvtune/features/lyrics/lrc_parser.dart';
@@ -8,6 +9,7 @@ import 'package:nuvtune/features/lyrics/animated_lyrics_line.dart';
 import 'package:nuvtune/features/lyrics/lyrics_animation_style.dart';
 import 'package:nuvtune/features/player/player_controller.dart';
 import 'package:nuvtune/shared/widgets/empty_state.dart';
+import 'package:nuvtune/shared/widgets/glass.dart';
 
 /// Letras resueltas para una cancion, con la fuente de la que salieron.
 class ResolvedLyrics {
@@ -97,6 +99,16 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
   int _lastScrolledIndex = -1;
   bool _searching = false;
   int _onlineSearchSerial = 0;
+
+  /// Una llave por linea, para centrar la activa con `Scrollable.ensureVisible`
+  /// en vez de calcular un offset a mano: con tipografia grande una linea larga
+  /// ocupa mas de un renglon, asi que ninguna altura fija por linea es correcta.
+  List<GlobalKey> _lineKeys = [];
+
+  void _ensureLineKeys(int count) {
+    if (_lineKeys.length == count) return;
+    _lineKeys = List.generate(count, (_) => GlobalKey());
+  }
 
   @override
   void didUpdateWidget(covariant LyricsView oldWidget) {
@@ -251,42 +263,65 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
           );
         }
 
+        _ensureLineKeys(resolved.parsed.lines.length);
+        final scheme = Theme.of(context).colorScheme;
+
         return Column(
           children: [
-            _LyricsToolbar(
-              source: resolved.source,
-              synchronized: resolved.parsed.synchronized,
-              autoScroll: _autoScroll,
-              onAutoScrollChanged: (value) =>
-                  setState(() => _autoScroll = value),
-              onEdit: () => _editLyrics(resolved),
-              onAdjustOffset: resolved.parsed.synchronized
-                  ? () => _adjustOffset(resolved)
-                  : null,
+            Padding(
+              padding: const EdgeInsets.fromLTRB(24, 10, 24, 2),
+              child: Text(
+                resolved.source,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: TextStyle(
+                  fontSize: 11.5,
+                  fontWeight: FontWeight.w600,
+                  letterSpacing: 0.4,
+                  color: scheme.onSurfaceVariant.withValues(alpha: 0.7),
+                ),
+              ),
             ),
             Expanded(
-              child: resolved.parsed.synchronized
-                  ? _SyncedLyrics(
-                      resolved: resolved,
-                      scrollController: _scrollController,
-                      autoScroll: _autoScroll,
-                      onScrolledTo: (index) => _lastScrolledIndex = index,
-                      lastScrolledIndex: _lastScrolledIndex,
-                      onSeek: (timeMs) =>
-                          ref.read(playbackProvider.notifier).seek(timeMs),
-                    )
-                  : ListView.builder(
-                      controller: _scrollController,
-                      padding: const EdgeInsets.fromLTRB(24, 8, 24, 40),
-                      itemCount: resolved.parsed.lines.length,
-                      itemBuilder: (context, index) => Padding(
-                        padding: const EdgeInsets.symmetric(vertical: 6),
-                        child: Text(
-                          resolved.parsed.lines[index].text,
-                          style: const TextStyle(fontSize: 16, height: 1.5),
-                        ),
-                      ),
+              child: Stack(
+                children: [
+                  Positioned.fill(
+                    child: _FadeEdges(
+                      child: resolved.parsed.synchronized
+                          ? _SyncedLyrics(
+                              resolved: resolved,
+                              scrollController: _scrollController,
+                              autoScroll: _autoScroll,
+                              lineKeys: _lineKeys,
+                              onScrolledTo: (index) =>
+                                  _lastScrolledIndex = index,
+                              lastScrolledIndex: _lastScrolledIndex,
+                              onSeek: (timeMs) => ref
+                                  .read(playbackProvider.notifier)
+                                  .seek(timeMs),
+                            )
+                          : _PlainLyrics(
+                              resolved: resolved,
+                              scrollController: _scrollController,
+                            ),
                     ),
+                  ),
+                  Positioned(
+                    right: 12,
+                    bottom: 12,
+                    child: _LyricsFloatingControls(
+                      synchronized: resolved.parsed.synchronized,
+                      autoScroll: _autoScroll,
+                      onAutoScrollChanged: (value) =>
+                          setState(() => _autoScroll = value),
+                      onEdit: () => _editLyrics(resolved),
+                      onAdjustOffset: resolved.parsed.synchronized
+                          ? () => _adjustOffset(resolved)
+                          : null,
+                    ),
+                  ),
+                ],
+              ),
             ),
           ],
         );
@@ -454,9 +489,10 @@ class _LyricsViewState extends ConsumerState<LyricsView> {
   }
 }
 
-class _LyricsToolbar extends StatelessWidget {
-  const _LyricsToolbar({
-    required this.source,
+/// Controles flotantes minimos sobre la letra, en vez de una barra fija que le
+/// quita espacio a la pantalla: solo el icono, translucidos, en una esquina.
+class _LyricsFloatingControls extends StatelessWidget {
+  const _LyricsFloatingControls({
     required this.synchronized,
     required this.autoScroll,
     required this.onAutoScrollChanged,
@@ -464,7 +500,6 @@ class _LyricsToolbar extends StatelessWidget {
     this.onAdjustOffset,
   });
 
-  final String source;
   final bool synchronized;
   final bool autoScroll;
   final ValueChanged<bool> onAutoScrollChanged;
@@ -474,41 +509,109 @@ class _LyricsToolbar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final scheme = Theme.of(context).colorScheme;
-    return Padding(
-      padding: const EdgeInsets.fromLTRB(20, 8, 12, 4),
+    return GlassCard(
+      radius: Tokens.radiusPill,
+      padding: const EdgeInsets.symmetric(horizontal: 2, vertical: 2),
       child: Row(
+        mainAxisSize: MainAxisSize.min,
         children: [
-          Expanded(
-            child: Text(
-              source,
-              maxLines: 1,
-              overflow: TextOverflow.ellipsis,
-              style: TextStyle(fontSize: 12, color: scheme.onSurfaceVariant),
-            ),
-          ),
           if (synchronized)
-            IconButton(
+            _button(
+              icon: autoScroll
+                  ? Icons.vertical_align_center_rounded
+                  : Icons.swipe_vertical_rounded,
               tooltip: AppStrings.lyricsAutoScroll,
-              icon: Icon(
-                autoScroll
-                    ? Icons.vertical_align_center_rounded
-                    : Icons.swipe_vertical_rounded,
-                color: autoScroll ? scheme.primary : null,
-              ),
+              color: autoScroll ? scheme.primary : null,
               onPressed: () => onAutoScrollChanged(!autoScroll),
             ),
           if (onAdjustOffset != null)
-            IconButton(
+            _button(
+              icon: Icons.timer_outlined,
               tooltip: AppStrings.lyricsOffset,
-              icon: const Icon(Icons.timer_outlined),
-              onPressed: onAdjustOffset,
+              onPressed: onAdjustOffset!,
             ),
-          IconButton(
+          _button(
+            icon: Icons.edit_outlined,
             tooltip: AppStrings.lyricsEdit,
-            icon: const Icon(Icons.edit_outlined),
             onPressed: onEdit,
           ),
         ],
+      ),
+    );
+  }
+
+  Widget _button({
+    required IconData icon,
+    required String tooltip,
+    required VoidCallback onPressed,
+    Color? color,
+  }) => IconButton(
+    tooltip: tooltip,
+    icon: Icon(icon, size: 19, color: color),
+    onPressed: onPressed,
+  );
+}
+
+/// Difumina los bordes superior e inferior de la letra en vez de cortarla en
+/// seco, para que una linea entrando o saliendo del area visible se sienta
+/// continua.
+class _FadeEdges extends StatelessWidget {
+  const _FadeEdges({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return ShaderMask(
+      shaderCallback: (bounds) => const LinearGradient(
+        begin: Alignment.topCenter,
+        end: Alignment.bottomCenter,
+        colors: [
+          Colors.transparent,
+          Colors.black,
+          Colors.black,
+          Colors.transparent,
+        ],
+        stops: [0.0, 0.07, 0.92, 1.0],
+      ).createShader(bounds),
+      blendMode: BlendMode.dstIn,
+      child: child,
+    );
+  }
+}
+
+/// Sombra que mantiene el texto legible sin importar cuan clara sea la
+/// portada difuminada detras: el fondo del reproductor lo elige la cancion,
+/// no la pantalla de letras.
+const _lyricTextShadows = [
+  Shadow(color: Color(0x8A000000), blurRadius: 12, offset: Offset(0, 1)),
+];
+
+class _PlainLyrics extends StatelessWidget {
+  const _PlainLyrics({required this.resolved, required this.scrollController});
+
+  final ResolvedLyrics resolved;
+  final ScrollController scrollController;
+
+  @override
+  Widget build(BuildContext context) {
+    final scheme = Theme.of(context).colorScheme;
+    return ListView.builder(
+      controller: scrollController,
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 160),
+      itemCount: resolved.parsed.lines.length,
+      itemBuilder: (context, index) => Padding(
+        padding: const EdgeInsets.symmetric(vertical: 9),
+        child: Text(
+          resolved.parsed.lines[index].text,
+          style: TextStyle(
+            fontSize: 19,
+            height: 1.4,
+            fontWeight: FontWeight.w600,
+            color: scheme.onSurface,
+            shadows: _lyricTextShadows,
+          ),
+        ),
       ),
     );
   }
@@ -519,6 +622,7 @@ class _SyncedLyrics extends ConsumerWidget {
     required this.resolved,
     required this.scrollController,
     required this.autoScroll,
+    required this.lineKeys,
     required this.onScrolledTo,
     required this.lastScrolledIndex,
     required this.onSeek,
@@ -527,11 +631,13 @@ class _SyncedLyrics extends ConsumerWidget {
   final ResolvedLyrics resolved;
   final ScrollController scrollController;
   final bool autoScroll;
+
+  /// Una llave por linea (mismo orden e indice que `resolved.parsed.lines`),
+  /// para poder centrar la activa sin asumir una altura fija por linea.
+  final List<GlobalKey> lineKeys;
   final ValueChanged<int> onScrolledTo;
   final int lastScrolledIndex;
   final ValueChanged<int> onSeek;
-
-  static const _lineHeight = 44.0;
 
   @override
   Widget build(BuildContext context, WidgetRef ref) {
@@ -545,13 +651,11 @@ class _SyncedLyrics extends ConsumerWidget {
     if (autoScroll && activeIndex >= 0 && activeIndex != lastScrolledIndex) {
       onScrolledTo(activeIndex);
       WidgetsBinding.instance.addPostFrameCallback((_) {
-        if (!scrollController.hasClients) return;
-        final target = (activeIndex * _lineHeight - 140).clamp(
-          0.0,
-          scrollController.position.maxScrollExtent,
-        );
-        scrollController.animateTo(
-          target,
+        final lineContext = lineKeys[activeIndex].currentContext;
+        if (lineContext == null) return;
+        Scrollable.ensureVisible(
+          lineContext,
+          alignment: 0.42,
           duration: const Duration(milliseconds: 420),
           curve: Curves.easeOutCubic,
         );
@@ -562,20 +666,25 @@ class _SyncedLyrics extends ConsumerWidget {
     final animationStyle = LyricsAnimationStyle.byId(
       ref.watch(settingsProvider).valueOrNull?.lyricsAnimationStyle,
     );
+    final baseStyle =
+        (Theme.of(context).textTheme.headlineSmall ??
+                const TextStyle(fontSize: 24))
+            .copyWith(height: 1.3, shadows: _lyricTextShadows);
 
     return ListView.builder(
       controller: scrollController,
-      padding: const EdgeInsets.fromLTRB(24, 8, 24, 120),
+      padding: const EdgeInsets.fromLTRB(24, 24, 24, 160),
       itemCount: resolved.parsed.lines.length,
       itemBuilder: (context, index) {
         final line = resolved.parsed.lines[index];
         final isActive = index == activeIndex;
 
         if (line.text.isEmpty) {
-          return const SizedBox(height: 20);
+          return SizedBox(key: lineKeys[index], height: 24);
         }
 
         return InkWell(
+          key: lineKeys[index],
           onTap: line.timeMs == null
               ? null
               : () => onSeek(
@@ -586,7 +695,7 @@ class _SyncedLyrics extends ConsumerWidget {
                   ),
                 ),
           child: Padding(
-            padding: const EdgeInsets.symmetric(vertical: 8),
+            padding: const EdgeInsets.symmetric(vertical: 12),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
@@ -615,21 +724,22 @@ class _SyncedLyrics extends ConsumerWidget {
                         )
                       : 0,
                   style: animationStyle,
-                  baseStyle: const TextStyle(fontSize: 17, height: 1.35),
+                  baseStyle: baseStyle,
                   activeColor: scheme.primary,
-                  inactiveColor: scheme.onSurface.withValues(alpha: 0.55),
+                  inactiveColor: scheme.onSurface.withValues(alpha: 0.4),
                   textAlign: TextAlign.start,
                 ),
                 if (line.translation != null)
                   Padding(
-                    padding: const EdgeInsets.only(top: 2),
+                    padding: const EdgeInsets.only(top: 3),
                     child: Text(
                       line.translation!,
                       style: TextStyle(
-                        fontSize: isActive ? 15 : 13.5,
+                        fontSize: isActive ? 16 : 14.5,
+                        shadows: _lyricTextShadows,
                         color: isActive
                             ? scheme.primary.withValues(alpha: 0.8)
-                            : scheme.onSurface.withValues(alpha: 0.4),
+                            : scheme.onSurface.withValues(alpha: 0.35),
                       ),
                     ),
                   ),

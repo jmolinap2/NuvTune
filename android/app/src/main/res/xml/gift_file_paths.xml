@@ -2,4 +2,6 @@
 <paths xmlns:android="http://schemas.android.com/apk/res/android">
     <!-- Solo los paquetes creados expresamente por GiftPackager. -->
     <cache-path name="nuvtune_gifts" path="gifts/" />
+    <!-- APK descargada por el actualizador. -->
+    <cache-path name="nuvtune_updates" path="updates/" />
 </paths>

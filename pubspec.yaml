@@ -55,6 +55,7 @@ flutter:
 
   assets:
     - assets/images/auris.png
+    - assets/images/auris-dance-loop-v2.png
 
   # Space Grotesk es la tipografia del sistema visual de NuvTune. Se empaqueta
   # en lugar de descargarla en ejecucion: la aplicacion funciona sin conexion y

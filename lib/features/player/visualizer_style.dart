@@ -31,6 +31,11 @@ enum VisualizerStyle {
     'Viaje psicodélico',
     'Cintas psicodélicas que atraviesan un túnel de color',
     Icons.public_rounded,
+  ),
+  aurisDance(
+    'Auris bailando',
+    'La mascota cobra vida con pasos y poses al ritmo de la música',
+    Icons.emoji_emotions_rounded,
   );
 
   const VisualizerStyle(this.label, this.description, this.icon);

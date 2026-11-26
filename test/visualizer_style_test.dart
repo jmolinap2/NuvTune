@@ -10,15 +10,16 @@ void main() {
     expect(VisualizerStyle.dynamicSpectrum.label, 'Espectro dinámico');
     expect(VisualizerStyle.fromIndex(4), VisualizerStyle.electricWaves);
     expect(VisualizerStyle.fromIndex(5), VisualizerStyle.cosmicOrbs);
+    expect(VisualizerStyle.fromIndex(6), VisualizerStyle.aurisDance);
     expect(
       VisualizerStyle.values.map((style) => style.index),
-      orderedEquals(<int>[0, 1, 2, 3, 4, 5]),
+      orderedEquals(<int>[0, 1, 2, 3, 4, 5, 6]),
     );
   });
 
   test('un índice inválido vuelve a Automático', () {
     expect(VisualizerStyle.fromIndex(-1), VisualizerStyle.automatic);
-    expect(VisualizerStyle.fromIndex(6), VisualizerStyle.automatic);
+    expect(VisualizerStyle.fromIndex(7), VisualizerStyle.automatic);
     expect(VisualizerStyle.fromIndex(99), VisualizerStyle.automatic);
   });
 
