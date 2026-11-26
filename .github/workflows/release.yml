@@ -1,15 +1,15 @@
 name: Publicar actualización
 
-# Cada push a master compila el APK release y lo publica en Netlify junto a un
-# version.json; la app instalada lo consulta y se ofrece actualizar sola.
+# Cada push a master compila el APK release y lo publica en el release fijo
+# `latest` junto a un version.json; la app instalada lo consulta y ofrece
+# actualizarse. Requiere que el repositorio sea publico (la app descarga sin
+# credenciales).
 #
 # Secretos del repositorio (Settings > Secrets and variables > Actions):
 #   ANDROID_DEBUG_KEYSTORE_B64  ~/.android/debug.keystore en base64. El build
 #                               release se firma con esa clave (ver
 #                               android/app/build.gradle.kts); sin la misma
 #                               clave Android rechaza la actualizacion.
-#   NETLIFY_AUTH_TOKEN          Personal access token de Netlify.
-#   NETLIFY_SITE_ID             ID del sitio (Site configuration > Site ID).
 
 on:
   push:
@@ -26,6 +26,8 @@ jobs:
   publicar:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    permissions:
+      contents: write
     steps:
       - uses: actions/checkout@v4
         with:
@@ -75,18 +77,16 @@ jobs:
             --argjson bytes "$(stat -c %s site/NuvTune.apk)" \
             '{build:$build, name:$name, message:$message, apk:"NuvTune.apk", bytes:$bytes}' \
             > site/version.json
-          printf '/version.json\n  Cache-Control: no-store\n' > site/_headers
           cat site/version.json
-          (cd site && zip -qr ../site.zip .)
 
-      - name: Publicar en Netlify
+      - name: Publicar en el release latest
         env:
-          NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
-          NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
+          GH_TOKEN: ${{ github.token }}
         run: |
-          curl --fail-with-body -sS -X POST \
-            -H "Authorization: Bearer $NETLIFY_AUTH_TOKEN" \
-            -H "Content-Type: application/zip" \
-            --data-binary @site.zip \
-            "https://api.netlify.com/api/v1/sites/$NETLIFY_SITE_ID/deploys" \
-            | jq '{id, state, ssl_url}'
+          gh release view latest >/dev/null 2>&1 || gh release create latest \
+            --title "Última versión" \
+            --notes "Publicado automáticamente por CI; la app lo consulta."
+          # Primero el APK y despues el manifiesto: la app nunca ve un
+          # version.json que apunte a un APK aun inexistente.
+          gh release upload latest site/NuvTune.apk --clobber
+          gh release upload latest site/version.json --clobber

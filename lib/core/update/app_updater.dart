@@ -61,8 +61,10 @@ class CheckFailed extends UpdateCheck {
 class AppUpdater {
   AppUpdater({http.Client? httpClient}) : _http = httpClient ?? http.Client();
 
-  /// Sitio de Netlify donde el CI publica `version.json` y `NuvTune.apk`.
-  static final Uri baseUrl = Uri.parse('https://nuvtune.netlify.app/');
+  /// Release fijo `latest` donde el CI publica `version.json` y `NuvTune.apk`.
+  static final Uri baseUrl = Uri.parse(
+    'https://github.com/jmolinap2/NuvTune/releases/download/latest/',
+  );
 
   static const _channel = MethodChannel('com.nuvtune.app/updater');
   static const _timeout = Duration(seconds: 15);
