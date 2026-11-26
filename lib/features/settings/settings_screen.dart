@@ -109,6 +109,12 @@ class SettingsScreen extends ConsumerWidget {
                     onTap: () => context.push('/settings/sources'),
                   ),
                   SettingsNavigationRow(
+                    icon: Icons.groups_rounded,
+                    title: 'Comunidad',
+                    subtitle: 'Tu usuario y tus amigos.',
+                    onTap: () => context.push('/community'),
+                  ),
+                  SettingsNavigationRow(
                     icon: Icons.widgets_outlined,
                     title: 'Widget de inicio',
                     subtitle: settings.widgetEnabled

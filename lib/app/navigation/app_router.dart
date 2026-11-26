@@ -17,6 +17,7 @@ import 'package:nuvtune/features/metadata_editor/song_editor_screen.dart';
 import 'package:nuvtune/features/player/player_screen.dart';
 import 'package:nuvtune/features/playlists/gift_intro_screen.dart';
 import 'package:nuvtune/features/playlists/gift_receive_wizard.dart';
+import 'package:nuvtune/features/community/community_screen.dart';
 import 'package:nuvtune/features/playlists/playlist_detail_screen.dart';
 import 'package:nuvtune/features/playlists/playlists_screen.dart';
 import 'package:nuvtune/features/queue/queue_screen.dart';
@@ -105,23 +106,24 @@ GoRouter createRouter() {
               systemReduceMotion: reduceMotion,
             ),
             child: const PlayerScreen(),
-            transitionsBuilder: (context, animation, secondaryAnimation, child) {
-              final curved = CurvedAnimation(
-                parent: animation,
-                curve: Curves.easeOutCubic,
-                reverseCurve: Curves.easeInCubic,
-              );
-              return FadeTransition(
-                opacity: curved,
-                child: SlideTransition(
-                  position: Tween<Offset>(
-                    begin: const Offset(0, 0.08),
-                    end: Offset.zero,
-                  ).animate(curved),
-                  child: child,
-                ),
-              );
-            },
+            transitionsBuilder:
+                (context, animation, secondaryAnimation, child) {
+                  final curved = CurvedAnimation(
+                    parent: animation,
+                    curve: Curves.easeOutCubic,
+                    reverseCurve: Curves.easeInCubic,
+                  );
+                  return FadeTransition(
+                    opacity: curved,
+                    child: SlideTransition(
+                      position: Tween<Offset>(
+                        begin: const Offset(0, 0.08),
+                        end: Offset.zero,
+                      ).animate(curved),
+                      child: child,
+                    ),
+                  );
+                },
           );
         },
       ),
@@ -224,6 +226,12 @@ GoRouter createRouter() {
 
       // Fuentes remotas (requerimiento seccion 10), fuera de la biblioteca
       // local a proposito.
+      GoRoute(
+        path: '/community',
+        parentNavigatorKey: rootNavigatorKey,
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const CommunityScreen()),
+      ),
       GoRoute(
         path: '/remote-sources',
         parentNavigatorKey: rootNavigatorKey,
@@ -397,11 +405,8 @@ GoRouter createRouter() {
       GoRoute(
         path: '/settings/library',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => buildFadeSlidePage(
-          context,
-          state,
-          const LibrarySettingsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const LibrarySettingsScreen()),
       ),
       GoRoute(
         path: '/settings/library/metadata-lookup',
@@ -412,11 +417,8 @@ GoRouter createRouter() {
       GoRoute(
         path: '/settings/sources',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => buildFadeSlidePage(
-          context,
-          state,
-          const SourcesSettingsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const SourcesSettingsScreen()),
       ),
       GoRoute(
         path: '/settings/widget',
@@ -436,20 +438,14 @@ GoRouter createRouter() {
       GoRoute(
         path: '/settings/system/devices',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => buildFadeSlidePage(
-          context,
-          state,
-          const DevicesSettingsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const DevicesSettingsScreen()),
       ),
       GoRoute(
         path: '/settings/system/data',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => buildFadeSlidePage(
-          context,
-          state,
-          const DataFilesSettingsScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const DataFilesSettingsScreen()),
       ),
       GoRoute(
         path: '/settings/system/diagnostics',
@@ -502,11 +498,8 @@ GoRouter createRouter() {
       GoRoute(
         path: '/settings/excluded-folders',
         parentNavigatorKey: rootNavigatorKey,
-        pageBuilder: (context, state) => buildFadeSlidePage(
-          context,
-          state,
-          const ExcludedFoldersScreen(),
-        ),
+        pageBuilder: (context, state) =>
+            buildFadeSlidePage(context, state, const ExcludedFoldersScreen()),
       ),
       GoRoute(
         path: '/settings/source-folders',

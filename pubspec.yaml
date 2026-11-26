@@ -42,6 +42,7 @@ dependencies:
   # Uso directo de AndroidWebViewCookieManager en youtube_login_screen.dart.
   webview_flutter_android: ^4.13.0
   share_plus: ^11.1.0
+  flutter_secure_storage: ^10.3.4
 
 dev_dependencies:
   flutter_test:
